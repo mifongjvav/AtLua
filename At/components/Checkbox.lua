@@ -3,9 +3,9 @@
 --   local remember = At.Checkbox{ text = "记住我",
 --       onChange = function(checked) print(checked) end }
 
-local Component = require("At.component")
-local color = require("At.color")
-local pixel = require("At.pixel")
+local Component = require("At.core.component")
+local color = require("At.core.color")
+local pixel = require("At.core.pixel")
 
 local Checkbox = {}
 local proto = setmetatable({}, { __index = Component })

@@ -16,9 +16,9 @@
 --   _onFocus() / _onBlur()       焦点变化
 --   measure(availW, availH)      自然尺寸，供布局引擎在 w/h = "auto" 时调用
 
-local registry = require("At.registry")
-local SDF = require("At.SDF")
-local font = require("At.font")
+local registry = require("At.core.registry")
+local SDF = require("At.core.SDF")
+local font = require("At.core.font")
 
 local Component = {}
 

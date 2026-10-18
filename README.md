@@ -30,8 +30,12 @@ function love.draw() card:draw() end
   `Panel`、`Label`、`Button`、`TextInput`、`Switch`、`Checkbox`、`RadioGroup`、`Slider`、`ScrollView`。
 - **交互细节**：按钮涟漪与拖出/拖回语义、开关左右拖动、滑动条拖动与方向键微调、输入框软键盘与光标、
   唯一键盘焦点、点空白自动失焦。
-- **滚动视口**：裁剪、平滑滚动、松手惯性、可拖滚动条、悬停变宽、`scrollToVisible`。
+- **滚动视口**：横向/纵向都支持，内容超出宽或高时**自动出现对应滚动条**；平滑滚动、双向惯性、可拖滚动条、悬停变宽、支持嵌套、`scrollToVisible`。
 - **渲染细节**：坐标对齐整数像素、嵌套裁剪求交、阴影按层数归一化、1px 边框使用 rough 线型。
+- **背景模糊（毛玻璃）**：`At.blur` 抓取组件背后的画面并按算法模糊，半透明组件（控制台、半透明卡片/输入框/按钮）自动生效；内置 gaussian / downscale / none，可注册自定义算法。
+- **日志与控制台**：`At.log` 提供 debug/info/warn/error/fatal 五级、可配置格式、条目缓冲，
+  默认同时输出到终端 / logcat；`At.Console` 是半透明浮动面板，按等级着色、可拖动、可滚动、
+  可显示/隐藏（隐藏时留一个 `LOG` 标签，移动端也能点开）。
 - **自带无头测试**：不需要 LÖVE 也能跑逻辑回归。
 - **一键打包**：`./pack.sh` 生成 `.love`（不依赖 `zip`，有 `python3` 即可）。
 
@@ -74,6 +78,33 @@ function love.keypressed(k)          At.keypressed(k)          end
 
 组件创建即自动登记到注册表，事件由 `At.*` 统一派发；`At.Panel` 不接收事件，只负责排版。
 
+### 日志与控制台
+
+```lua
+At.log.setLevel("debug")                      -- debug/info/warn/error/fatal，默认 info
+At.log.info("玩家 %d 进入", 3)                 -- 支持 string.format
+At.log.setFormat("[%s] - [%s/%s]: %s")        -- 时间/等级/函数名/内容（默认格式）
+
+At.blur.setEnabled(true)                      -- 半透明组件自动毛玻璃
+At.log.setFile(true)                          -- 同时写入 "YYYY-MM-DD HH:MM:SS.log"
+print("日志文件:", At.log.getFilePath())       -- Android 上在应用存档目录
+
+local console = At.Console{ x = 20, y = 20, w = 560, h = 240 }
+console:toggle()                              -- 或 show() / hide()
+
+function love.draw()
+    At.blur.beginFrame()                      -- 启用模糊时包住整帧
+    ui:draw()
+    console:draw()                            -- 最后画，浮在最上层
+    At.blur.endFrame()
+end
+```
+
+默认输出形如 `[15:04:05] - [INFO/love.load]: 演示启动`，并**同时打印到终端**（Android 上进入
+`adb logcat -s love`）；`At.log.setFile(true)` 还能按 `YYYY-MM-DD HH:MM:SS.log` 落盘（`love.quit` 里
+`At.log.closeFile()` 收尾）。控制台可拖动标题栏移动、滚轮或拖动日志区滚动；隐藏时右上角有 `LOG` 标签
+可点开（移动端入口），标题栏 `C` 清空、`×` 关闭；桌面上也可用 `F1` / `F2`。
+
 ## 组件一览
 
 | 组件 | 作用 |
@@ -86,7 +117,8 @@ function love.keypressed(k)          At.keypressed(k)          end
 | `At.Checkbox` | 多选框 |
 | `At.RadioGroup` | 单选组（`value` 为 1 基下标） |
 | `At.Slider` | 滑动条：点击跳转、拖动、方向键微调、步长吸附 |
-| `At.ScrollView` | 可滚动视口：裁剪、平滑滚动、惯性、可拖滚动条 |
+| `At.ScrollView` | 可滚动视口：横向/纵向自动滚动条、平滑滚动、惯性 |
+| `At.Console` | 浮动调试控制台：显示 `At.log` 日志、着色、可拖动 |
 
 ## 布局速查（CSS 子集）
 
@@ -107,6 +139,8 @@ function love.keypressed(k)          At.keypressed(k)          end
 - [docs/README.md](docs/README.md) — 快速开始、事件模型、常见问题
 - [docs/layout.md](docs/layout.md) — 布局规则、尺寸与像素对齐、限制、示例
 - [docs/components.md](docs/components.md) — 每个组件的属性/方法/回调/示例
+- [docs/logging.md](docs/logging.md) — 日志等级、输出格式、控制台配合
+- [docs/blur.md](docs/blur.md) — 背景模糊的启用方式、算法与性能说明
 
 ## 测试
 
@@ -136,13 +170,30 @@ for f in main.lua At/*.lua test_smoke.lua; do luac -p "$f"; done
 ## 目录结构
 
 ```
-main.lua      # 演示程序
-At/           # 组件库本体
-docs/         # 使用文档
-LICENSES/     # 第三方许可全文（随包分发）
-test_smoke.lua# 无头测试
-pack.sh       # 打包脚本
-AGENTS.md     # 给 AI 代理/协作者的约定与陷阱
+main.lua        # 演示程序
+pack.sh         # 打包脚本
+test_smoke.lua  # 无头测试
+docs/           # 使用文档（README / layout / components / logging / blur）
+LICENSES/       # 第三方许可全文（随包分发）
+At/
+  At.lua        # 门面：require 一次拿到全部模块
+  config.lua    # 集中配置：blur / log / font
+  core/         # 基础设施：registry、component、layout、clip、pixel、color、
+                #   SDF、shadow、font、input、log
+  components/   # 组件：Panel、Label、Button、TextInput、Switch、Checkbox、
+                #   RadioGroup、Slider、ScrollView、Console
+  effects/      # 视觉效果：Ripple、blur
+  assets/       # 字体资源：font.ttf、emoji.ttf
+AGENTS.md       # 给 AI 代理/协作者的约定与陷阱
+```
+
+配置集中在 `At/config.lua`：
+
+```lua
+At.config.blur.enabled = true        -- 毛玻璃
+At.config.log.level = "debug"        -- 日志等级
+At.config.font.size = 16             -- 默认字号
+At.config.apply()                    -- 推给各模块（At.lua 启动时已调用一次）
 ```
 
 ## 已知限制
@@ -155,8 +206,8 @@ AGENTS.md     # 给 AI 代理/协作者的约定与陷阱
 ## 许可证
 
 - 项目代码：**MIT**，见 [LICENSE](LICENSE)。
-- 字体：`At/font/font.ttf`（Noto Sans SC Bold 2.004，© Adobe / Google）与
-  `At/font/emoji.ttf`（Noto Emoji 3.005，© Google LLC）均为 **SIL Open Font License 1.1**。
+- 字体：`At/assets/font.ttf`（Noto Sans SC Bold 2.004，© Adobe / Google）与
+  `At/assets/emoji.ttf`（Noto Emoji 3.005，© Google LLC）均为 **SIL Open Font License 1.1**。
   许可全文与逐字体版权声明见 [LICENSES/](LICENSES/)，总览见
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 

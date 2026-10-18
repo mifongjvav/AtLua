@@ -23,6 +23,12 @@
 
 `x` / `y` 默认都是 `0`；`enabled`、`visible` 默认 `true`；`autoRegister` 默认 `true`；`passthrough` 默认 `false`。颜色 alpha 一律是 **0–255**，坐标一律是**左上角 + 宽高**。
 
+**背景模糊**：`At.Panel`、`At.Console`、`At.ScrollView`、`At.TextInput`、`At.Button` 在背景 `alpha < 255`
+且 `At.blur` 启用时会自动在背后绘制模糊（毛玻璃），组件本身不需要额外参数。用法见 [blur.md](blur.md)。
+
+**At.Console 是浮动调试面板**：显示 `At.log` 的全部日志，可拖动、可滚动、可显示/隐藏；
+它必须最后创建和绘制，才能浮在最上层（详见 [`logging.md`](logging.md)）。
+
 **被动组件**：只做展示、不响应鼠标的组件（`At.Label`）会自动判定为不可交互（`interactive = false`），它们不会消费点击、也不会挡住 `ScrollView` 的拖动。自己写的纯展示组件请显式设 `interactive = false`。
 
 ## At.Panel
@@ -264,7 +270,7 @@ btn:setEnabled(false)   -- 禁用后变淡且不再响应
 - 文字与光标绘制会与外层裁剪求交（放在 `ScrollView` 里也不会溢出视口），位置对齐到整数像素。
 - 只有焦点组件会收到 `At.textinput` / `At.keypressed`。
 - 输入框是**可交互**组件（实现了 `_press`），所以会正常拦截点击；旁边的 `At.Label` 不会。
-- **移动端软键盘**：聚焦时调用 `love.keyboard.setTextInput(true, x, y, w, h)` 并带上输入框矩形，系统据此弹出并定位软键盘；失焦时调用 `setTextInput(false)` 收起。切到后台请在 `love.focus(false)` 里调 `At.blur()`。
+- **移动端软键盘**：聚焦时调用 `love.keyboard.setTextInput(true, x, y, w, h)` 并带上输入框矩形，系统据此弹出并定位软键盘；失焦时调用 `setTextInput(false)` 收起。切到后台请在 `love.focus(false)` 里调 `At.clearFocus()`。
 - 软键盘会遮住下半屏，建议把表单放进 `At.ScrollView`，并在 `onFocus` 里调用 `view:scrollToVisible(self)`。
 
 ### 示例
@@ -539,9 +545,10 @@ volume:draw()
 | `x` / `y` | 数字 | `0` | 视口左上角 |
 | `w` / `h` | 数字 | `320` / `240` | 视口尺寸 |
 | `content` | 组件 | `nil` | 被滚动的内容，通常是 `At.Panel` |
-| `scrollY` | 数字 | `0` | 当前纵向滚动量，会被自动夹到 `0 .. maxScroll` |
+| `scrollX` / `scrollY` | 数字 | `0` | 当前滚动量，会被自动夹到 `0 .. maxScrollX/Y` |
 | `scrollbar` | 布尔 | `true` | 是否画滚动条 |
-| `scrollbarWidth` | 数字 | `4` | 滚动条宽度 |
+| `scrollbarWidth` | 数字 | `4` | 滚动条宽度（横竖共用） |
+| `scrollbarMargin` | 数字 | `2` | 滚动条与视口边缘的间距 |
 | `scrollbarColor` / `scrollbarThumbColor` | hex 字符串 | `"#3A4150"` / `"#9FB3D3"` | 轨道/滑块颜色 |
 | `scrollbarActiveWidth` | 数字 | `8` | 指针靠近或拖动滚动条时的宽度（离开后缩回 `scrollbarWidth`） |
 | `scrollbarGrowSpeed` | 数字 | `16` | 滚动条变宽/缩回的动画速度 |
@@ -555,7 +562,7 @@ volume:draw()
 | `drag` | 布尔 | `true` | 允许按住空白处拖动滚动 |
 | `padding` | 数字 / 表 | `0` | 视口内边距 |
 | `background` / `radius` | hex / 数字 | `nil` / `0` | 视口背景与圆角 |
-| `onScroll` | 函数 | `nil` | 滚动量变化时回调 `(scrollY, maxScroll, self)` |
+| `onScroll` | 函数 | `nil` | 滚动量变化时回调 `(value, maxScroll, self, axis)`，`axis` 为 `"x"` / `"y"` |
 
 ### 方法
 
@@ -564,30 +571,35 @@ volume:draw()
 | `:setScroll(value, silent?)` | **立即**设置滚动量并夹紧（拖拽、滚动条、`scrollToVisible` 用）；`silent` 为真时不触发 `onScroll` |
 | `:scrollTo(value, silent?)` | **平滑**滚动到绝对值；`smooth = false` 时等同 `setScroll` |
 | `:scrollBy(delta, silent?)` | **平滑**相对滚动；按当前目标累加，连续滚轮不会互相吞掉 |
-| `:maxScroll()` | 最大滚动量（内容高度 - 视口高度） |
+| `:maxScroll()` | 最大纵向滚动量（内容高度 - 视口高度） |
+| `:maxScrollX()` | 最大横向滚动量（内容宽度 - 视口宽度） |
+| `:setScrollX(value, silent?)` / `:scrollToX(value, silent?)` / `:scrollByX(delta, silent?)` | 横向的立即 / 平滑 / 相对滚动 |
 | `:scrollToVisible(component, margin?)` | 把某个子组件滚进可视区，配合输入框聚焦防软键盘遮挡 |
 | `:layout()` | 立即重排：把自身视口宽度作为可用宽度传给内容 |
 | `:destroy()` | 连同 `content` 一起销毁 |
 
 ### 说明
 
-- 内容宽度跟随视口：ScrollView 会把 `w - padding` 作为可用宽度传给 `content`，所以内容里的 `"100%"` / `"50%"` 都以视口为基准。
+- **两个方向都会自动生成滚动条**：内容高度超过视口时出现纵向条，宽度超过视口时出现横向条（可同时出现，两端的轨道会互相让位）。没有任何溢出时不画滚动条，也不吞空白处的点击。
+- 可以嵌套：`ScrollView` 会把自己声明为可交互，外层收到落在内层上的点击时会交给内层处理。
+- 内容宽度自适应视口：比视口窄的内容按视口宽排版（`"100%"` / `"50%"` 以视口为基准）；比视口宽的内容保留自身宽度，从而出现横向滚动。
 - 事件顺序：**ScrollView 必须在内容之后创建**，这样它才能在注册表里先于子组件收到点击，判断"这次点击该不该交给子组件"。
 - 点在**可交互**子组件（按钮/开关/输入框/滑动条等）上 → 不拦截，交给子组件；点在空白处**或被动组件（文字）上** → 由 `ScrollView` 接管并开始拖动滚动；点在已经滚出视口、但仍压在上述组件上的位置 → 直接吃掉，避免误触。
-- 滚轮通过 `At.wheelmoved(dx, dy)` 接入，只有指针在视口内时才消费。滚轮走**平滑滚动**：只设定目标位置，位置每帧缓动逼近（`smoothSpeed`），松手拖动还会带**惯性**（`momentumFriction` 衰减，撞到边界即停）。
+- 滚轮通过 `At.wheelmoved(dx, dy)` 接入，只有指针在视口内时才消费：`dy` 滚纵向、`dx` 滚横向，`Shift` + 滚轮也走横向；某个轴没有滚动空间时自动退让给另一个轴（例如只有竖滚的视口收到横向滚轮）。滚轮走**平滑滚动**：只设定目标位置，位置每帧缓动逼近（`smoothSpeed`），松手拖动还会带**惯性**（横向、纵向各自独立衰减，撞到边界即停）。
 - `scrollY` 是浮点数（平滑动画需要），绘制时会取整；`onScroll` 在平滑滚动过程中会**逐帧触发**，需要节流的话自己处理。
 - 右侧滚动条**可以拖**：按在滑块上拖动直接滚动；按在轨道空白处会跳转到对应位置。命中区按 `scrollbarHitWidth` 放大，手指也好按。
 - 指针碰到滚动条时它会**变宽**（`scrollbarWidth` → `scrollbarActiveWidth`，带缓动），离开后缩回，方便发现与触控。
 - 裁剪会与外层裁剪**求交**（见 `At.clip`），所以嵌套滚动、或滚动视口里再放输入框，都不会把内容画到视口外。
 - 子组件的坐标会被滚动位移实时改写，所以命中判断、`scrollToVisible` 都用当前的 `y`。
-- 不支持横向滚动（`scrollX` 仅作为位移量保留）、回弹（惯性已有，但没有边界回弹）、嵌套滚动的独立滚动链。
+- 不支持边界回弹（惯性已有，但没有橡皮筋效果）、无限滚动，以及嵌套滚动时"内层滚到底再传给外层"的滚动链（内外层各自独立消费滚轮）。
 
 ### 示例
 
 ```lua
 local At = require("At.At")
 
-local card = At.Panel{ w = "100%", h = "auto", gap = 12, padding = 16 }
+-- 内容比视口宽：会自动出现横向滚动条
+local card = At.Panel{ w = 720, h = "auto", gap = 12, padding = 16 }
 for i = 1, 20 do
     card:add(At.Label{ text = "第 " .. i .. " 行" })
 end
@@ -602,4 +614,103 @@ local view = At.ScrollView{
 -- love.draw:           view:draw()
 -- love.wheelmoved:     At.wheelmoved(dx, dy)
 -- 需要定位到某一行时：view:scrollToVisible(card.children[15])   -- 立即定位
+```
+
+## At.Console
+
+浮动控制台：显示 `At.log` 收集的全部日志，按等级着色、半透明背景，可拖动窗口、滚动日志、点 `×` 或调 API 显示/隐藏。日志内容与等级过滤由 [`At.log`](logging.md) 负责。
+
+### 属性
+
+| 属性 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `x` / `y` | 数字 | `0` | 初始位置；拖动时会被夹在窗口内 |
+| `w` / `h` | 数字 | `560` / `240` | 窗口尺寸 |
+| `headerH` | 数字 | `30` | 标题栏高度（也是拖动区域与关闭按钮尺寸） |
+| `padding` | 数字 | `8` | 日志区左右内边距 |
+| `radius` | 数字 | `8` | 窗口圆角 |
+| `visible` | 布尔 | `false` | 默认隐藏，用 `toggle()` / `show()` 打开 |
+| `draggable` | 布尔 | `true` | 是否允许拖动标题栏移动窗口 |
+| `showClose` | 布尔 | `true` | 是否显示右上角 `×` |
+| `showClear` | 布尔 | `true` | 是否显示标题栏的 `C`（清空日志）按钮 |
+| `title` | 字符串 | `"控制台"` | 标题栏文字 |
+| `fontSize` | 数字 | `13` | 日志字号 |
+| `lineHeight` | 数字 | `1.35` | 行高倍数 |
+| `scrollStep` | 数字 | `3` | 滚轮一格滚动几行 |
+| `background` | hex | `"#0D1117"` | 背景色 |
+| `alpha` | 数字 0–255 | `205` | 背景透明度（半透明） |
+| `borderColor` / `dividerColor` | hex | `"#3A4150"` / `"#2A303B"` | 边框 / 标题分隔线 |
+| `titleColor` / `placeholderColor` | hex | `"#DCE3EE"` / `"#6B7385"` | 标题 / 无日志提示色 |
+| `scrollbarColor` / `scrollbarThumbColor` | hex | `"#2F3542"` / `"#59627A"` | 滚动条轨道 / 滑块 |
+| `tab` | 布尔 | `true` | 隐藏时在右上角显示可点按的 `LOG` 标签（移动端入口） |
+| `tabW` / `tabH` | 数字 | `72` / `28` | 标签尺寸 |
+| `tabMargin` | 数字 | `12` | 标签距屏幕边缘 |
+| `tabRadius` | 数字 | `6` | 标签圆角 |
+| `tabLabel` | 字符串 | `"LOG"` | 标签文字 |
+| `tabColor` / `tabTextColor` | hex | `"#1F2530"` / `"#A9C7E8"` | 标签底色 / 文字色 |
+| `tabAlpha` | 数字 | `225` | 标签底色透明度 |
+| `tabX` / `tabY` | 数字 | `nil` | 标签位置；缺省贴屏幕右上角 |
+| `levelColors` | 表 | 见下 | 每个等级的文字颜色 |
+
+默认等级配色：
+
+```lua
+levelColors = {
+    debug = "#7D8698",
+    info  = "#A9C7E8",
+    warn  = "#E8C07F",
+    error = "#E87979",
+    fatal = "#FF5555",
+}
+```
+
+`levelColors` 是**每个实例独立的副本**，修改一个控制台不会影响其它控制台。
+
+### 方法
+
+| 方法 | 说明 |
+| --- | --- |
+| `:show()` / `:hide()` / `:toggle()` | 显示 / 隐藏 / 切换 |
+| `:isOpen()` | 是否可见 |
+| `:setTitle(text)` | 改标题 |
+| `:clear()` | 清空 `At.log` 的日志缓冲并把视图回到底部 |
+| `:scrollToBottom()` | 滚回最新一条（`_offset = 0`） |
+| `:draw()` / `:update(dt)` | 由调用方每帧调用；`update` 里处理拖动 |
+
+### 交互
+
+- **拖动标题栏**移动窗口，位置会被夹在屏幕内。
+- **拖动日志区**上下滚动；**滚轮**按 `scrollStep` 行滚动。
+- 隐藏时右上角显示 `LOG` 标签（`tab = true`），**点它打开控制台**；显示后标签消失。
+- 标题栏 `C` 清空日志、`×` 关闭；关闭后不消费任何鼠标/滚轮事件。
+- 日志区可显示时最多 `floor(日志区高度 / 行高)` 行，超出部分用滚动查看；滚动条只在内容超高时出现。
+- 有新的日志时，若视图停在底部（`_offset == 0`）会自动跟随最新。
+
+### 示例
+
+```lua
+local At = require("At.At")
+
+At.log.setLevel("debug")
+At.log.setFormat("[%s] - [%s/%s]: %s")
+
+local console = At.Console{
+    x = 20, y = 20, w = 560, h = 240,
+    title = "At.log 控制台",
+    alpha = 205,
+}
+
+At.log.info("游戏启动")
+At.log.warn("资源 %s 缺失，已用占位图", "enemy.png")
+
+function love.draw()
+    ui:draw()
+    console:draw()          -- 必须最后画
+end
+
+function love.keypressed(key)
+    if key == "f1" then
+        console:toggle()    -- 显示/隐藏
+    end
+end
 ```

@@ -5,11 +5,11 @@
    本项目代码以 MIT 许可发布，全文见项目根目录的 LICENSE。
 
 2. 字体（随本项目一起分发，不属于 MIT）
-   - At/font/font.ttf    Noto Sans SC Bold 2.004
+   - At/assets/font.ttf    Noto Sans SC Bold 2.004
                          Copyright (c) 2014-2021 Adobe, with Reserved Font Name 'Source'
                          Copyright 2013-2021 Google LLC
                          SIL Open Font License 1.1
-   - At/font/emoji.ttf   Noto Emoji Regular 3.005
+   - At/assets/emoji.ttf   Noto Emoji Regular 3.005
                          Copyright 2013 Google LLC
                          SIL Open Font License 1.1
 

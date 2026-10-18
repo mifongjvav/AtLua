@@ -13,8 +13,8 @@
 
 local Ripple = {}
 
-local SDF = require("At.SDF")
-local color = require("At.color")
+local SDF = require("At.core.SDF")
+local color = require("At.core.color")
 
 -- 实例方法放在独立表里，模块表本身保留旧的单例函数，两者不冲突。
 local proto = {}

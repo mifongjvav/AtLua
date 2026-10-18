@@ -1,7 +1,7 @@
 Noto Sans SC Bold
 =================
 
-文件：At/font/font.ttf
+文件：At/assets/font.ttf
 字体内部名称（name 表）：Noto Sans SC / Bold，PostScript 名 NotoSansSC-Bold
 版本：Version 2.004-H2
 

@@ -10,11 +10,12 @@
 --   love.textinput(t)  -> At.textinput(t)
 --   love.keypressed(k) -> At.keypressed(k)
 
-local Component = require("At.component")
-local color = require("At.color")
-local input = require("At.input")
-local clip = require("At.clip")
-local pixel = require("At.pixel")
+local Component = require("At.core.component")
+local color = require("At.core.color")
+local input = require("At.core.input")
+local clip = require("At.core.clip")
+local pixel = require("At.core.pixel")
+local blur = require("At.effects.blur")
 
 local TextInput = {}
 local proto = setmetatable({}, { __index = Component })
@@ -203,6 +204,10 @@ function proto:_draw()
     local r = self:rect()
     local x, y = pixel.xy(r.x, r.y)
     local w, h = pixel.round(r.w), pixel.round(r.h)
+
+    if (self.alpha or 255) < 255 then
+        blur.drawBackdrop(x, y, w, h, r.radius)
+    end
 
     color.setColor(self.color, self.alpha)
     love.graphics.rectangle("fill", x, y, w, h, r.radius)

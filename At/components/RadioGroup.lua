@@ -5,9 +5,9 @@
 --       onChange = function(index, label) print(index, label) end,
 --   }
 
-local Component = require("At.component")
-local color = require("At.color")
-local pixel = require("At.pixel")
+local Component = require("At.core.component")
+local color = require("At.core.color")
+local pixel = require("At.core.pixel")
 
 local RadioGroup = {}
 local proto = setmetatable({}, { __index = Component })

@@ -1,7 +1,7 @@
 Noto Emoji Regular
 ==================
 
-文件：At/font/emoji.ttf
+文件：At/assets/emoji.ttf
 字体内部名称（name 表）：Noto Emoji / Regular，PostScript 名 NotoEmoji-Regular
 版本：Version 3.005
 

@@ -11,11 +11,12 @@
 --   love.mousepressed(...)   -> At.mousepressed(x, y, b)
 --   love.mousereleased(...)  -> At.mousereleased(x, y, b)
 
-local Component = require("At.component")
-local color = require("At.color")
-local shadow = require("At.shadow")
-local pixel = require("At.pixel")
-local Ripple = require("At.Ripple")
+local Component = require("At.core.component")
+local color = require("At.core.color")
+local shadow = require("At.core.shadow")
+local pixel = require("At.core.pixel")
+local blur = require("At.effects.blur")
+local Ripple = require("At.effects.Ripple")
 
 local Button = {}
 local proto = setmetatable({}, { __index = Component })
@@ -161,6 +162,10 @@ function proto:_draw()
 
     if self.shadow then
         shadow.shadow(x, y, w, h, r.radius, unpack(self.shadowArgs))
+    end
+
+    if self:fillAlpha() < 255 then
+        blur.drawBackdrop(x, y, w, h, r.radius)
     end
 
     color.setColor(self:fillColor(), self:fillAlpha())

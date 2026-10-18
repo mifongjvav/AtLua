@@ -3,10 +3,10 @@
 --   At.Label{ x = 20, y = 20, text = "用户名", fontSize = 16 }
 --   At.Label{ text = "很长的说明……", wrap = true, w = 240, lineHeight = 1.4 }
 
-local Component = require("At.component")
-local color = require("At.color")
-local layout = require("At.layout")
-local pixel = require("At.pixel")
+local Component = require("At.core.component")
+local color = require("At.core.color")
+local layout = require("At.core.layout")
+local pixel = require("At.core.pixel")
 
 local Label = {}
 local proto = setmetatable({}, { __index = Component })

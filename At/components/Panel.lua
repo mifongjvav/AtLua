@@ -12,11 +12,12 @@
 --       },
 --   }
 
-local Component = require("At.component")
-local layout = require("At.layout")
-local color = require("At.color")
-local shadow = require("At.shadow")
-local pixel = require("At.pixel")
+local Component = require("At.core.component")
+local layout = require("At.core.layout")
+local color = require("At.core.color")
+local shadow = require("At.core.shadow")
+local pixel = require("At.core.pixel")
+local blur = require("At.effects.blur")
 
 local Panel = {}
 local proto = setmetatable({}, { __index = Component })
@@ -143,6 +144,10 @@ function proto:_draw()
     end
 
     if self.background then
+        -- 半透明背景自动取背后的画面做模糊（At.blur 关闭时是空操作）
+        if (self.alpha or 255) < 255 then
+            blur.drawBackdrop(x, y, w, h, radius)
+        end
         color.setColor(self.background, self.alpha)
         love.graphics.rectangle("fill", x, y, w, h, radius)
     end

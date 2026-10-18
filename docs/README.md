@@ -79,6 +79,27 @@ end
 - 每个组件都要在 `love.draw` 里 `:draw()`；`Panel` 会顺带画它的子组件。
 - 文本输入框还需要 `love.textinput` 与 `love.keypressed` 两条接线，否则无法输入和提交。
 
+## 配置
+
+集中在 [`At/config.lua`](../At/config.lua)，改默认值或运行时调整后调用 `At.config.apply()`：
+
+```lua
+At.config.blur.enabled = true          -- 背景模糊（毛玻璃）
+At.config.blur.algorithm = "downscale"
+At.config.log.level = "debug"          -- 日志等级
+At.config.log.file = true              -- 同时写文件
+At.config.font.size = 16               -- At.font.init() 的默认字号
+At.config.apply()
+```
+
+| 配置段 | 字段 |
+| --- | --- |
+| `blur` | `enabled` / `algorithm` / `strength` |
+| `log` | `level` / `print` / `maxEntries` / `file` / `filePattern` |
+| `font` | `size` / `main` / `emoji` |
+
+`At.lua` 启动时会自动 `apply()` 一次；之后改 `At.config` 需要再调 `apply()`。
+
 ## 组件一览
 
 | 组件 | 一句话作用 | 文档 |
@@ -91,9 +112,11 @@ end
 | `At.Checkbox` | 多选框，点击整行切换 | [components.md#at-checkbox](components.md#at-checkbox) |
 | `At.RadioGroup` | 单选组，`value` 是 1 基下标 | [components.md#at-radiogroup](components.md#at-radiogroup) |
 | `At.Slider` | 滑动条，支持步进、拖动与方向键 | [components.md#at-slider](components.md#at-slider) |
-| `At.ScrollView` | 可滚动视口：裁剪、平滑滚动、惯性、可拖滚动条 | [components.md#at-scrollview](components.md#at-scrollview) |
+| `At.ScrollView` | 可滚动视口：横纵自动滚动条、平滑滚动、惯性 | [components.md#at-scrollview](components.md#at-scrollview) |
+| `At.Console` | 浮动调试控制台：显示 `At.log` 日志、着色、可拖动 | [components.md#at-console](components.md#at-console) |
 
-布局规则见 [layout.md](layout.md)，每个组件的完整属性/方法/回调见 [components.md](components.md)。
+布局规则见 [layout.md](layout.md)，每个组件的完整属性/方法/回调见 [components.md](components.md)，
+日志与浮动控制台见 [logging.md](logging.md)，背景模糊（毛玻璃）见 [blur.md](blur.md)。
 
 ## 事件模型
 
@@ -107,7 +130,7 @@ end
 
 ```lua
 local focused = At.getFocus()   -- 当前焦点组件或 nil
-At.blur()                       -- 主动清空焦点
+At.clearFocus()                 -- 主动清空焦点
 ```
 
 `At.Panel` 不登记、不消费鼠标事件，所以容器不会挡住子组件；`At.ScrollView` 会登记，但它只接管"落在空白处的拖动"与滚轮，点在子组件上仍然交给子组件。
@@ -155,6 +178,18 @@ At.blur()                       -- 主动清空焦点
 
 旧版 `shadow` 把多层半透明黑矩形直接叠加（20 层各约 7.5%），累积后接近 80% 不透明，看起来就是黑底。现在已经按层数归一化：`shadowArgs` 里颜色的 alpha 即整体最大不透明度。确实不想要阴影时把它设为 `shadow = false`。
 
+**Android 上看不到日志 / 控制台？**
+
+Android 没有终端窗口，`At.log` 默认会把日志 `print` 到 **logcat**（`adb logcat -s love`），也可以用手机上的 logcat 阅读器。想把日志留在设备上就开文件输出：`At.log.setFile(true)`，文件在应用存档目录里（路径见 `At.log.getFilePath()`，Android 上是 `.../files/save/YYYY-MM-DD HH:MM:SS.log`）。浮动控制台默认隐藏，但右上角有个 `LOG` 标签，点它就能打开（移动端没有 `F1`）；打开后点标题栏的 `C` 清空、`×` 关闭。
+
+**半透明组件没有毛玻璃效果？**
+
+需要同时满足：`At.blur.setEnabled(true)`，并且绘制包在 `At.blur.beginFrame()` / `At.blur.endFrame()` 之间（否则拿不到背景快照）；组件背景的 `alpha` 必须小于 255（控制台默认 205，Panel/输入框/按钮要把 alpha 调低）。细节见 [blur.md](blur.md)。
+
+**为什么数字和空格看起来特别宽？**
+
+字体主次反了。`At/core/font.lua` 必须以**主字体**（Noto Sans SC）为当前字体、emoji 字体只作 `setFallbacks`；若反过来把 emoji 当当前字体，数字、空格、`#`/`*` 会取到 Noto Emoji 里为 keycap 设计的长宽字。
+
 **为什么文字/空白区域拖不动滚动？**
 
 `ScrollView` 只把"可交互子组件"当作拦截目标。`At.Label` 是**被动组件**（`interactive = false`），不消费点击，所以压在文字上也能拖。若你自己写了纯展示组件却拖不动，把它设为 `interactive = false`；反之，如果某个区域"明明不该拦却拦住了"，检查那个组件是不是实现了 `_press`（实现了就会被视为可交互）。
@@ -166,7 +201,7 @@ At.blur()                       -- 主动清空焦点
 ## 许可证
 
 - **本项目代码**：MIT，见根目录 [`LICENSE`](../LICENSE)。
-- **字体**：`At/font/font.ttf` 是 Noto Sans SC Bold，`At/font/emoji.ttf` 是 Noto Emoji，
+- **字体**：`At/assets/font.ttf` 是 Noto Sans SC Bold，`At/assets/emoji.ttf` 是 Noto Emoji，
   均为 **SIL Open Font License 1.1**，版权分别属于 Adobe / Google LLC。
   许可全文与逐字体版权声明见 [`LICENSES/`](../LICENSES/)，总览见
   [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)。

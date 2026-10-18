@@ -43,6 +43,9 @@ luac.out
 *.love
 temp_package/
 
+# 运行/测试产生的日志
+*.log
+
 # 系统/编辑器杂项
 .DS_Store
 Thumbs.db

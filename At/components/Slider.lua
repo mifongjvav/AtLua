@@ -6,9 +6,9 @@
 --       onChange = function(value) print(value) end,
 --   }
 
-local Component = require("At.component")
-local color = require("At.color")
-local pixel = require("At.pixel")
+local Component = require("At.core.component")
+local color = require("At.core.color")
+local pixel = require("At.core.pixel")
 
 local Slider = {}
 local proto = setmetatable({}, { __index = Component })

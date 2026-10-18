@@ -7,8 +7,8 @@
 
 | 文件 | 字体 | 版本 | 版权方 | 许可 | 许可全文 |
 | --- | --- | --- | --- | --- | --- |
-| `At/font/font.ttf` | Noto Sans SC Bold | 2.004 | © 2014-2021 Adobe（保留字体名 "Source"）；© Google LLC | SIL Open Font License 1.1 | [`LICENSES/OFL-1.1.txt`](LICENSES/OFL-1.1.txt)、[`LICENSES/Noto-Sans-SC.txt`](LICENSES/Noto-Sans-SC.txt) |
-| `At/font/emoji.ttf` | Noto Emoji Regular | 3.005 | © 2013 Google LLC | SIL Open Font License 1.1 | [`LICENSES/OFL-1.1.txt`](LICENSES/OFL-1.1.txt)、[`LICENSES/Noto-Emoji.txt`](LICENSES/Noto-Emoji.txt) |
+| `At/assets/font.ttf` | Noto Sans SC Bold | 2.004 | © 2014-2021 Adobe（保留字体名 "Source"）；© Google LLC | SIL Open Font License 1.1 | [`LICENSES/OFL-1.1.txt`](LICENSES/OFL-1.1.txt)、[`LICENSES/Noto-Sans-SC.txt`](LICENSES/Noto-Sans-SC.txt) |
+| `At/assets/emoji.ttf` | Noto Emoji Regular | 3.005 | © 2013 Google LLC | SIL Open Font License 1.1 | [`LICENSES/OFL-1.1.txt`](LICENSES/OFL-1.1.txt)、[`LICENSES/Noto-Emoji.txt`](LICENSES/Noto-Emoji.txt) |
 
 字体名称、版本与版权信息取自字体文件自身的 `name` 表（nameID 0/4/5/13/14），
 可用 `python3 -c` 或 `fc-scan` 复核，不需要猜测。

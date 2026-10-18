@@ -19,11 +19,13 @@ local lineStyle = "smooth"
 local lastPrint = nil
 local mouseDown = false
 local textInputRect = nil
+local currentCanvas = nil
+local shiftDown = false
 
 local function makeFont(size)
     return {
         size = size,
-        setFallbacks = function() end,
+        setFallbacks = function(self, fallback) self.fallback = fallback end,
         getWidth = function(_, s) return #s * size * 0.5 end,
         getHeight = function() return size end,
         getWrap = function(_, s, limit) return limit, { s } end,
@@ -65,6 +67,30 @@ love = {
             return nil
         end,
         setBackgroundColor = function() end,
+        getBackgroundColor = function() return 0.1, 0.1, 0.1, 1 end,
+        draw = function() draws.draw = (draws.draw or 0) + 1 end,
+        clear = function() end,
+        setCanvas = function(canvas) currentCanvas = canvas end,
+        getCanvas = function() return currentCanvas end,
+        newCanvas = function(w, h)
+            return {
+                width = w, height = h,
+                getWidth = function() return w end,
+                getHeight = function() return h end,
+                getDimensions = function() return w, h end,
+                setFilter = function() end,
+                release = function() end,
+            }
+        end,
+        newShader = function() return { send = function() end } end,
+        newQuad = function(qx, qy, qw, qh) return { x = qx, y = qy, w = qw, h = qh } end,
+        setShader = function() end,
+        getShader = function() return nil end,
+        stencil = function() end,
+        setStencilTest = function() end,
+        push = function() end,
+        pop = function() end,
+        setBlendMode = function() end,
         getDimensions = function() return 800, 600 end,
         getWidth = function() return 800 end,
         getHeight = function() return 600 end,
@@ -78,10 +104,15 @@ love = {
             textInputOn = enabled and true or false
             textInputRect = { x, y, w, h }
         end,
+        isDown = function(key)
+            return shiftDown and (key == "lshift" or key == "rshift")
+        end,
     },
 }
 
 local At = require("At.At")
+At.log.setPrint(false) -- 测试期间不要污染 stdout（镜像能力单独断言）
+At.config.log.print = false -- 防止之后 config.apply() 又把镜像打开
 
 local function check(cond, msg)
     if not cond then
@@ -94,6 +125,8 @@ At.font.init(16)
 check(love.graphics.getFont() ~= nil, "font.init 设置了当前字体")
 check(At.font.get(16) == At.font.get(16), "font.get 按字号缓存")
 check(At.font.get(16) ~= At.font.get(20), "不同字号不同字体")
+check(love.graphics.getFont() == At.font.get(16), "当前字体是主字体（数字/空格不会被 emoji 撑宽）")
+check(At.font.get(16).fallback ~= nil, "emoji 字体作为回退")
 
 -- ---------- 颜色 ----------
 local light = At.color.shade("#808080", 0.1)
@@ -750,6 +783,93 @@ for _ = 1, 60 do
 end
 check(select(3, view:_barMetrics()) < grownBarW, "移开后滚动条恢复宽度")
 
+-- ---------- 横向滚动 ----------
+At.registry.clear()
+local wide = At.Panel{ w = 420, h = 80, padding = 0 }
+local hview = At.ScrollView{ x = 0, y = 0, w = 200, h = 100, content = wide }
+hview:draw()
+check(hview:maxScrollX() > 0, "内容超宽时出现横向滚动: " .. hview:maxScrollX())
+check(hview:maxScroll() == 0, "高度不超时没有纵向滚动")
+check(hview.scrollX == 0, "初始水平位置为 0")
+
+check(hview:isInteractive() == true, "ScrollView 声明为可交互（支持嵌套）")
+check(hview:setScrollX(30) == 30, "setScrollX 立即生效")
+check(hview.scrollX == 30, "scrollX 更新")
+check(hview:setScrollX(100000) == hview:maxScrollX(), "横向滚动夹紧")
+hview:setScrollX(0)
+
+mouseX, mouseY = 100, 50
+check(hview:wheelmoved(1, 0) == true, "横向滚轮被消费")
+check(hview._scrollTargetX > 0, "横向滚轮设置目标")
+for _ = 1, 30 do
+    hview:update(1 / 60)
+end
+check(hview.scrollX > 0, "横向平滑滚动到位: " .. hview.scrollX)
+
+-- 横向滚动条可拖
+hview:setScrollX(0)
+hview:draw()
+mouseDown = true
+local hbx, hby, hbw, hbTrack, hThumbX, hThumbW = hview:_hbarMetrics()
+check(hbTrack > 0 and hThumbW > 0, "横向滚动条几何有效")
+mouseX, mouseY = hThumbX + hThumbW / 2, hby + hbw / 2
+check(hview:mousepressed(mouseX, mouseY, 1) == true, "按在横向滚动条上")
+mouseX = hbx + hbTrack - 1
+hview:update(1 / 60)
+check(hview.scrollX == hview:maxScrollX(), "拖横向滚动条到底: " .. hview.scrollX)
+mouseDown = false
+hview:update(1 / 60)
+At.mousereleased(mouseX, mouseY, 1)
+-- Shift + 滚轮 = 横向
+hview:setScrollX(0)
+shiftDown = true
+mouseX, mouseY = 100, 50
+check(hview:wheelmoved(0, -1) == true, "Shift+滚轮被消费")
+check(hview._scrollTargetX > 0, "Shift+滚轮走横向: " .. tostring(hview._scrollTargetX))
+shiftDown = false
+hview:destroy()
+
+-- 只有纵向空间时，横向滚轮退化为纵向
+At.registry.clear()
+local tall = At.Panel{ w = 100, h = 400, padding = 0 }
+local vview = At.ScrollView{ x = 0, y = 0, w = 200, h = 100, content = tall }
+vview:draw()
+mouseX, mouseY = 100, 50
+check(vview:wheelmoved(1, 0) == true, "只有纵向空间时横向滚轮也消费")
+check(vview._scrollTarget > 0, "退化为纵向滚动: " .. tostring(vview._scrollTarget))
+vview.content = nil
+vview:destroy()
+
+-- 嵌套滚动：外层不抢内层的事件
+At.registry.clear()
+local innerContent = At.Panel{ w = 600, h = 40, padding = 0 }
+local innerView = At.ScrollView{ x = 0, y = 0, w = 200, h = 60, content = innerContent }
+local outerContent = At.Panel{ w = 200, h = 800, padding = 0, children = { innerView } }
+local outerView = At.ScrollView{ x = 0, y = 0, w = 220, h = 120, content = outerContent }
+outerView:draw()
+check(outerView:maxScroll() > 0, "外层可纵向滚动")
+mouseDown = true
+mouseX, mouseY = innerView.x + 10, innerView.y + 10
+At.mousepressed(mouseX, mouseY, 1)
+check(innerView._dragging == true, "嵌套的 ScrollView 收到拖动")
+check(outerView._dragging ~= true, "外层没有抢走拖动")
+mouseDown = false
+At.mousereleased(mouseX, mouseY, 1)
+outerView.content = nil
+innerView.content = nil
+outerView:destroy()
+innerView:destroy()
+
+-- 内容不超出宽高时：没有滚动空间，也不吞点击
+At.registry.clear()
+local narrow = At.Panel{ w = 100, h = 40, padding = 0 }
+local nview = At.ScrollView{ x = 0, y = 0, w = 200, h = 100, content = narrow }
+nview:draw()
+check(nview:maxScrollX() == 0 and nview:maxScroll() == 0, "内容不超出时没有滚动空间")
+check(At.mousepressed(100, 50, 1) == false, "无滚动空间时不吞点击")
+nview.content = nil
+nview:destroy()
+
 -- ---------- 像素对齐 / 线型 ----------
 local aligned = At.Panel{
     x = 0, y = 0, w = 101, h = "auto", padding = 0, direction = "row",
@@ -777,6 +897,7 @@ check(love.graphics.getLineWidth() == 1, "绘制后线宽已恢复")
 -- ---------- 演示程序接线（main.lua 回调） ----------
 At.input.setActive(false)
 At.registry.clear()
+At.config.log.print = false   -- 演示里的 config.apply 不要把日志打到测试输出
 dofile("main.lua")
 
 love.load()
@@ -821,6 +942,13 @@ local statusShown = findComponent(function(c)
 end)
 check(statusShown ~= nil, "提交按钮更新了状态标签")
 
+local demoConsole = findComponent(function(c) return c.levelColors ~= nil end)
+check(demoConsole ~= nil, "演示创建了控制台")
+check(demoConsole.visible == false, "演示控制台初始隐藏")
+love.keypressed("f1")
+check(demoConsole.visible == true, "F1 打开控制台")
+love.keypressed("f2")
+check(At.log.count() == 1, "F2 清空后只保留一条提示: " .. At.log.count())
 love.draw()
 
 -- 演示接线：滚轮、窗口缩放、切后台收起键盘
@@ -835,6 +963,18 @@ check(At.getFocus() == nil, "切到后台后失焦（收起软键盘）")
 love.focus(true)
 love.draw()
 
+-- 演示开启了文件日志，测试结束后清理（不要在仓库里留下 .log）
+local demoLogFile = At.log.getFileName()
+At.log.closeFile()
+if demoLogFile then
+    os.remove(demoLogFile)
+end
+
+-- 演示改过全局 config，复位，避免后续用例继承 log.file=true / blur=true
+At.config.log.file = false
+At.config.blur.enabled = false
+At.config.apply()
+
 -- ---------- 文档同步 ----------
 local function fileContains(path, needle)
     local file = io.open(path, "r")
@@ -848,7 +988,7 @@ end
 
 for _, name in ipairs({
     "At.Button", "At.Label", "At.Panel", "At.TextInput",
-    "At.Switch", "At.Checkbox", "At.RadioGroup", "At.Slider", "At.ScrollView",
+    "At.Switch", "At.Checkbox", "At.RadioGroup", "At.Slider", "At.ScrollView", "At.Console",
 }) do
     check(fileContains("docs/components.md", name), "docs/components.md 缺少 " .. name)
 end
@@ -856,7 +996,282 @@ end
 check(fileContains("docs/layout.md", "grow"), "docs/layout.md 缺少 grow 说明")
 check(fileContains("docs/layout.md", "justify"), "docs/layout.md 缺少 justify 说明")
 check(fileContains("docs/README.md", "love.update"), "docs/README.md 缺少快速开始")
+check(fileContains("docs/README.md", "At.log"), "docs/README.md 缺少日志说明")
+check(fileContains("docs/logging.md", "setLevel"), "docs/logging.md 缺少 setLevel")
+check(fileContains("docs/logging.md", "setFormat"), "docs/logging.md 缺少 setFormat")
+check(fileContains("docs/blur.md", "setAlgorithm"), "docs/blur.md 缺少 setAlgorithm")
+check(fileContains("docs/blur.md", "beginFrame"), "docs/blur.md 缺少 beginFrame")
+check(fileContains("docs/README.md", "At.blur"), "docs/README.md 缺少模糊说明")
+check(fileContains("At/config.lua", "blur"), "At/config.lua 缺少 blur 配置")
+check(fileContains("docs/README.md", "At.config"), "docs/README.md 缺少配置说明")
+check(fileContains("AGENTS.md", "At/config.lua"), "AGENTS.md 缺少配置说明")
 check(fileContains("AGENTS.md", "文档规范"), "AGENTS.md 缺少文档规范章节")
+
+-- ---------- 背景模糊 ----------
+At.registry.clear()
+At.blur.reset()
+At.blur.setEnabled(false)
+check(At.blur.isEnabled() == false, "模糊默认关闭")
+check(At.blur.drawBackdrop(0, 0, 10, 10, 0) == false, "关闭时不绘制背景")
+
+At.blur.setEnabled(true)
+check(At.blur.isEnabled() == true, "可以开启模糊")
+check(At.blur.enabled == true, "enabled 字段可读")
+At.blur.enabled = false
+check(At.blur.isEnabled() == false, "enabled 字段可写")
+At.blur.enabled = true
+
+At.blur.setAlgorithm("downscale")
+check(At.blur.getAlgorithm() == "downscale", "可以切换算法")
+check(pcall(At.blur.setAlgorithm, "no-such-algorithm") == false, "未知算法报错")
+local customAlgorithm = function(snapshot, x, y, w, h)
+    return snapshot, x, y, w, h
+end
+At.blur.setAlgorithm(customAlgorithm)
+check(At.blur.getAlgorithm() == customAlgorithm, "可以传自定义函数")
+At.blur.setAlgorithm("downscale")
+
+At.blur.resetStats()
+check(At.blur.beginFrame() == true, "beginFrame 生效")
+local translucentPanel = At.Panel{
+    x = 10, y = 10, w = 120, h = 80, radius = 8,
+    background = "#202020", alpha = 180,
+}
+translucentPanel:draw()
+check(At.blur.stats().backdrops == 1, "半透明 Panel 触发模糊")
+local opaquePanel = At.Panel{
+    x = 10, y = 10, w = 120, h = 80, radius = 8,
+    background = "#202020", alpha = 255,
+}
+opaquePanel:draw()
+check(At.blur.stats().backdrops == 1, "不透明 Panel 不触发模糊")
+opaquePanel:destroy()
+translucentPanel:destroy()
+check(At.blur.endFrame() == true, "endFrame 生效")
+
+-- 自定义算法收到的区域参数
+local captured = {}
+At.blur.setAlgorithm(function(snapshot, x, y, w, h, strength)
+    captured = { x = x, y = y, w = w, h = h, strength = strength }
+    return snapshot, x, y, w, h
+end)
+At.blur.beginFrame()
+check(At.blur.drawBackdrop(5, 6, 30, 40, 4) == true, "自定义算法被调用")
+check(captured.x == 5 and captured.y == 6 and captured.w == 30 and captured.h == 40,
+    "算法收到正确的区域")
+At.blur.endFrame()
+
+-- 控制台默认半透明（alpha=205），绘制时也会触发模糊
+At.blur.setAlgorithm("downscale")
+At.blur.beginFrame()
+local blurConsole = At.Console{ x = 0, y = 0, w = 200, h = 100 }
+blurConsole:show()
+local beforeConsole = At.blur.stats().backdrops
+blurConsole:draw()
+check(At.blur.stats().backdrops == beforeConsole + 1, "半透明控制台触发模糊")
+blurConsole:destroy()
+At.blur.endFrame()
+
+At.blur.setAlgorithm("gaussian")
+At.blur.setEnabled(false)
+At.blur.reset()
+check(At.blur.isEnabled() == false, "复位后保持关闭")
+
+-- ---------- 日志 ----------
+At.registry.clear()
+At.log.clear()
+local savedLevel = At.log.getLevel()
+local savedFormat = At.log.getFormat()
+
+check(At.log.getPrint() == false, "测试里已关闭 stdout 镜像")
+
+local mirrored = {}
+At.log.setPrint(function(text)
+    mirrored[#mirrored + 1] = text
+end)
+At.log.setLevel("debug")
+At.log.info("镜像 %d", 1)
+check(#mirrored == 1, "stdout 镜像被调用")
+check(mirrored[1]:find("镜像 1", 1, true) ~= nil, "镜像内容是格式化后的文本")
+At.log.setPrint(false)
+At.log.info("不镜像")
+check(#mirrored == 1, "关闭后不再镜像")
+check(At.log.count() == 2, "关闭镜像不影响缓冲")
+At.log.clear()
+
+At.log.setLevel("warn")
+check(At.log.debug("被过滤的 debug") == nil, "低于等级的 debug 被丢弃")
+check(At.log.info("被过滤的 info") == nil, "低于等级的 info 被丢弃")
+
+local warnEntry = At.log.warn("警告 %d", 7)
+check(warnEntry ~= nil and warnEntry.levelName == "WARN", "warn 写入成功")
+check(warnEntry.message == "警告 7", "字符串格式化: " .. warnEntry.message)
+check(warnEntry.func ~= nil and warnEntry.func ~= "", "记录了函数名: " .. tostring(warnEntry.func))
+check(warnEntry.time:match("^%d%d:%d%d:%d%d$") ~= nil, "时间格式 HH:MM:SS: " .. warnEntry.time)
+check(At.log.count() == 1, "计数正确")
+
+local namedEntry
+local function logFromNamed()
+    namedEntry = At.log.error("命名调用")
+end
+logFromNamed()
+check(namedEntry ~= nil and namedEntry.func == "logFromNamed",
+    "函数名取自调用者: " .. tostring(namedEntry and namedEntry.func))
+
+local defaultText = At.log.formatEntry(warnEntry)
+check(defaultText:find("WARN", 1, true) ~= nil, "默认格式含等级")
+check(defaultText:find("警告 7", 1, true) ~= nil, "默认格式含内容")
+check(defaultText:sub(1, 1) == "[", "默认格式以时间开头: " .. defaultText)
+
+At.log.setFormat("[%s]%s/%s>%s")
+local customText = At.log.formatEntry(warnEntry)
+check(customText:find("WARN/", 1, true) ~= nil and customText:find(">警告 7", 1, true) ~= nil,
+    "自定义格式生效: " .. customText)
+
+At.log.setFormat(function(entry)
+    return "F:" .. entry.levelName .. ":" .. entry.message
+end)
+check(At.log.formatEntry(warnEntry) == "F:WARN:警告 7", "格式函数生效")
+
+check(pcall(At.log.setLevel, "nope") == false, "非法等级报错")
+
+At.log.setLevel("debug")
+At.log.setMaxEntries(3)
+At.log.clear()
+for i = 1, 5 do
+    At.log.info("第 %d 条", i)
+end
+check(At.log.count() == 3, "缓冲按上限裁剪: " .. At.log.count())
+check(At.log.getEntries()[1].message == "第 3 条", "最旧的被丢弃")
+
+At.log.setMaxEntries(500)
+At.log.setFormat(savedFormat)
+At.log.setLevel(savedLevel)
+At.log.clear()
+
+-- 文件输出（默认关闭，显式开启；用安全文件名测试）
+At.log.setFilePattern("test_atlog_%Y%m%d_%H%M%S.log")
+check(At.log.setFile(true) == true, "开启文件输出")
+check(At.log.isFileEnabled() == true, "文件输出已启用")
+local logFileName = At.log.getFileName()
+check(logFileName:match("^test_atlog_%d+_%d+%.log$") ~= nil,
+    "文件名按 pattern 生成: " .. tostring(logFileName))
+
+At.log.setLevel("debug")
+At.log.clear()
+At.log.info("文件行 %d", 1)
+At.log.error("错误行")
+At.log.closeFile()
+
+local logHandle = assert(io.open(logFileName, "r"))
+local logContent = logHandle:read("*a")
+logHandle:close()
+check(logContent:find("文件行 1", 1, true) ~= nil, "info 写入文件")
+check(logContent:find("错误行", 1, true) ~= nil, "error 写入文件")
+local _, newlines = logContent:gsub("\n", "")
+check(newlines >= 2, "按行写入: " .. newlines)
+os.remove(logFileName)
+
+check(At.log.setFile(false) == false, "可以关闭文件输出")
+check(At.log.isFileEnabled() == false, "关闭后不再写入")
+
+At.log.setFilePattern(nil)
+check(At.log.getFilePattern() == "%Y-%m-%d %H:%M:%S.log", "默认文件名格式")
+local sampleName = os.date(At.log.getFilePattern())
+check(sampleName:match("^%d%d%d%d%-%d%d%-%d%d %d%d:%d%d:%d%d%.log$") ~= nil,
+    "默认文件名形如 2026-10-18 16:43:40.log: " .. sampleName)
+
+At.log.setFilePattern("%Y-%m-%d %H:%M:%S.log")
+At.log.setLevel(savedLevel)
+At.log.clear()
+
+-- ---------- 控制台 ----------
+At.registry.clear()
+At.log.setLevel("debug")
+for i = 1, 20 do
+    At.log.info("第 %d 行日志", i)
+end
+
+local console = At.Console{ x = 100, y = 100, w = 300, h = 100 }
+check(console.visible == false, "控制台默认隐藏")
+check(console:contains(150, 110), "命中窗口区域")
+check(not console:contains(150, 400), "窗口外不命中")
+
+console:toggle()
+check(console.visible == true and console:isOpen(), "toggle 打开")
+
+mouseX, mouseY = 150, 150
+check(console:wheelmoved(0, 1) == true, "滚轮被控制台消费")
+check(console._offset > 0, "滚轮向上翻看历史: " .. console._offset)
+console:scrollToBottom()
+check(console._offset == 0, "回到底部")
+
+mouseDown = true
+mouseX, mouseY = 110, 110
+check(console:mousepressed(110, 110, 1) == true, "标题栏按下被消费")
+check(console._windowDrag ~= nil, "进入窗口拖动")
+mouseX, mouseY = 200, 200
+console:update(1 / 60)
+check(console.x > 100 and console.y > 100, "窗口被拖动: " .. console.x .. "," .. console.y)
+mouseDown = false
+console:update(1 / 60)
+At.mousereleased(200, 200, 1)
+check(console._windowDrag == nil, "松手结束拖动")
+
+local closeX, closeY = console.x + console.w - 4, console.y + 4
+check(console:mousepressed(closeX, closeY, 1) == true, "点关闭按钮")
+check(console.visible == false, "关闭后隐藏")
+
+console:show()
+console:draw()
+check(love.graphics.getScissor() == nil, "控制台绘制后 scissor 已恢复")
+
+local console2 = At.Console{ x = 0, y = 0, w = 200, h = 80 }
+console.levelColors.info = "#000001"
+check(console2.levelColors.info ~= "#000001", "levelColors 不在实例间共享")
+
+-- 拖动滚动会产生小数 offset；绘制时必须对齐整行，否则 entries[2.6] 为 nil
+console:show()
+At.log.clear()
+for i = 1, 10 do
+    At.log.info("浮动偏移 %d", i)
+end
+console._offset = 2.6
+console:draw()
+check(console._offset == 3, "绘制时偏移对齐整行: " .. console._offset)
+console._offset = 999
+console:draw()
+check(console._offset <= console:_maxOffset(), "偏移被夹紧到最大值: " .. console._offset)
+At.log.clear()
+
+console:clear()
+check(At.log.count() == 0, "clear 清空日志缓冲")
+
+-- C 按钮清空
+for i = 1, 3 do
+    At.log.info("待清空 %d", i)
+end
+console:show()
+local clearX, clearY = console.x + console.w - 45, console.y + 4
+check(console:mousepressed(clearX, clearY, 1) == true, "点 C 按钮")
+check(At.log.count() == 0, "C 按钮清空日志")
+
+console:destroy()
+console2:destroy()
+
+-- 隐藏时的 LOG 标签（移动端入口）
+local tabConsole = At.Console{ x = 0, y = 0, w = 200, h = 100 }
+check(tabConsole.tab == true, "默认显示 LOG 标签")
+local tab = tabConsole:_tabRect()
+check(tabConsole:mousepressed(tab.x + 2, tab.y + 2, 1) == true, "点 LOG 标签")
+check(tabConsole.visible == true, "点标签后打开控制台")
+check(tabConsole:mousepressed(tab.x + 2, tab.y + 2, 1) == false, "打开后标签不再响应")
+tabConsole:hide()
+check(tabConsole:mousepressed(tab.x + 2, tab.y + 2, 1) == true, "隐藏后可再次点开")
+tabConsole:hide()
+tabConsole:draw()
+check(love.graphics.getScissor() == nil, "只画标签时状态正常")
+tabConsole:destroy()
 
 -- ---------- 许可证 ----------
 check(fileContains("LICENSE", "MIT License"), "LICENSE 是 MIT 许可")
