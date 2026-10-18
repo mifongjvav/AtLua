@@ -6,6 +6,7 @@
 local Component = require("At.core.component")
 local color = require("At.core.color")
 local pixel = require("At.core.pixel")
+local motion = require("At.core.motion")
 
 local Checkbox = {}
 local proto = setmetatable({}, { __index = Component })
@@ -25,12 +26,23 @@ local DEFAULTS = {
 	textColor = "#E8ECF2",
 	alpha = 255,
 	fontSize = nil,
+
+	-- 勾的弹入动画（0→1，带一点过冲）
+	animate = true,
+	springStiffness = 420,
+	springDamping = 22,
+
 	onChange = nil,
 }
 
 function Checkbox.new(opts)
 	local self = Component.instantiate(proto, opts, DEFAULTS)
 	self.checked = self.checked and true or false
+	self._pop = motion.spring({
+		value = self.checked and 1 or 0,
+		stiffness = self.springStiffness,
+		damping = self.springDamping,
+	})
 	return self
 end
 
@@ -72,6 +84,16 @@ function proto:measure()
 	return (type(declaredW) == "number" and declaredW) or w, (type(declaredH) == "number" and declaredH) or h
 end
 
+function proto:_tick(dt)
+	local target = self.checked and 1 or 0
+	self._pop:setTarget(target)
+	if self.animate == false then
+		self._pop:snap(target)
+	else
+		self._pop:update(dt)
+	end
+end
+
 function proto:_press()
 	return true
 end
@@ -97,17 +119,21 @@ function proto:_draw()
 	love.graphics.setLineWidth(1)
 	love.graphics.rectangle("line", x, boxY, box, box, self.radius)
 
-	if self.checked then
-		color.setColor(self.checkColor, self.alpha)
+	-- 勾从中心缩放弹入：pop 0 = 不可见，1 = 完整大小
+	local pop = self.animate == false and (self.checked and 1 or 0) or (self._pop and self._pop.value or 0)
+	if self.checked or pop > 0.01 then
+		local t = math.min(1, math.max(0, pop))
+		local scale = 0.55 + 0.45 * t
+		local cx, cy = x + box / 2, boxY + box / 2
+		local function pt(fx, fy)
+			return pixel.round(cx + (fx - 0.5) * box * scale), pixel.round(cy + (fy - 0.5) * box * scale)
+		end
+		color.setColor(self.checkColor, math.floor((self.alpha or 255) * t))
 		love.graphics.setLineWidth(2)
-		love.graphics.line(
-			pixel.round(x + box * 0.24),
-			pixel.round(boxY + box * 0.52),
-			pixel.round(x + box * 0.44),
-			pixel.round(boxY + box * 0.72),
-			pixel.round(x + box * 0.78),
-			pixel.round(boxY + box * 0.28)
-		)
+		local ax, ay = pt(0.24, 0.52)
+		local bx, by = pt(0.44, 0.72)
+		local dx, dy = pt(0.78, 0.28)
+		love.graphics.line(ax, ay, bx, by, dx, dy)
 	end
 
 	local label = tostring(self.text or "")

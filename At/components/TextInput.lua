@@ -16,6 +16,7 @@ local input = require("At.core.input")
 local clip = require("At.core.clip")
 local pixel = require("At.core.pixel")
 local blur = require("At.effects.blur")
+local motion = require("At.core.motion")
 
 local TextInput = {}
 local proto = setmetatable({}, { __index = Component })
@@ -46,6 +47,11 @@ local DEFAULTS = {
 	password = false,
 	maskChar = "*",
 
+	-- 聚焦时边框颜色/线宽的过渡
+	animate = true,
+	focusSpringStiffness = 380,
+	focusSpringDamping = 28,
+
 	onSubmit = nil,
 	onChange = nil,
 	onFocus = nil,
@@ -56,6 +62,11 @@ function TextInput.new(opts)
 	local self = Component.instantiate(proto, opts, DEFAULTS)
 	self.text = tostring(self.text or "")
 	self._caretTimer = 0
+	self._focus = motion.spring({
+		value = self:isFocused() and 1 or 0,
+		stiffness = self.focusSpringStiffness,
+		damping = self.focusSpringDamping,
+	})
 	return self
 end
 
@@ -122,6 +133,14 @@ end
 
 function proto:_tick(dt)
 	self._caretTimer = (self._caretTimer or 0) + (dt or 0)
+
+	local target = self:isFocused() and 1 or 0
+	self._focus:setTarget(target)
+	if self.animate == false then
+		self._focus:snap(target)
+	else
+		self._focus:update(dt)
+	end
 end
 
 function proto:_caretVisible()
@@ -212,8 +231,12 @@ function proto:_draw()
 	love.graphics.rectangle("fill", x, y, w, h, r.radius)
 
 	local focused = self:isFocused()
-	color.setColor(focused and self.focusBorderColor or self.borderColor, self.alpha)
-	love.graphics.setLineWidth(focused and 2 or 1)
+	local focusT = focused and 1 or 0
+	if self.animate ~= false then
+		focusT = math.min(1, math.max(0, self._focus and self._focus.value or focusT))
+	end
+	color.setColor(color.mix(self.borderColor or "#4A5160", self.focusBorderColor or "#9FB3D3", focusT), self.alpha)
+	love.graphics.setLineWidth(1 + focusT)
 	love.graphics.rectangle("line", x, y, w, h, r.radius)
 
 	local display = self:_displayText()

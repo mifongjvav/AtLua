@@ -8,6 +8,7 @@
 local Component = require("At.core.component")
 local color = require("At.core.color")
 local pixel = require("At.core.pixel")
+local motion = require("At.core.motion")
 
 local RadioGroup = {}
 local proto = setmetatable({}, { __index = Component })
@@ -28,12 +29,19 @@ local DEFAULTS = {
 	textColor = "#E8ECF2",
 	alpha = 255,
 	fontSize = nil,
+
+	-- 选中圆点的弹入动画
+	animate = true,
+	springStiffness = 420,
+	springDamping = 22,
+
 	onChange = nil,
 }
 
 function RadioGroup.new(opts)
 	local self = Component.instantiate(proto, opts, DEFAULTS)
 	self.options = self.options or {}
+	self._pops = {} -- 每个选项一个弹簧：切换时旧的点缩回、新的点弹出
 	return self
 end
 
@@ -130,6 +138,27 @@ function proto:_itemAt(mx, my)
 	return nil
 end
 
+function proto:_tick(dt)
+	for i = 1, #self.options do
+		local pop = self._pops[i]
+		if not pop then
+			pop = motion.spring({
+				value = self.value == i and 1 or 0,
+				stiffness = self.springStiffness,
+				damping = self.springDamping,
+			})
+			self._pops[i] = pop
+		end
+		local target = self.value == i and 1 or 0
+		pop:setTarget(target)
+		if self.animate == false then
+			pop:snap(target)
+		else
+			pop:update(dt)
+		end
+	end
+end
+
 function proto:_press()
 	return true
 end
@@ -162,8 +191,16 @@ function proto:_draw()
 		love.graphics.setLineWidth(selected and 2 or 1)
 		love.graphics.circle("line", cx, cy, radius)
 
-		if selected then
-			love.graphics.circle("fill", cx, cy, radius * 0.45)
+		local pop
+		if self.animate == false then
+			pop = selected and 1 or 0
+		else
+			pop = self._pops[i] and self._pops[i].value or 0
+		end
+		if selected or pop > 0.01 then
+			local t = math.min(1, math.max(0, pop))
+			color.setColor(self.selectedColor, math.floor((self.alpha or 255) * t))
+			love.graphics.circle("fill", cx, cy, radius * (0.18 + 0.27 * t))
 		end
 
 		color.setColor(self.textColor, self.alpha)

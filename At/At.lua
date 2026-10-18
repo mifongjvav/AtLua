@@ -12,6 +12,7 @@ At.registry = require("At.core.registry")
 At.layout = require("At.core.layout")
 At.clip = require("At.core.clip")
 At.pixel = require("At.core.pixel")
+At.motion = require("At.core.motion")
 At.Component = require("At.core.component")
 At.log = require("At.core.log")
 At.blur = require("At.effects.blur")
@@ -33,16 +34,10 @@ At.Console = require("At.components.Console")
 -- 返回值表示事件是否被某个组件消费，可用于"点空白处关闭面板"之类的判断。
 
 function At.add(component)
-	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-	At.config.apply()
-
 	return At.registry.add(component)
 end
 
 function At.remove(component)
-	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-	At.config.apply()
-
 	return At.registry.remove(component)
 end
 
@@ -51,67 +46,40 @@ function At.update(dt)
 end
 
 function At.mousepressed(x, y, button, istouch, presses)
-	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-	At.config.apply()
-
 	return At.registry.mousepressed(x, y, button, istouch, presses)
 end
 
 function At.mousereleased(x, y, button, istouch, presses)
-	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-	At.config.apply()
-
 	return At.registry.mousereleased(x, y, button, istouch, presses)
 end
 
 -- 文本输入与按键只发给当前焦点组件（TextInput / Slider 等）
 function At.textinput(text)
-	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-	At.config.apply()
-
 	return At.registry.textinput(text)
 end
 
 function At.keypressed(key, scancode, isrepeat)
-	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-	At.config.apply()
-
 	return At.registry.keypressed(key, scancode, isrepeat)
 end
 
 function At.wheelmoved(dx, dy)
-	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-	At.config.apply()
-
 	return At.registry.wheelmoved(dx, dy)
 end
 
 function At.focus(component)
-	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-	At.config.apply()
-
 	return At.registry.setFocus(component)
 end
 
 function At.clearFocus()
-	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-	At.config.apply()
-
 	return At.registry.setFocus(nil)
 end
 
 function At.getFocus()
-	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-	At.config.apply()
-
 	return At.registry.getFocus()
 end
 
 -- 便捷构造：At.button 是旧式立即绘制，At.Button 是组件式（推荐）
 function At.newButton(opts)
-	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-	At.config.apply()
-
 	return At.Button.new(opts)
 end
 

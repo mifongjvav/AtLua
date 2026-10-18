@@ -17,6 +17,7 @@ local shadow = require("At.core.shadow")
 local pixel = require("At.core.pixel")
 local blur = require("At.effects.blur")
 local Ripple = require("At.effects.Ripple")
+local motion = require("At.core.motion")
 
 local Button = {}
 local proto = setmetatable({}, { __index = Component })
@@ -41,6 +42,11 @@ local DEFAULTS = {
 	fontSize = nil, -- 缺省沿用当前 love.graphics 字体
 	paddingX = 16, -- 仅用于 auto 尺寸
 	paddingY = 10,
+
+	-- 悬停/按下的高光过渡（不影响 fillColor 的精确取值）
+	animate = true,
+	springStiffness = 500,
+	springDamping = 30,
 }
 
 -- shadow = {颜色表, radius, layers, offsetX, offsetY} 这种简写也算开启阴影
@@ -71,6 +77,8 @@ end
 function Button.new(opts)
 	local self = Component.instantiate(proto, opts, DEFAULTS)
 	normalizeStyle(self)
+	self._hoverT = motion.spring({ stiffness = self.springStiffness, damping = self.springDamping })
+	self._pressT = motion.spring({ stiffness = self.springStiffness, damping = self.springDamping })
 	return self
 end
 
@@ -171,6 +179,17 @@ function proto:_draw()
 	color.setColor(self:fillColor(), self:fillAlpha())
 	love.graphics.rectangle("fill", x, y, w, h, r.radius)
 
+	-- 悬停/按下的高光：单独一层叠加，fillColor() 仍只反映离散状态
+	if self.animate ~= false then
+		local hoverT = self._hoverT and self._hoverT.value or 0
+		local pressT = self._pressT and self._pressT.value or 0
+		local glow = math.min(0.13, hoverT * 0.05 + pressT * 0.08)
+		if glow > 0.004 then
+			color.setColor("#FFFFFF", math.floor(self:fillAlpha() * glow))
+			love.graphics.rectangle("fill", x, y, w, h, r.radius)
+		end
+	end
+
 	if self._ripple then
 		-- 涟漪裁剪在按钮内部，避免边角溢出
 		local sx, sy, sw, sh = love.graphics.getScissor()
@@ -243,6 +262,12 @@ end
 function proto:_tick(dt)
 	if self._ripple then
 		self._ripple:update(dt)
+	end
+	if self.animate ~= false then
+		self._hoverT:setTarget(self._hover and 1 or 0)
+		self._pressT:setTarget((self._pressed and self._hover) and 1 or 0)
+		self._hoverT:update(dt)
+		self._pressT:update(dt)
 	end
 end
 

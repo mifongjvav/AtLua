@@ -17,6 +17,7 @@ local color = require("At.core.color")
 local layout = require("At.core.layout")
 local clip = require("At.core.clip")
 local pixel = require("At.core.pixel")
+local motion = require("At.core.motion")
 local blur = require("At.effects.blur")
 
 local ScrollView = {}
@@ -35,7 +36,9 @@ local DEFAULTS = {
 	scrollbar = true,
 	scrollbarWidth = 4,
 	scrollbarActiveWidth = 8, -- 指针碰到滚动条/拖动时的宽度
-	scrollbarGrowSpeed = 16,
+	scrollbarGrowSpeed = 16, -- 已弃用：滚动条宽度改用弹簧
+	scrollbarSpringStiffness = 700,
+	scrollbarSpringDamping = 42,
 	scrollbarColor = "#3A4150",
 	scrollbarThumbColor = "#9FB3D3",
 	scrollbarHitWidth = 16, -- 滚动条的可拖拽宽度（比视觉宽度大，方便手指）
@@ -59,6 +62,11 @@ function ScrollView.new(opts)
 	self._maxScrollX = 0
 	self._maxScrollY = 0
 	self._barW = self.scrollbarWidth or 4
+	self._barSpring = motion.spring({
+		value = self._barW,
+		stiffness = self.scrollbarSpringStiffness,
+		damping = self.scrollbarSpringDamping,
+	})
 	self._scrollTarget = self.scrollY
 	self._scrollTargetX = self.scrollX
 	self._scrollVelocity = 0
@@ -583,9 +591,9 @@ function proto:_tickBars(dt)
 	local active = self._barDragging or self:_barHit(mx, my) or self:_hbarHit(mx, my)
 	local target = active and activeW or baseW
 
-	local k = 1 - math.exp(-(self.scrollbarGrowSpeed or 16) * (dt or 1 / 60))
-	local current = self._barW or baseW
-	self._barW = current + (target - current) * k
+	self._barSpring:setTarget(target)
+	self._barSpring:update(dt)
+	self._barW = self._barSpring.value
 end
 
 -- 单轴缓动/惯性；vertical=true 操作 Y，否则操作 X

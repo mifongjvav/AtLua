@@ -12,6 +12,7 @@ local font = require("At.core.font")
 local clip = require("At.core.clip")
 local pixel = require("At.core.pixel")
 local log = require("At.core.log")
+local motion = require("At.core.motion")
 local blur = require("At.effects.blur")
 
 local Console = {}
@@ -34,6 +35,12 @@ local DEFAULTS = {
 	fontSize = 13,
 	lineHeight = 1.35,
 	scrollStep = 3, -- 滚轮一格滚几行
+
+	-- 开关动画：弹簧驱动 0→1，窗口淡入 + 下移，LOG 标签同步淡出
+	animate = true,
+	springStiffness = 320,
+	springDamping = 26,
+	openOffset = 12, -- 关闭时窗口向下偏移的像素（打开时滑回原位）
 
 	background = "#0D1117",
 	alpha = 205, -- 半透明背景
@@ -79,6 +86,11 @@ function Console.new(opts)
 	self._offset = 0 -- 从末尾往前滚了多少行：0 = 跟随最新
 	self._windowDrag = nil
 	self._contentDrag = nil
+	self._open = motion.spring({
+		value = self.visible and 1 or 0,
+		stiffness = self.springStiffness,
+		damping = self.springDamping,
+	})
 
 	return self
 end
@@ -87,6 +99,9 @@ end
 
 function proto:show()
 	self.visible = true
+	if self.animate == false and self._open then
+		self._open:snap(1)
+	end
 	return self
 end
 
@@ -94,7 +109,15 @@ function proto:hide()
 	self.visible = false
 	self._windowDrag = nil
 	self._contentDrag = nil
+	if self.animate == false and self._open then
+		self._open:snap(0)
+	end
 	return self
+end
+
+-- 0 = 完全关闭，1 = 完全打开；绘制与命中用它做插值
+function proto:openAmount()
+	return self._open and self._open.value or (self.visible and 1 or 0)
 end
 
 function proto:toggle()
@@ -159,39 +182,40 @@ function proto:_tabRect()
 	}
 end
 
-function proto:_drawTab()
+function proto:_drawTab(factor)
+	factor = factor or 1
+	if factor <= 0.01 then
+		return
+	end
+
 	local r = self:_tabRect()
 	local x, y = pixel.xy(r.x, r.y)
 	local w, h = pixel.round(r.w), pixel.round(r.h)
+	local a = math.floor((self.tabAlpha or 225) * factor)
 
-	color.setColor(self.tabColor, self.tabAlpha or 225)
+	color.setColor(self.tabColor, a)
 	love.graphics.rectangle("fill", x, y, w, h, self.tabRadius or 6)
 
-	color.setColor(self.borderColor, 255)
+	color.setColor(self.borderColor, math.floor(255 * factor))
 	love.graphics.setLineWidth(1)
 	love.graphics.rectangle("line", x, y, w, h, self.tabRadius or 6)
 
 	local f = font.get(self.fontSize or 13)
 	love.graphics.setFont(f)
-	color.setColor(self.tabTextColor, 255)
+	color.setColor(self.tabTextColor, math.floor(255 * factor))
 	local label = tostring(self.tabLabel or "LOG")
 	love.graphics.print(label, pixel.round(x + (w - f:getWidth(label)) / 2), pixel.round(y + (h - f:getHeight()) / 2))
 end
 
--- 隐藏时只画 LOG 标签；显示时交给 Component:draw 走完整绘制
+-- 打开时窗口淡入/上滑，关闭时反向；未完全打开时 LOG 标签按进度淡出。
+-- 不直接复用 Component:draw：隐藏（visible=false）时仍要播完关闭动画。
 function proto:draw()
 	if self._destroyed then
 		return
 	end
 
-	if self.visible then
-		Component.draw(self)
-		return
-	end
-
-	if not self.tab then
-		return
-	end
+	local open = self:openAmount()
+	local showWindow = self.visible or open > 0.001
 
 	local prevR, prevG, prevB, prevA = love.graphics.getColor()
 	local prevFont = love.graphics.getFont()
@@ -199,7 +223,23 @@ function proto:draw()
 	local prevLineStyle = love.graphics.getLineStyle()
 
 	love.graphics.setLineStyle("rough")
-	self:_drawTab()
+
+	if showWindow then
+		-- 关闭时往下滑一点再淡出；打开时从下方滑回，像抽屉。
+		-- 这里临时挪 self.y 而不是 translate：scissor 是屏幕坐标，translate
+		-- 会让日志区裁剪对不上窗口（动画期间上半截文字被切掉）。
+		local dy = (1 - open) * (self.openOffset or 12)
+		local originalY = self.y
+		self.y = originalY + dy
+		self:_draw(self.alpha * math.max(0, math.min(1, open)))
+		self.y = originalY
+	end
+
+	-- 窗口还没完全打开时 LOG 标签淡出（完全打开后由窗口接管开关）
+	local tabFactor = 1 - open
+	if self.tab and tabFactor > 0.001 then
+		self:_drawTab(math.min(1, tabFactor))
+	end
 
 	love.graphics.setLineStyle(prevLineStyle)
 	love.graphics.setLineWidth(prevLineWidth)
@@ -238,20 +278,22 @@ end
 
 -- ---------- 绘制 ----------
 
-function proto:_draw()
+function proto:_draw(alpha)
+	alpha = alpha or self.alpha
 	local x, y = pixel.xy(self.x, self.y)
 	local w, h = pixel.round(self.w), pixel.round(self.h)
 	local radius = self.radius or 0
 
 	-- 半透明窗口：先模糊背后的内容，再叠半透明底色
-	if (self.alpha or 255) < 255 then
+	-- 动画淡入到几乎透明时不做模糊（省一次全画布拷贝）
+	if alpha >= 1 and alpha < 255 then
 		blur.drawBackdrop(x, y, w, h, radius)
 	end
 
-	color.setColor(self.background, self.alpha)
+	color.setColor(self.background, alpha)
 	love.graphics.rectangle("fill", x, y, w, h, radius)
 
-	color.setColor(self.borderColor, 255)
+	color.setColor(self.borderColor, alpha)
 	love.graphics.setLineWidth(1)
 	love.graphics.rectangle("line", x, y, w, h, radius)
 
@@ -260,13 +302,13 @@ function proto:_draw()
 
 	-- 标题
 	local headerH = self.headerH or 30
-	color.setColor(self.titleColor, 255)
+	color.setColor(self.titleColor, alpha)
 	love.graphics.print(self.title or "", x + 10, pixel.round(y + (headerH - f:getHeight()) / 2))
 
 	-- 清空按钮
 	if self.showClear then
 		local clear = self:_clearRect()
-		color.setColor(self.titleColor, 150)
+		color.setColor(self.titleColor, math.floor(alpha * 150 / 255))
 		local clearW = f:getWidth("C")
 		love.graphics.print(
 			"C",
@@ -278,7 +320,7 @@ function proto:_draw()
 	-- 关闭按钮
 	if self.showClose then
 		local close = self:_closeRect()
-		color.setColor(self.titleColor, 180)
+		color.setColor(self.titleColor, math.floor(alpha * 180 / 255))
 		local closeW = f:getWidth("×")
 		love.graphics.print(
 			"×",
@@ -288,7 +330,7 @@ function proto:_draw()
 	end
 
 	-- 分隔线
-	color.setColor(self.dividerColor, 255)
+	color.setColor(self.dividerColor, alpha)
 	love.graphics.line(x + 1, y + headerH, x + w - 1, y + headerH)
 
 	-- 日志区
@@ -307,7 +349,7 @@ function proto:_draw()
 
 	if visible then
 		if total == 0 then
-			color.setColor(self.placeholderColor, 255)
+			color.setColor(self.placeholderColor, alpha)
 			love.graphics.print("（暂无日志）", body.x, body.y)
 		else
 			local visibleLines = self:_visibleLines()
@@ -319,7 +361,7 @@ function proto:_draw()
 				local entry = entries[i]
 				if entry then
 					local hex = self.levelColors[(entry.levelName or ""):lower()] or self.titleColor
-					color.setColor(hex, 255)
+					color.setColor(hex, alpha)
 					love.graphics.print(log.formatEntry(entry), pixel.round(body.x), lineY)
 					lineY = lineY + lineH
 				end
@@ -339,9 +381,9 @@ function proto:_draw()
 		local t = (barMaxOffset - offset) / barMaxOffset
 		local thumbY = trackY + (trackH - thumbH) * t
 
-		color.setColor(self.scrollbarColor, 160)
+		color.setColor(self.scrollbarColor, math.floor(alpha * 160 / 255))
 		love.graphics.rectangle("fill", trackX, trackY, 3, trackH, 1.5)
-		color.setColor(self.scrollbarThumbColor, 220)
+		color.setColor(self.scrollbarThumbColor, math.floor(alpha * 220 / 255))
 		love.graphics.rectangle("fill", trackX, thumbY, 3, thumbH, 1.5)
 	end
 end
@@ -414,6 +456,25 @@ function proto:wheelmoved(dx, dy)
 	-- 滚轮向上（dy > 0）看更早的日志
 	self:_scrollLines((dy or 0) * (self.scrollStep or 3))
 	return true
+end
+
+function proto:update(dt)
+	if self._destroyed then
+		return
+	end
+
+	-- 关闭时 visible 已是 false，但窗口还要淡出，所以弹簧在 update 里独立推进
+	local target = self.visible and 1 or 0
+	self._open:setTarget(target)
+	if self.animate == false then
+		self._open:snap(target)
+	else
+		self._open:update(dt)
+	end
+
+	if self.visible then
+		Component.update(self, dt)
+	end
 end
 
 function proto:_tick()

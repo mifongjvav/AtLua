@@ -115,6 +115,25 @@ At.config.apply()
 | `At.ScrollView` | 可滚动视口：横纵自动滚动条、平滑滚动、惯性 | [components.md#at-scrollview](components.md#at-scrollview) |
 | `At.Console` | 浮动调试控制台：显示 `At.log` 日志、着色、可拖动 | [components.md#at-console](components.md#at-console) |
 
+### 动画
+
+组件默认带过渡动画，统一由 `At.motion` 的弹簧驱动：
+
+- `At.Switch` 旋钮、`At.Checkbox` 勾、`At.RadioGroup` 圆点：状态变化时弹入/缩回。
+- `At.TextInput` 聚焦边框、`At.Button` 悬停/按下高光：颜色与宽度平滑过渡。
+- `At.ScrollView` 滚动条碰到指针时变宽、`At.Console` 打开/关闭时淡入淡出并轻微滑动。
+
+所有动画都在 `At.update(dt)` 里推进，参数（`springStiffness` / `springDamping`）见各组件属性表；`animate = false` 可关闭。
+想给自己的组件加动画，直接用公开的 `At.motion`：
+
+```lua
+local s = At.motion.spring{ value = 0, stiffness = 320, damping = 26 }
+s:setTarget(1)
+function love.update(dt) s:update(dt) end   -- 之后读 s.value（0..1，可能过冲）
+```
+
+`At.motion` 还提供 `damp(current, target, speed, dt)`、`easeIn/easeOut/easeInOut(t)`；弹簧内部按固定子步积分，掉帧也不会发散。
+
 布局规则见 [layout.md](layout.md)，每个组件的完整属性/方法/回调见 [components.md](components.md)，
 日志与浮动控制台见 [logging.md](logging.md)，背景模糊（毛玻璃）见 [blur.md](blur.md)。
 

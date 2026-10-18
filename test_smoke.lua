@@ -143,6 +143,7 @@ love = {
 		setStencilTest = function() end,
 		push = function() end,
 		pop = function() end,
+		translate = function() end,
 		setBlendMode = function() end,
 		getDimensions = function()
 			return 800, 600
@@ -1265,6 +1266,7 @@ At.blur.setAlgorithm("downscale")
 At.blur.beginFrame()
 local blurConsole = At.Console({ x = 0, y = 0, w = 200, h = 100 })
 blurConsole:show()
+blurConsole:update(0.2) -- 打开动画推进后再画，半透明窗口才真正可见
 local beforeConsole = At.blur.stats().backdrops
 blurConsole:draw()
 check(At.blur.stats().backdrops == beforeConsole + 1, "半透明控制台触发模糊")
@@ -1476,6 +1478,98 @@ tabConsole:hide()
 tabConsole:draw()
 check(love.graphics.getScissor() == nil, "只画标签时状态正常")
 tabConsole:destroy()
+
+-- ---------- 动画：弹簧与缓动 ----------
+local spring = At.motion.spring({ value = 0, stiffness = 300, damping = 24 })
+check(spring.value == 0 and spring:isSettled(), "弹簧初始状态")
+spring:setTarget(1)
+for _ = 1, 10 do
+	spring:update(1 / 60)
+end
+check(spring.value > 0.2 and spring.value < 1.6, "弹簧向目标推进: " .. spring.value)
+for _ = 1, 180 do
+	spring:update(1 / 60)
+end
+check(math.abs(spring.value - 1) < 0.01, "弹簧收敛到目标: " .. spring.value)
+
+-- 掉帧不能把显式积分打飞：0.5s 一帧也要稳定
+local bigStep = At.motion.spring({ stiffness = 320, damping = 26 })
+bigStep:setTarget(1)
+bigStep:update(0.5)
+check(bigStep.value > 0 and bigStep.value < 2.5, "大 dt 用子步积分不发散: " .. bigStep.value)
+
+check(At.motion.easeInOut(0) == 0 and At.motion.easeInOut(0.5) == 0.5, "easeInOut 端点/中点")
+check(At.motion.easeOut(0.25) > 0.25, "easeOut 先快后慢")
+check(At.motion.easeIn(0.25) < 0.25, "easeIn 先慢后快")
+check(At.motion.damp(0, 1, 12, 1 / 60) > 0, "damp 向目标靠近")
+
+-- 控制台开关动画：弹簧驱动，关闭时窗口还要淡出
+At.registry.clear()
+local animConsole = At.Console({ x = 0, y = 0, w = 200, h = 100 })
+check(animConsole:openAmount() == 0, "控制台初始完全关闭")
+animConsole:show()
+animConsole:update(1 / 60)
+local opening = animConsole:openAmount()
+check(opening > 0 and opening < 1, "打开时存在过渡: " .. opening)
+for _ = 1, 120 do
+	animConsole:update(1 / 60)
+end
+check(math.abs(animConsole:openAmount() - 1) < 0.01, "打开动画收敛: " .. animConsole:openAmount())
+animConsole:hide()
+animConsole:update(1 / 60)
+local closing = animConsole:openAmount()
+check(closing > 0 and closing < 1, "关闭时先淡出而不是瞬间消失: " .. closing)
+animConsole:draw() -- visible=false 但 open>0：窗口与标签都在画
+for _ = 1, 120 do
+	animConsole:update(1 / 60)
+end
+check(animConsole:openAmount() < 0.01, "关闭动画收敛: " .. animConsole:openAmount())
+animConsole:destroy()
+
+-- 勾选/单选/输入框/按钮的动画值
+local animCb = At.Checkbox({ x = 0, y = 0, size = 22 })
+animCb:setValue(true)
+animCb:update(1 / 60)
+check(animCb._pop.value > 0 and animCb._pop.value < 1, "勾选有弹入过渡")
+for _ = 1, 90 do
+	animCb:update(1 / 60)
+end
+check(animCb._pop.value > 0.99, "勾选动画收敛")
+animCb:destroy()
+
+local animRg = At.RadioGroup({ x = 0, y = 0, options = { "A", "B" }, value = 1, size = 20 })
+animRg:update(1 / 60)
+animRg:setValue(2)
+animRg:update(1 / 60)
+check(animRg._pops[2].value < 0.5 and animRg._pops[1].value > 0.1, "单选圆点交叉过渡")
+animRg:destroy()
+
+local animTi = At.TextInput({ x = 0, y = 0, w = 160, h = 36 })
+animTi:focus()
+animTi:update(1 / 60)
+check(animTi._focus.value > 0 and animTi._focus.value < 1, "输入框聚焦边框过渡")
+for _ = 1, 90 do
+	animTi:update(1 / 60)
+end
+check(animTi._focus.value > 0.99, "聚焦动画收敛")
+animTi:blur()
+animTi:destroy()
+
+mouseX, mouseY = 10, 10
+local animBtn = At.Button({ x = 0, y = 0, w = 100, h = 40, ripple = false })
+animBtn:update(1 / 60)
+check(animBtn._hoverT.value > 0, "按钮悬停高光过渡")
+animBtn:update(0) -- 零 dt 不推进也不报错
+check(animBtn._hoverT.value > 0, "零 dt 不改变动画值")
+animBtn:destroy()
+
+-- 非动画模式立即落位（无障碍/低性能场景）
+local stillConsole = At.Console({ x = 0, y = 0, w = 100, h = 60, animate = false })
+stillConsole:show()
+check(stillConsole:openAmount() == 1, "animate=false 立即打开")
+stillConsole:hide()
+check(stillConsole:openAmount() == 0, "animate=false 立即关闭")
+stillConsole:destroy()
 
 -- ---------- 许可证 ----------
 check(fileContains("LICENSE", "MIT License"), "LICENSE 是 MIT 许可")

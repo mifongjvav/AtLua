@@ -6,6 +6,7 @@
 local Component = require("At.core.component")
 local color = require("At.core.color")
 local pixel = require("At.core.pixel")
+local motion = require("At.core.motion")
 
 local Switch = {}
 local proto = setmetatable({}, { __index = Component })
@@ -21,14 +22,23 @@ local DEFAULTS = {
 	knobColor = "#F2F5FA",
 	knobInset = 3,
 	alpha = 255,
-	speed = 16, -- 动画收敛速度（越大越快）
+	-- 弹簧参数：越大越硬/越快；damping 越大越不弹
+	animate = true,
+	springStiffness = 320,
+	springDamping = 26,
+	speed = nil, -- 已弃用：等价于 springStiffness = speed * 20
 	onChange = nil,
 }
 
 function Switch.new(opts)
 	local self = Component.instantiate(proto, opts, DEFAULTS)
 	self.value = self.value and true or false
-	self._t = self.value and 1 or 0
+	self._spring = motion.spring({
+		value = self.value and 1 or 0,
+		stiffness = self.springStiffness or (self.speed and self.speed * 20) or 320,
+		damping = self.springDamping or 26,
+	})
+	self._t = self._spring.value
 	return self
 end
 
@@ -74,9 +84,13 @@ end
 
 function proto:_tick(dt)
 	local target = self.value and 1 or 0
-	local speed = self.speed or 16
-	local k = 1 - math.exp(-speed * (dt or 0))
-	self._t = self._t + (target - self._t) * k
+	self._spring:setTarget(target)
+	if self.animate == false then
+		self._spring:snap(target)
+	else
+		self._spring:update(dt)
+	end
+	self._t = self._spring.value
 
 	-- 按住后左右拖动：越过阈值就切换（可以来回拖，松手不再二次切换）
 	if self._pressed and self._pressStartX then
@@ -103,7 +117,8 @@ function proto:_draw()
 	local x, y = pixel.xy(r.x, r.y)
 	local w, h = pixel.round(r.w), pixel.round(r.h)
 	local radius = self.radius or (math.min(w, h) / 2)
-	local track = color.mix(self.color, self.onColor, self._t)
+	local t = self.animate == false and (self.value and 1 or 0) or self._t
+	local track = color.mix(self.color, self.onColor, t)
 	if not self.enabled then
 		track = color.shade(track, -0.25)
 	end
@@ -114,7 +129,7 @@ function proto:_draw()
 	local inset = self.knobInset or 3
 	local knob = h - inset * 2
 	local travel = w - inset * 2 - knob
-	local knobX = x + inset + travel * self._t + (self._dragOffset or 0)
+	local knobX = x + inset + travel * t + (self._dragOffset or 0)
 	knobX = math.max(x + inset, math.min(x + inset + travel, knobX))
 
 	color.setColor(self.knobColor, self.alpha)

@@ -31,6 +31,8 @@
 
 **被动组件**：只做展示、不响应鼠标的组件（`At.Label`）会自动判定为不可交互（`interactive = false`），它们不会消费点击、也不会挡住 `ScrollView` 的拖动。自己写的纯展示组件请显式设 `interactive = false`。
 
+**动画**：开关、勾选、单选圆点、输入框聚焦边框、按钮悬停/按下高光、滚动条变宽、控制台开关都默认带过渡，由 `At.motion` 的弹簧驱动（`animate = true`）。这些动画只在 `At.update(dt)` 里推进，不调用就停在第 0 帧；每类组件都可以用 `animate = false` 关闭，或用 `springStiffness` / `springDamping` 调整手感。具体参数见各组件的属性表。
+
 ## At.Panel
 
 布局容器：用 CSS 子集把子组件排成一行或一列，可选背景、描边、圆角、阴影，做成卡片。
@@ -159,6 +161,8 @@ hint:draw()
 | `fontSize` | 数字 | `nil` | 缺省沿用当前字体 |
 | `paddingX` / `paddingY` | 数字 | `16` / `10` | 仅用于 auto 尺寸 |
 | `enabled` | 布尔 | `true` | 禁用后变淡且不响应事件 |
+| `animate` | 布尔 | `true` | 悬停/按下的高光过渡；关掉则高光立即到位 |
+| `springStiffness` / `springDamping` | 数字 | `500` / `30` | 高光过渡的弹簧刚度 / 阻尼 |
 
 ### 方法
 
@@ -236,6 +240,8 @@ btn:setEnabled(false)   -- 禁用后变淡且不再响应
 | `maskChar` | 字符串 | `"*"` | 密码模式的掩码字符 |
 | `onChange` | 函数 | `nil` | 文本变化回调 |
 | `onSubmit` | 函数 | `nil` | 回车提交回调 |
+| `animate` | 布尔 | `true` | 聚焦/失焦时边框颜色与线宽的过渡 |
+| `focusSpringStiffness` / `focusSpringDamping` | 数字 | `380` / `28` | 聚焦过渡的弹簧刚度 / 阻尼 |
 | `onFocus` | 函数 | `nil` | 获得焦点时（移动端会同时唤起软键盘） |
 | `onBlur` | 函数 | `nil` | 失去焦点时（软键盘随之收起） |
 
@@ -307,7 +313,9 @@ name:draw()
 | `knobColor` | hex 字符串 | `"#F2F5FA"` | 旋钮颜色 |
 | `knobInset` | 数字 | `3` | 旋钮与轨道边缘的间距 |
 | `alpha` | 数字 0–255 | `255` | 透明度 |
-| `speed` | 数字 | `16` | 动画收敛速度，越大越快 |
+| `animate` | 布尔 | `true` | 是否播放旋钮过渡 |
+| `springStiffness` / `springDamping` | 数字 | `320` / `26` | 旋钮弹簧刚度 / 阻尼；越大越硬、阻尼越大越不弹 |
+| `speed` | 数字 | `nil` | 已弃用；传入时等价于 `springStiffness = speed * 20` |
 | `onChange` | 函数 | `nil` | 状态变化回调 |
 
 ### 方法
@@ -327,9 +335,9 @@ name:draw()
 
 关于动画 `_t`：
 
-- `_t` 是内部动画进度（`0` 关闭 → `1` 打开），不是公开 API。
-- `setValue` 只改目标值 `value`；`_t` 在每次 `At.update(dt)` 里按 `speed` 指数逼近目标，所以**不调用 `At.update` 时旋钮不会动**。
-- 创建时 `_t` 与初始 `value` 对齐，不会从 0 开始播动画。
+- `_t` 是内部动画进度（`0` 关闭 → `1` 打开），不是公开 API；弹簧会有一点过冲，看起来像"弹"过去。
+- `setValue` 只改目标值 `value`；`_t` 在每次 `At.update(dt)` 里由弹簧逼近目标，所以**不调用 `At.update` 时旋钮不会动**。
+- 创建时 `_t` 与初始 `value` 对齐，不会从 0 开始播动画；`animate = false` 时立即落位。
 
 ### 示例
 
@@ -370,6 +378,8 @@ wifi:draw()
 | `textColor` | hex 字符串 | `"#E8ECF2"` | 文字颜色 |
 | `alpha` | 数字 0–255 | `255` | 透明度 |
 | `fontSize` | 数字 | `nil` | 缺省沿用当前字体 |
+| `animate` | 布尔 | `true` | 勾从中心弹入/缩回的过渡 |
+| `springStiffness` / `springDamping` | 数字 | `420` / `22` | 勾动画的弹簧刚度 / 阻尼 |
 | `onChange` | 函数 | `nil` | 选中状态变化回调 |
 
 ### 方法
@@ -427,6 +437,8 @@ remember:draw()
 | `textColor` | hex 字符串 | `"#E8ECF2"` | 文字颜色 |
 | `alpha` | 数字 0–255 | `255` | 透明度 |
 | `fontSize` | 数字 | `nil` | 缺省沿用当前字体 |
+| `animate` | 布尔 | `true` | 选中圆点弹入、旧圆点缩回的过渡 |
+| `springStiffness` / `springDamping` | 数字 | `420` / `22` | 圆点动画的弹簧刚度 / 阻尼 |
 | `onChange` | 函数 | `nil` | 选中项变化回调 |
 
 ### 方法
@@ -551,7 +563,8 @@ volume:draw()
 | `scrollbarMargin` | 数字 | `2` | 滚动条与视口边缘的间距 |
 | `scrollbarColor` / `scrollbarThumbColor` | hex 字符串 | `"#3A4150"` / `"#9FB3D3"` | 轨道/滑块颜色 |
 | `scrollbarActiveWidth` | 数字 | `8` | 指针靠近或拖动滚动条时的宽度（离开后缩回 `scrollbarWidth`） |
-| `scrollbarGrowSpeed` | 数字 | `16` | 滚动条变宽/缩回的动画速度 |
+| `scrollbarSpringStiffness` / `scrollbarSpringDamping` | 数字 | `700` / `42` | 滚动条变宽的弹簧刚度 / 阻尼 |
+| `scrollbarGrowSpeed` | 数字 | `16` | 已弃用；宽度改用上面的弹簧控制 |
 | `scrollbarHitWidth` | 数字 | `16` | 滚动条的可拖拽宽度（比视觉宽度大，方便手指按住） |
 | `wheelStep` | 数字 | `44` | 滚轮一格滚动多少像素 |
 | `smooth` | 布尔 | `true` | 滚轮/代码滚动是否缓动；拖拽始终 1:1 跟手 |
@@ -637,6 +650,9 @@ local view = At.ScrollView{
 | `fontSize` | 数字 | `13` | 日志字号 |
 | `lineHeight` | 数字 | `1.35` | 行高倍数 |
 | `scrollStep` | 数字 | `3` | 滚轮一格滚动几行 |
+| `animate` | 布尔 | `true` | 打开/关闭动画：弹簧 + 淡入淡出 + 轻微下移 |
+| `springStiffness` / `springDamping` | 数字 | `320` / `26` | 开关动画的弹簧刚度 / 阻尼 |
+| `openOffset` | 数字 | `12` | 关闭时窗口向下偏移多少像素（打开时滑回） |
 | `background` | hex | `"#0D1117"` | 背景色 |
 | `alpha` | 数字 0–255 | `205` | 背景透明度（半透明） |
 | `borderColor` / `dividerColor` | hex | `"#3A4150"` / `"#2A303B"` | 边框 / 标题分隔线 |
@@ -675,13 +691,15 @@ levelColors = {
 | `:setTitle(text)` | 改标题 |
 | `:clear()` | 清空 `At.log` 的日志缓冲并把视图回到底部 |
 | `:scrollToBottom()` | 滚回最新一条（`_offset = 0`） |
-| `:draw()` / `:update(dt)` | 由调用方每帧调用；`update` 里处理拖动 |
+| `:openAmount()` | 当前动画进度：`0` 完全关闭、`1` 完全打开（可能略过冲） |
+| `:draw()` / `:update(dt)` | 由调用方每帧调用；`update` 推进开关动画并处理拖动 |
 
 ### 交互
 
 - **拖动标题栏**移动窗口，位置会被夹在屏幕内。
 - **拖动日志区**上下滚动；**滚轮**按 `scrollStep` 行滚动。
-- 隐藏时右上角显示 `LOG` 标签（`tab = true`），**点它打开控制台**；显示后标签消失。
+- 隐藏时右上角显示 `LOG` 标签（`tab = true`），**点它打开控制台**；打开过程中标签随窗口淡出，完全显示后标签消失。
+- 关闭时窗口先淡出并下移再消失（`animate = false` 则立即消失）；动画期间 `visible` 已是 `false`，窗口不再接收鼠标，但它仍会被绘制。
 - 标题栏 `C` 清空日志、`×` 关闭；关闭后不消费任何鼠标/滚轮事件。
 - 日志区可显示时最多 `floor(日志区高度 / 行高)` 行，超出部分用滚动查看；滚动条只在内容超高时出现。
 - 有新的日志时，若视图停在底部（`_offset == 0`）会自动跟随最新。

@@ -28,6 +28,9 @@ love .
 # 逻辑回归测试（不需要 LÖVE；必须在项目根目录执行）
 lua test_smoke.lua
 
+# 格式化（提交前必须跑；配置在 stylua.toml：tab 缩进、列宽 120）
+stylua .
+
 # 语法检查（全部文件必须通过）
 for f in main.lua At/At.lua At/config.lua At/core/*.lua At/components/*.lua At/effects/*.lua test_smoke.lua; do luac -p "$f" || echo "FAIL $f"; done
 
@@ -43,9 +46,9 @@ sh /path/to/pack.sh  # 从外部调用；项目在 /sdcard 等无执行位的位
 - `love`、`zip` 未安装；`python3`、`unzip` 可用（`pack.sh` 靠 `python3` 的 `zipfile` 打包，不需要 `zip`）。
 - `/bin/bash`、`/usr/bin/env` **不存在**（Termux 环境），所以脚本一律写 `#!/bin/sh` 或由调用方显式 `bash xxx.sh`。
 - 外部存储 `/sdcard`、`/storage/*` **默认不可访问**，需先 `termux-setup-storage`；项目位于内部存储 `~/AtLua`。项目放在 SD 卡上时无法 `./pack.sh`（无执行位），要用 `sh /storage/<UUID>/AtLua/pack.sh`。
-- 目录**尚未初始化 git**。
+- git 仓库已初始化并提交到 `main`；代理只在本地 `git commit`，**不要 push**（由用户自己推）。
 
-没有测试框架、没有 CI、没有 lint 配置。验收 = `luac -p` 全通过 + `lua test_smoke.lua` 打印 `SMOKE OK` + 有 LÖVE 时手动跑一次 + （改了资源/目录时）成功打包。
+没有测试框架、没有 CI；格式化用 `stylua`（配置见 `stylua.toml`）。验收 = `luac -p` 全通过 + `lua test_smoke.lua` 打印 `SMOKE OK` + 有 LÖVE 时手动跑一次 + （改了资源/目录时）成功打包。
 
 ## 3. 目录结构
 
@@ -72,6 +75,7 @@ At/
     component.lua   #   组件基类：几何/状态/焦点/measure/生命周期
     layout.lua      #   CSS 子集布局引擎（纯函数）
     clip.lua        #   裁剪求交（嵌套 scissor 必须用它）
+    motion.lua      #   动画：弹簧（固定子步积分）与缓动函数
     pixel.lua       #   像素对齐
     color.lua       #   hex → RGBA、shade、mix
     SDF.lua         #   圆角矩形 SDF + 点击命中
@@ -103,7 +107,7 @@ function love.keypressed(k)            At.keypressed(k)                  end
 function love.wheelmoved(dx, dy)       At.wheelmoved(dx, dy)             end
 ```
 
-- `At.update(dt)`：推进悬停检测、涟漪、开关/滑动条动画。**不调用它，涟漪与动画会卡住**。
+- `At.update(dt)`：推进悬停检测、涟漪、开关/滑动条/控制台等动画。**不调用它，涟漪与动画会卡住**；隐藏但正在播关闭动画的组件（例如 `At.Console`）也只有在 `At.update` 里才会继续推进。
 - `At.mousepressed`：按创建顺序**倒序**派发（后创建的在上层），第一个消费即停；点到焦点组件之外的组件或空白处会**收走键盘焦点**。
 - `At.mousereleased`：广播给所有组件（按下的组件可能已不在指针下）。
 - `At.textinput` / `At.keypressed`：**只发给当前焦点组件**（`At.getFocus()`）。
@@ -148,18 +152,18 @@ At.Panel{
 | `At.Label` | `text, color, fontSize, align, wrap, lineHeight` | 无 |
 | `At.Button` | `text, color, alpha, hoverColor, pressedColor, shadow, shadowArgs, ripple, paddingX/paddingY` | `onPress(self,mx,my)` / `onRelease(self,mx,my,inside)` / `onClick(self,mx,my)` |
 | `At.TextInput` | `text, placeholder, password, maxLength, borderColor, focusBorderColor, caretColor` | `onChange(text,self)` / `onSubmit(text,self)` |
-| `At.Switch` | `value, color, onColor, knobColor, speed` | `onChange(value,self)` |
+| `At.Switch` | `value, color, onColor, knobColor, animate, springStiffness/springDamping` | `onChange(value,self)` |
 | `At.Checkbox` | `text, checked, size, gap, checkColor` | `onChange(checked,self)` |
 | `At.RadioGroup` | `options, value(1 基), direction, gap, size, selectedColor` | `onChange(index,label,self)` |
 | `At.Slider` | `min,max,step,value, showValue, trackColor, fillColor, thumbColor` | `onChange(value,self)` |
 | `At.ScrollView` | `content, w, h, scrollX, scrollY, scrollbar, wheelStep, drag, smooth, smoothSpeed, momentum, padding` | `onScroll(value,maxScroll,self,axis)` |
-| `At.Console` | `w, h, visible, title, headerH, padding, levelColors, alpha, fontSize` | 无（内部读 `At.log`） |
+| `At.Console` | `w, h, visible, title, headerH, padding, levelColors, alpha, fontSize, animate, springStiffness/springDamping, openOffset` | 无（内部读 `At.log`） |
 
 基类方法：`draw/update/mousepressed/mousereleased/measure/destroy`、`contains(px,py)`、`setRect/setPosition/setSize`、`setEnabled/setVisible`、`isHovered/isPressed/isFocused/isInteractive`、`focus/blur`、`declaredWidth/declaredHeight/invalidateSize`、`font()`。
 
 ### At 入口
 
-`At.update(dt)`、`At.mousepressed(...)`、`At.mousereleased(...)`、`At.textinput(t)`、`At.keypressed(k)`、`At.wheelmoved(dx,dy)`、`At.focus(c)`、`At.clearFocus()`、`At.getFocus()`、`At.add(c)`、`At.remove(c)`、`At.registry`、`At.layout`、`At.Component`、`At.blur`（`setEnabled/isEnabled/setAlgorithm/registerAlgorithm/setStrength/beginFrame/endFrame/drawBackdrop/stats/reset`）。
+`At.update(dt)`、`At.mousepressed(...)`、`At.mousereleased(...)`、`At.textinput(t)`、`At.keypressed(k)`、`At.wheelmoved(dx,dy)`、`At.focus(c)`、`At.clearFocus()`、`At.getFocus()`、`At.add(c)`、`At.remove(c)`、`At.registry`、`At.layout`、`At.Component`、`At.motion`、`At.blur`（`setEnabled/isEnabled/setAlgorithm/registerAlgorithm/setStrength/beginFrame/endFrame/drawBackdrop/stats/reset`）。
 
 `At.config`（`At/config.lua`）：`blur = {enabled, algorithm, strength}`、`log = {level, print, maxEntries, file, filePattern}`、`font = {size, main, emoji}`；`At.config.apply()` 把配置推给各模块（`At.lua` 启动时已自动调用一次）。
 
@@ -173,11 +177,12 @@ At.Panel{
 - `input.setActive/input()/get/set/clear/join/keypressed/isActive` + `input.length(str)`、`input.removeLast(str)`（UTF-8 安全）。
 - `font.get(size)` 缓存字体；`font.init(size)` 设置全局 `mainFont`/`emoji`，并以**主字体**为当前字体。主字体优先、emoji 只作 fallback：反过来（emoji 当主字体）会让数字、空格、`#`/`*` 用上 keycap 的长宽字，排版明显变宽。
 - `shadow(x, y, w, h, res, color, radius, layers, offsetX, offsetY)`：`color[4]` 是整体最大不透明度（内部已按 `layers` 归一化，改层数不会让阴影变黑），`layers` 只影响柔和度。
+- `motion.spring{value, target, stiffness, damping, velocity}` → `Spring`（`:setTarget/:snap/:update/:isSettled`，`.value/.target/.velocity`）；`motion.damp(current, target, speed, dt)`；`motion.easeIn/easeOut/easeInOut(t)`（`0..1`）。弹簧用固定子步（1/240s）积分，掉帧不发散；`update` 的 `dt <= 0` 直接返回。
 - `log.debug/info/warn/error/fatal(...)`（写日志，被过滤时返回 nil）、`setLevel/getLevel/setFormat/setMaxEntries/setPrint/getPrint/setFile/setFilePattern/getFileName/getFilePath/closeFile/isFileEnabled/clear/count/getEntries/formatEntry`。默认格式 `[时间] - [等级/函数名]: 内容`，过滤发生在写入时，默认同时 `print` 到 stdout（Android 即 logcat）。
 
 ## 6. 代码约定
 
-- **缩进用 tab（显示宽度 4）**，由格式化工具统一；注释用中文，注释说明"为什么"而不是复述代码。改完代码保持格式化后的风格，不要混入空格缩进（GLSL 字符串里的缩进属于 shader 代码，不受影响）。
+- **缩进用 tab（显示宽度 4）**，由 `stylua .` 统一；提交前必须在仓库根目录跑一次 `stylua .`，不要手工对齐或混入空格缩进（GLSL 字符串里的缩进属于 shader 代码，不受影响）。格式化配置在 `stylua.toml`（tab、列宽 120、Unix 换行），不要改回空格。
 - 模块形状：`local M = {} ... return M`。require 路径从源码根开始且**不带 `.lua`**：`require("At.core.color")`。
 - **目录分层固定**：`At/core/`（基础设施）、`At/components/`（组件）、`At/effects/`（视觉特效）、`At/assets/`（资源）。新组件放 `At/components/`，新基础设施放 `At/core/`。
 - **新组件必须继承 `At.Component`**（`require("At.core.component")`）：`local proto = setmetatable({}, { __index = Component })`，构造函数调 `Component.instantiate(proto, opts, DEFAULTS)`，并导出 `setmetatable(MyComp, { __call = ... })` 以便 `At.Xxx{...}`。
@@ -189,6 +194,7 @@ At.Panel{
 - 命中判断用传入坐标（`contains(px,py)`）；需要鼠标位置的地方（拖拽）用 `love.mouse.getPosition()` 并在 `_tick` 里轮询，不要假设有 `love.mousemoved`。
 - 绘制改动 `love.graphics` 状态（颜色/字体/线宽/线型/scissor）必须保存并恢复；`Component:draw` 已处理颜色/字体/线宽/线型（并强制 `lineStyle = "rough"` 让 1px 边框清晰），scissor 必须用 `At.clip` 配对处理。
 - **坐标一律对齐整数像素**：绘制前用 `At.pixel.xy/round`；布局已经对齐过一次，但滚动位移、动画插值、居中计算仍可能产生小数。
+- **动画统一用 `At.motion.spring`**（需要缓动再用 `easeIn/Out/InOut`），不要自己写 `value = value + (target - value) * k` 的指数逼近；每个组件在 `_tick(dt)` 或 `update(dt)` 里推进自己的弹簧，并给 `animate = false` 留立即落位的分支。
 - 焦点只通过 `self:focus()/self:blur()` 或 `registry.setFocus` 改，不要自建 `isFocused` 字段。
 - 命名沿用现状，不要"统一"：大写开头是 `At`、`SDF`、`Ripple`、`Button`、`Label`、`Panel`、`TextInput`、`Switch`、`Checkbox`、`RadioGroup`、`Slider`、`Component`；小写是 `color`、`shadow`、`input`、`font`、`layout`、`registry`。
 - 颜色对外接受 `hex` + 0–255 `alpha`，不要引入 0–1 风格的第二套接口。
@@ -228,6 +234,8 @@ At.Panel{
 26. **改 `At.config` 不会自动生效**：`At.lua` 只在启动时 `apply()` 一次；运行时改完 `At.config.blur/log/font` 要再调 `At.config.apply()`。字体路径来自 `config.font`（`At/core/font.lua` 读取），移动资源时同步改这里与 `LICENSES/`。
 27. **许可证不能只写一句"MIT/OFL"**：字体版权与 OFL 全文必须实际随包分发（`LICENSES/`），且 `pack.sh` 不能把它们排除掉；替换字体时要重新读字体的 `name` 表确认版权方，不要凭文件名猜。
 28. `pack.sh` 直接覆盖同名 `.love`，排除 `pack.sh`、`test_*.lua`、`AGENTS.md`、`*.md`、`docs/`、`*.love`、`*.zip`、`*.bash`、`*.log`、`*.tmp`、`.gitignore` 与 `.git`/`.vscode`/`.idea`/`__pycache__`/`temp_package`/`node_modules`。排除规则在 python 与 zip 两条分支各写一份，新增产物类型时两处都要改。
+29. **动画不要自己积分**：手写 `value = value + (target - value) * (1 - exp(-speed*dt))` 在不同帧率下手感不同、且没法过冲。统一用 `At.motion.spring`（固定子步 1/240s），把它放在 `_tick(dt)`（可见组件）或组件自己的 `update(dt)`（隐藏时还要继续的动画，如控制台关闭）里推进；`animate = false` 时必须 `:snap()` 到目标，保证测试与低性能路径立即一致。绘制时把弹簧值 `math.min/max` 夹到用途需要的范围（例如 alpha 用 `min(1, v)`，否则 `>1` 会让半透明判定失效）。
+30. **控制台的开关动画跨越 `visible`**：`hide()` 只把 `visible` 置 `false`，窗口还要淡出，所以 `Console:update` 独立推进弹簧、`draw` 在 `visible or open > 0.001` 时继续画窗口，`open < 0.999` 时画 `LOG` 标签并让标签随进度淡出。动画期间窗口不接收鼠标事件（`visible == false`），这是有意的；改这里别把"隐藏"直接当成"不画"。
 
 ## 8. 改动检查清单
 
@@ -241,7 +249,9 @@ At.Panel{
 - [ ] 新增可配置项时放进 `At/config.lua` 并同步 `docs/README.md` 的配置表与 `At.config.apply()`。
 - [ ] 有 LÖVE 时 `love .` 手动过一遍：悬停、按下、拖出/拖回、输入、开关动画、拖动滑动条、滚轮平滑滚动、拖拽惯性。
 - [ ] 涉及平滑滚动/惯性的断言必须模拟若干帧（`At.update(1/60)`），不能只改目标就断言位置。
-- [ ] 日志改动覆盖等级过滤、格式（字符串与函数）、缓冲裁剪；控制台改动覆盖显隐、拖动、滚动。
+- [ ] 日志改动覆盖等级过滤、格式（字符串与函数）、缓冲裁剪；控制台改动覆盖显隐、拖动、滚动、开关动画。
+- [ ] 动画改动模拟多帧 `At.update(1/60)` 再断言（不能改完目标就断言最终值），并覆盖 `animate = false` 的立即落位。
+- [ ] 提交前跑过 `stylua .`，且 `stylua --check .` 通过。
 - [ ] 改了目录/资源后跑 `./pack.sh`，并 `unzip -Z1 AtLua.love` 抽查（不应出现 docs/、*.md、test_*.lua；**应包含 LICENSE 与 LICENSES/**）。
 - [ ] 新增/替换字体或其它第三方资源时，`LICENSES/` 与 `THIRD_PARTY_NOTICES.md` 已更新，且版权信息未被删除。
 
