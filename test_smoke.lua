@@ -1409,10 +1409,14 @@ console:toggle()
 check(console.visible == true and console:isOpen(), "toggle 打开")
 
 mouseX, mouseY = 150, 150
+local cview = console._view
 check(console:wheelmoved(0, 1) == true, "滚轮被控制台消费")
-check(console._offset > 0, "滚轮向上翻看历史: " .. console._offset)
+for _ = 1, 30 do
+	console:update(1 / 60)
+end
+check(cview.scrollY > 0, "滚轮向上翻看历史: " .. cview.scrollY)
 console:scrollToBottom()
-check(console._offset == 0, "回到底部")
+check(cview.scrollY == cview:maxScroll(), "回到底部")
 
 mouseDown = true
 mouseX, mouseY = 110, 110
@@ -1438,18 +1442,18 @@ local console2 = At.Console({ x = 0, y = 0, w = 200, h = 80 })
 console.levelColors.info = "#000001"
 check(console2.levelColors.info ~= "#000001", "levelColors 不在实例间共享")
 
--- 拖动滚动会产生小数 offset；绘制时必须对齐整行，否则 entries[2.6] 为 nil
+-- 滚动量由 ScrollView 夹紧（不再有"小数行下标"这种自家实现）
 console:show()
 At.log.clear()
 for i = 1, 10 do
-	At.log.info("浮动偏移 %d", i)
+	At.log.info("滚动夹紧 %d", i)
 end
-console._offset = 2.6
-console:draw()
-check(console._offset == 3, "绘制时偏移对齐整行: " .. console._offset)
-console._offset = 999
-console:draw()
-check(console._offset <= console:_maxOffset(), "偏移被夹紧到最大值: " .. console._offset)
+console:_syncView(1 / 60)
+local v = console._view
+v:setScroll(99999)
+check(v.scrollY == v:maxScroll(), "滚动量被夹紧到最大值")
+v:setScroll(-5)
+check(v.scrollY == 0, "滚动量被夹紧到 0")
 At.log.clear()
 
 console:clear()
@@ -1463,6 +1467,35 @@ console:show()
 local clearX, clearY = console.x + console.w - 45, console.y + 4
 check(console:mousepressed(clearX, clearY, 1) == true, "点 C 按钮")
 check(At.log.count() == 0, "C 按钮清空日志")
+
+-- 日志区复用 ScrollView，而不是控制台自己再写一套滚动条
+check(console._view ~= nil, "控制台内部使用 ScrollView")
+check(console._view.autoRegister == false, "内部 ScrollView 不注册到全局")
+check(console._view.content == console._lines, "内部 ScrollView 的内容是日志行")
+
+-- 停在底部时自动跟随最新；往上翻后保持位置
+At.log.clear()
+for i = 1, 8 do
+	At.log.info("跟随 %d", i)
+end
+console:show()
+console:update(1 / 60)
+local followView = console._view
+check(followView.scrollY == followView:maxScroll(), "停在底部自动跟随最新")
+mouseX, mouseY = console.x + 40, console.y + 60
+console:wheelmoved(0, 1)
+for _ = 1, 30 do
+	console:update(1 / 60)
+end
+local heldScroll = followView.scrollY
+check(heldScroll < followView:maxScroll(), "滚轮可以往上翻")
+for i = 1, 4 do
+	At.log.info("新日志 %d", i)
+end
+console:update(1 / 60)
+check(followView.scrollY <= heldScroll + 1, "往上翻后不被新日志拽回底部")
+console:scrollToBottom()
+check(followView.scrollY == followView:maxScroll(), "scrollToBottom 回到底部并恢复跟随")
 
 console:destroy()
 console2:destroy()

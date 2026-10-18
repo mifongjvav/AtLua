@@ -9,11 +9,71 @@
 local Component = require("At.core.component")
 local color = require("At.core.color")
 local font = require("At.core.font")
-local clip = require("At.core.clip")
 local pixel = require("At.core.pixel")
 local log = require("At.core.log")
 local motion = require("At.core.motion")
+local ScrollView = require("At.components.ScrollView")
 local blur = require("At.effects.blur")
+
+-- 日志内容：只负责把日志按行画出来，滚动/滚动条/触边光全部交给 At.ScrollView。
+-- 它不是对外组件，autoRegister = false，也不会挡事件（没有 _press）。
+local LogLines = {}
+LogLines.__index = LogLines
+
+function LogLines.new(console)
+	local self = setmetatable({}, LogLines)
+	self.console = console
+	self.x, self.y, self.w, self.h = 0, 0, 1, 1
+	self.visible = true
+	self.autoRegister = false
+	self.interactive = false
+	return self
+end
+
+function LogLines:measure(availW)
+	self.w = availW or self.w or 1
+	local lineH = self.console:_lineHeight()
+	local count = log.count()
+	self.h = math.max(lineH, count * lineH)
+	return self.w, self.h
+end
+
+function LogLines:draw()
+	local console = self.console
+	local total = log.count()
+	local lineH = console:_lineHeight()
+	local alpha = console._drawAlpha or console.alpha or 255
+	local f = font.get(console.fontSize or 13)
+
+	love.graphics.setFont(f)
+
+	if total == 0 then
+		color.setColor(console.placeholderColor, alpha)
+		love.graphics.print("（暂无日志）", pixel.round(self.x), pixel.round(self.y))
+		return
+	end
+
+	-- 只画视口内的行，日志很多时也不至于每帧画几百条
+	local view = console._view
+	local scroll = view and view.scrollY or 0
+	local viewH = view and view.h or self.h
+	local first = math.max(1, math.floor(scroll / lineH) + 1)
+	local last = math.min(total, math.ceil((scroll + math.max(1, viewH)) / lineH))
+	local entries = log.getEntries()
+
+	for i = first, last do
+		local entry = entries[i]
+		if entry then
+			local hex = console.levelColors[(entry.levelName or ""):lower()] or console.titleColor
+			color.setColor(hex, alpha)
+			love.graphics.print(log.formatEntry(entry), pixel.round(self.x), pixel.round(self.y + (i - 1) * lineH))
+		end
+	end
+end
+
+function LogLines:destroy()
+	self._destroyed = true
+end
 
 local Console = {}
 local proto = setmetatable({}, { __index = Component })
@@ -83,14 +143,33 @@ function Console.new(opts)
 		self.levelColors[name] = hex
 	end
 
-	self._offset = 0 -- 从末尾往前滚了多少行：0 = 跟随最新
 	self._windowDrag = nil
-	self._contentDrag = nil
 	self._open = motion.spring({
 		value = self.visible and 1 or 0,
 		stiffness = self.springStiffness,
 		damping = self.springDamping,
 	})
+
+	-- 日志区复用 ScrollView：滚动条、平滑滚动、惯性、触边光效都不再单独实现
+	self._lines = LogLines.new(self)
+	self._view = ScrollView({
+		x = 0,
+		y = 0,
+		w = 1,
+		h = 1,
+		content = self._lines,
+		autoRegister = false, -- 由控制台手动转发事件，不参与全局注册表
+		visible = false,
+		scrollbar = true,
+		drag = true,
+		smooth = true,
+		momentum = true,
+		edgeEffect = true,
+		scrollbarColor = self.scrollbarColor,
+		scrollbarThumbColor = self.scrollbarThumbColor,
+	})
+	self._stick = true -- 是否跟随最新日志（用户往上翻后暂停跟随）
+	self._lastMax = 0
 
 	return self
 end
@@ -102,13 +181,15 @@ function proto:show()
 	if self.animate == false and self._open then
 		self._open:snap(1)
 	end
+	-- 重新打开时回到最新一条，和常见控制台行为一致
+	self:scrollToBottom()
 	return self
 end
 
 function proto:hide()
 	self.visible = false
 	self._windowDrag = nil
-	self._contentDrag = nil
+	self._stick = false
 	if self.animate == false and self._open then
 		self._open:snap(0)
 	end
@@ -139,7 +220,7 @@ end
 -- 清空日志缓冲（日志由 At.log 持有）
 function proto:clear()
 	log.clear()
-	self._offset = 0
+	self:scrollToBottom()
 	return self
 end
 
@@ -257,22 +338,60 @@ function proto:_closeRect()
 	}
 end
 
-function proto:_visibleLines()
+-- 只更新内部 ScrollView 的矩形（事件/绘制前调用，保证命中和绘制位置一致）
+function proto:_syncViewRect()
+	local view = self._view
+	if not view then
+		return
+	end
 	local body = self:_bodyRect()
-	return math.max(1, math.floor(body.h / self:_lineHeight()))
+	view.x, view.y = body.x, body.y
+	view.w, view.h = body.w, body.h
+	view.visible = true
 end
 
-function proto:_maxOffset()
-	return math.max(0, log.count() - self:_visibleLines())
-end
+-- 更新内容尺寸、推进 ScrollView 的动画/拖拽，并处理“跟随最新日志”
+function proto:_syncView(dt)
+	local view = self._view
+	if not view then
+		return
+	end
 
-function proto:_scrollLines(delta)
-	self._offset = math.max(0, math.min(self:_maxOffset(), (self._offset or 0) + delta))
-	return self._offset
+	self:_syncViewRect()
+	view.alpha = self._drawAlpha or self.alpha or 255
+	view.scrollbarColor = self.scrollbarColor
+	view.scrollbarThumbColor = self.scrollbarThumbColor
+	view.wheelStep = self:_lineHeight() * (self.scrollStep or 3)
+	view.visible = self.visible or self:openAmount() > 0.001
+
+	view:layout()
+	if dt and view.visible then
+		view:update(dt)
+	end
+
+	-- 先让 ScrollView 处理滚轮/拖动，再判断是否还在底部：
+	-- 否则用户刚往上翻的第一帧会被"跟随最新"直接拽回去。
+	if view.scrollY >= (self._lastMax or 0) - 1 then
+		self._stick = true
+	else
+		self._stick = false
+	end
+	if self._stick then
+		view:setScroll(view:maxScroll())
+	end
+	self._lastMax = view:maxScroll()
 end
 
 function proto:scrollToBottom()
-	self._offset = 0
+	local view = self._view
+	if not view then
+		return self
+	end
+	self:_syncViewRect()
+	view:layout()
+	view:setScroll(view:maxScroll())
+	self._stick = true
+	self._lastMax = view:maxScroll()
 	return self
 end
 
@@ -333,58 +452,14 @@ function proto:_draw(alpha)
 	color.setColor(self.dividerColor, alpha)
 	love.graphics.line(x + 1, y + headerH, x + w - 1, y + headerH)
 
-	-- 日志区
-	local body = self:_bodyRect()
-	local entries = log.getEntries()
-	local total = #entries
-	local lineH = self:_lineHeight()
-
-	-- 拖动滚动时 offset 可能是小数（delta / 行高）；绘制前对齐到整行，
-	-- 否则会拿 2.6 这样的值当下标去取 entries[i]，得到 nil。
-	local maxOffset = self:_maxOffset()
-	local offset = math.max(0, math.min(maxOffset, math.floor((self._offset or 0) + 0.5)))
-	self._offset = offset
-
-	local old, visible = clip.apply(pixel.round(body.x), pixel.round(body.y), pixel.round(body.w), pixel.round(body.h))
-
-	if visible then
-		if total == 0 then
-			color.setColor(self.placeholderColor, alpha)
-			love.graphics.print("（暂无日志）", body.x, body.y)
-		else
-			local visibleLines = self:_visibleLines()
-			local lastIndex = math.max(1, total - offset)
-			local firstIndex = math.max(1, lastIndex - visibleLines + 1)
-
-			local lineY = pixel.round(body.y)
-			for i = firstIndex, lastIndex do
-				local entry = entries[i]
-				if entry then
-					local hex = self.levelColors[(entry.levelName or ""):lower()] or self.titleColor
-					color.setColor(hex, alpha)
-					love.graphics.print(log.formatEntry(entry), pixel.round(body.x), lineY)
-					lineY = lineY + lineH
-				end
-			end
-		end
-	end
-	clip.restore(old)
-
-	-- 滚动条（内容超出时）
-	local visibleLines = self:_visibleLines()
-	if total > visibleLines then
-		local trackX = x + w - 6
-		local trackY = body.y
-		local trackH = body.h
-		local thumbH = math.max(18, trackH * visibleLines / total)
-		local barMaxOffset = math.max(1, total - visibleLines)
-		local t = (barMaxOffset - offset) / barMaxOffset
-		local thumbY = trackY + (trackH - thumbH) * t
-
-		color.setColor(self.scrollbarColor, math.floor(alpha * 160 / 255))
-		love.graphics.rectangle("fill", trackX, trackY, 3, trackH, 1.5)
-		color.setColor(self.scrollbarThumbColor, math.floor(alpha * 220 / 255))
-		love.graphics.rectangle("fill", trackX, thumbY, 3, thumbH, 1.5)
+	-- 日志区：内容、滚动条、平滑滚动、触边光效都复用 ScrollView
+	self._drawAlpha = alpha
+	self:_syncViewRect()
+	local view = self._view
+	if view then
+		view.alpha = alpha
+		view.visible = true
+		view:draw()
 	end
 end
 
@@ -431,7 +506,12 @@ function proto:mousepressed(mx, my, button)
 		return true
 	end
 
-	self._contentDrag = { lastY = my }
+	local view = self._view
+	if view then
+		self:_syncViewRect()
+		view:layout()
+		view:mousepressed(mx, my, button)
+	end
 	return true
 end
 
@@ -439,9 +519,12 @@ function proto:mousereleased(mx, my, button)
 	if button ~= nil and button ~= 1 then
 		return false
 	end
-	local handled = self._windowDrag ~= nil or self._contentDrag ~= nil
+	local handled = self._windowDrag ~= nil
 	self._windowDrag = nil
-	self._contentDrag = nil
+	if self._view then
+		self:_syncViewRect()
+		handled = self._view:mousereleased(mx, my, button) or handled
+	end
 	return handled
 end
 
@@ -453,8 +536,13 @@ function proto:wheelmoved(dx, dy)
 	if not self:contains(mx, my) then
 		return false
 	end
-	-- 滚轮向上（dy > 0）看更早的日志
-	self:_scrollLines((dy or 0) * (self.scrollStep or 3))
+	if not self._view then
+		return false
+	end
+	self:_syncViewRect()
+	self._view:layout()
+	self._view:wheelmoved(dx, dy)
+	-- 控制台是浮层：指针在窗口内时就吃掉滚轮，别让游戏背景跟着滚
 	return true
 end
 
@@ -475,6 +563,10 @@ function proto:update(dt)
 	if self.visible then
 		Component.update(self, dt)
 	end
+
+	if self.visible or self:openAmount() > 0.001 then
+		self:_syncView(dt)
+	end
 end
 
 function proto:_tick()
@@ -488,17 +580,15 @@ function proto:_tick()
 			self._windowDrag = nil
 		end
 	end
+end
 
-	if self._contentDrag then
-		if love.mouse.isDown(1) then
-			local _, my = love.mouse.getPosition()
-			local delta = my - self._contentDrag.lastY
-			self._contentDrag.lastY = my
-			self:_scrollLines(delta / self:_lineHeight())
-		else
-			self._contentDrag = nil
-		end
+function proto:destroy()
+	if self._view then
+		self._view:destroy()
+		self._view = nil
 	end
+	self._lines = nil
+	return Component.destroy(self)
 end
 
 setmetatable(Console, {
