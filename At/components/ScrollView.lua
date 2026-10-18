@@ -48,6 +48,7 @@ local DEFAULTS = {
 	edgeEffect = true,
 	edgeGlowColor = "#9FB3D3",
 	edgeGlowSize = 28,
+	edgeRadius = nil, -- 光带圆角；缺省取内容容器（大卡片）的 radius，再退回 ScrollView 的 radius
 	overscrollMax = 70, -- 最多能拉出多少像素
 	overscrollResistance = 0.55, -- 拉出距离的衰减（越小越硬）
 	edgeSpringStiffness = 380,
@@ -541,6 +542,7 @@ end
 
 -- 触顶/触底：在容器边缘叠一条渐隐光带（始终在容器内）。
 -- 拖动时强度跟过冲量走，滚轮/惯性/滚动条拖到头时用脉冲闪一下。
+-- 光带在“内容边缘贴住视口”的那一侧按容器圆角收角，避免糊到圆角外。
 function proto:_drawEdgeEffects()
 	if not self.edgeEffect then
 		return
@@ -561,6 +563,30 @@ function proto:_drawEdgeEffects()
 	local x, y = pixel.xy(r.x, r.y)
 	local w, h = pixel.round(r.w), pixel.round(r.h)
 	local size = math.max(2, math.floor(self.edgeGlowSize or 28))
+	local radius = self:_edgeRadius()
+
+	-- 只有内容真正贴住视口的那条边才需要圆角；滚动到中间时是切面，不该收角
+	local atTop = (self.scrollY or 0) <= 0.5
+	local atBottom = (self.scrollY or 0) >= (self._maxScrollY or 0) - 0.5
+	local atLeft = (self.scrollX or 0) <= 0.5
+	local atRight = (self.scrollX or 0) >= (self._maxScrollX or 0) - 0.5
+	local roundTop = radius > 0 and atTop
+	local roundBottom = radius > 0 and atBottom
+	local roundLeft = radius > 0 and atLeft
+	local roundRight = radius > 0 and atRight
+
+	-- 圆角矩形在距边缘 d 处的内缩量（d < radius；否则为 0）
+	local function inset(distance)
+		if radius <= 0 or distance >= radius then
+			return 0
+		end
+		local k = radius - distance
+		return radius - math.sqrt(math.max(0, radius * radius - k * k))
+	end
+
+	local function px(value)
+		return math.floor(value + 0.5)
+	end
 
 	local function drawBand(side, pull, pulse)
 		local distance = math.abs(pull or 0)
@@ -581,13 +607,33 @@ function proto:_drawEdgeEffects()
 			if alpha > 0 then
 				color.setColor(self.edgeGlowColor, alpha)
 				if side == "top" then
-					love.graphics.rectangle("fill", x, y + i, w, 1)
+					local li = roundTop and roundLeft and inset(i) or 0
+					local ri = roundTop and roundRight and inset(i) or 0
+					local ww = w - px(li) - px(ri)
+					if ww > 0 then
+						love.graphics.rectangle("fill", x + px(li), y + i, ww, 1)
+					end
 				elseif side == "bottom" then
-					love.graphics.rectangle("fill", x, y + h - 1 - i, w, 1)
+					local li = roundBottom and roundLeft and inset(i) or 0
+					local ri = roundBottom and roundRight and inset(i) or 0
+					local ww = w - px(li) - px(ri)
+					if ww > 0 then
+						love.graphics.rectangle("fill", x + px(li), y + h - 1 - i, ww, 1)
+					end
 				elseif side == "left" then
-					love.graphics.rectangle("fill", x + i, y, 1, h)
+					local ti = roundLeft and roundTop and inset(i) or 0
+					local bi = roundLeft and roundBottom and inset(i) or 0
+					local hh = h - px(ti) - px(bi)
+					if hh > 0 then
+						love.graphics.rectangle("fill", x + i, y + px(ti), 1, hh)
+					end
 				else
-					love.graphics.rectangle("fill", x + w - 1 - i, y, 1, h)
+					local ti = roundRight and roundTop and inset(i) or 0
+					local bi = roundRight and roundBottom and inset(i) or 0
+					local hh = h - px(ti) - px(bi)
+					if hh > 0 then
+						love.graphics.rectangle("fill", x + w - 1 - i, y + px(ti), 1, hh)
+					end
 				end
 			end
 		end
@@ -601,6 +647,25 @@ function proto:_drawEdgeEffects()
 		drawBand("left", overX > 0 and overX or 0, pulses.left)
 		drawBand("right", overX < 0 and -overX or 0, pulses.right)
 	end
+end
+
+-- 光带圆角：显式 edgeRadius > 内容容器的 radius（大卡片） > ScrollView 自身 radius。
+-- 内容容器只有横向铺满视口时才用它，否则圆角和视口边缘对不上。
+function proto:_edgeRadius()
+	if self.edgeRadius ~= nil then
+		return math.max(0, tonumber(self.edgeRadius) or 0)
+	end
+
+	local content = self.content
+	if content and content.rect then
+		local cr = content:rect()
+		local contentRadius = (cr and cr.radius) or 0
+		if contentRadius > 0 and cr.x <= self.x + 0.5 and cr.x + cr.w >= self.x + self.w - 0.5 then
+			return contentRadius
+		end
+	end
+
+	return math.max(0, self.radius or 0)
 end
 
 -- ---------- 命中与事件 ----------

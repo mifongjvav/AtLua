@@ -1483,7 +1483,7 @@ tabConsole:destroy()
 
 -- ---------- 触顶/触底特效（ScrollView 过冲） ----------
 At.registry.clear()
-local edgeContent = At.Panel({ w = 200, h = 400, padding = 0 })
+local edgeContent = At.Panel({ w = 200, h = 400, padding = 0, radius = 16 })
 local edgeView = At.ScrollView({ x = 0, y = 0, w = 200, h = 100, content = edgeContent })
 edgeView:layout()
 check(edgeView:maxScroll() == 300, "过冲用例的内容可滚动: " .. edgeView:maxScroll())
@@ -1497,10 +1497,37 @@ edgeView:update(1 / 60)
 check(edgeView.scrollY == 0, "触顶后 scrollY 仍夹在 0")
 check(edgeView._overY > 0, "顶部下拉产生过冲: " .. edgeView._overY)
 check(edgeView._edgePulse.top == 0, "过冲光带由拉动量驱动，不额外打脉冲")
-local rectsBefore = draws.rect
+-- 光带外圈应按内容容器（大卡片）的圆角收角
+local topRowWidths = {}
+local rectBeforeGlow = draws.rect
+local realRectGlow = love.graphics.rectangle
+love.graphics.rectangle = function(mode, rx, ry, rw, rh, rr)
+	if ry == edgeView.y and rh == 1 then
+		topRowWidths[#topRowWidths + 1] = { x = rx, w = rw }
+	end
+	realRectGlow(mode, rx, ry, rw, rh, rr)
+end
 edgeView:draw()
+love.graphics.rectangle = realRectGlow
 check(edgeView.content.y == restingY, "过冲只画边缘光，不把内容推出容器")
-check(draws.rect > rectsBefore, "边缘光带参与绘制")
+check(draws.rect > rectBeforeGlow, "边缘光带参与绘制")
+check(#topRowWidths > 0, "顶部光带绘制在最外圈")
+check(topRowWidths[1].w < edgeView.w, "光带外圈按容器圆角收角: " .. topRowWidths[1].w)
+check(topRowWidths[1].x > edgeView.x, "光带外圈左侧内缩")
+
+-- edgeRadius 可以覆盖默认（这里设 0 就画成直角）
+edgeView.edgeRadius = 0
+local squareWidths = {}
+love.graphics.rectangle = function(mode, rx, ry, rw, rh, rr)
+	if ry == edgeView.y and rh == 1 then
+		squareWidths[#squareWidths + 1] = rw
+	end
+	realRectGlow(mode, rx, ry, rw, rh, rr)
+end
+edgeView:draw()
+love.graphics.rectangle = realRectGlow
+check(squareWidths[1] == edgeView.w, "edgeRadius=0 时光带是直角")
+edgeView.edgeRadius = nil
 
 mouseDown = false
 edgeView:update(1 / 60)
