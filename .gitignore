@@ -39,3 +39,13 @@ luac.out
 *.x86_64
 *.hex
 
+# 打包产物（用 ./pack.sh 重新生成，不入库）
+*.love
+temp_package/
+
+# 系统/编辑器杂项
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+

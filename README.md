@@ -1,0 +1,170 @@
+# AtLua
+
+**LÖVE 的轻量 UI 组件库**：CSS 子集式布局 + 自绘组件，纯 Lua、零第三方依赖。
+
+按钮、开关、输入框、单/多选、滑动条、滚动视口都自带状态与交互；布局用类似 flex 的
+`direction / gap / padding / align / justify / grow` 描述，不需要手写坐标。
+
+```lua
+local At = require("At.At")
+
+local card = At.Panel{
+    x = 40, y = 40, w = 380, h = "auto",
+    direction = "column", gap = 12, padding = 20,
+    background = "#242A34", radius = 16,
+}
+
+card:add(At.Label{ text = "设置", fontSize = 22 })
+card:add(At.TextInput{ w = "100%", placeholder = "昵称" })
+card:add(At.Switch{ value = true, onChange = function(v) print(v) end })
+card:add(At.Slider{ w = "100%", min = 0, max = 100, step = 5, value = 60 })
+
+function love.draw() card:draw() end
+```
+
+## 特性
+
+- **布局引擎**（`At.Panel` / `At.layout`）：`column`/`row`、`gap`、`padding`/`margin`、
+  数字/百分比/`auto` 尺寸、`grow` 瓜分剩余空间、`align`/`justify` 对齐，支持嵌套。
+- **组件**全部继承同一个基类，统一 `draw/update/mousepressed/mousereleased/measure/destroy` 协议：
+  `Panel`、`Label`、`Button`、`TextInput`、`Switch`、`Checkbox`、`RadioGroup`、`Slider`、`ScrollView`。
+- **交互细节**：按钮涟漪与拖出/拖回语义、开关左右拖动、滑动条拖动与方向键微调、输入框软键盘与光标、
+  唯一键盘焦点、点空白自动失焦。
+- **滚动视口**：裁剪、平滑滚动、松手惯性、可拖滚动条、悬停变宽、`scrollToVisible`。
+- **渲染细节**：坐标对齐整数像素、嵌套裁剪求交、阴影按层数归一化、1px 边框使用 rough 线型。
+- **自带无头测试**：不需要 LÖVE 也能跑逻辑回归。
+- **一键打包**：`./pack.sh` 生成 `.love`（不依赖 `zip`，有 `python3` 即可）。
+
+## 环境要求
+
+- [LÖVE](https://love2d.org/) **11.x**（LuaJIT / Lua 5.1 语义）
+- 无第三方 Lua 库、无 shader、无构建工具
+
+## 快速开始
+
+```bash
+git clone https://github.com/mifongjvav/AtLua.git
+cd AtLua
+love .
+```
+
+也可以打包成单个文件再运行：
+
+```bash
+./pack.sh && love AtLua.love
+```
+
+把 `At/` 目录和 `main.lua` 放进你自己的 LÖVE 项目即可使用；`main.lua` 是演示，可以删掉。
+
+### 接入自己的项目
+
+```lua
+local At = require("At.At")
+
+function love.load()   At.font.init(16) end          -- 必须先初始化字体
+function love.update(dt) At.update(dt) end            -- 涟漪/动画/平滑滚动
+function love.draw()   ui:draw() end                  -- ui 为任意容器/组件
+
+function love.mousepressed(x, y, b)  At.mousepressed(x, y, b)  end
+function love.mousereleased(x, y, b) At.mousereleased(x, y, b) end
+function love.wheelmoved(dx, dy)     At.wheelmoved(dx, dy)     end
+function love.textinput(t)           At.textinput(t)           end
+function love.keypressed(k)          At.keypressed(k)          end
+```
+
+组件创建即自动登记到注册表，事件由 `At.*` 统一派发；`At.Panel` 不接收事件，只负责排版。
+
+## 组件一览
+
+| 组件 | 作用 |
+| --- | --- |
+| `At.Panel` | 布局容器 / 卡片，支持背景、描边、圆角、阴影 |
+| `At.Label` | 文字标签，支持换行与对齐 |
+| `At.Button` | 按钮：悬停/按下/禁用、涟漪、居中文字、回调 |
+| `At.TextInput` | 单行输入框：焦点、光标闪烁、密码、长度限制、回车提交 |
+| `At.Switch` | 开关：点击或左右拖动切换，带过渡动画 |
+| `At.Checkbox` | 多选框 |
+| `At.RadioGroup` | 单选组（`value` 为 1 基下标） |
+| `At.Slider` | 滑动条：点击跳转、拖动、方向键微调、步长吸附 |
+| `At.ScrollView` | 可滚动视口：裁剪、平滑滚动、惯性、可拖滚动条 |
+
+## 布局速查（CSS 子集）
+
+| 本库 | CSS | 说明 |
+| --- | --- | --- |
+| `direction` | `flex-direction` | `column` / `row` |
+| `gap` | `gap` | 子项间距 |
+| `padding` / `margin` | 同名 | 数字或 `{ left, top, right, bottom }` |
+| `w` / `h` | `width` / `height` | 数字、`"50%"`、`"auto"` |
+| `grow` | `flex-grow` | 瓜分主轴剩余空间 |
+| `align` | `align-items` | `start` / `center` / `end` / `stretch` |
+| `justify` | `justify-content` | `start` / `center` / `end` / `space-between` |
+
+不支持 `flex-wrap`、`grid`、绝对定位、`z-index`。父容器没有确定宽度时百分比会退化成 `auto`。
+
+## 文档
+
+- [docs/README.md](docs/README.md) — 快速开始、事件模型、常见问题
+- [docs/layout.md](docs/layout.md) — 布局规则、尺寸与像素对齐、限制、示例
+- [docs/components.md](docs/components.md) — 每个组件的属性/方法/回调/示例
+
+## 测试
+
+无头逻辑测试，不需要 LÖVE（在项目根目录执行）：
+
+```bash
+lua test_smoke.lua      # 通过时打印 SMOKE OK
+```
+
+覆盖布局数值、按压会话、焦点转移、开关拖动、滑动条吸附、滚动/惯性、裁剪求交、像素对齐、
+许可证文件与文档同步等断言。语法检查：
+
+```bash
+for f in main.lua At/*.lua test_smoke.lua; do luac -p "$f"; done
+```
+
+## 打包
+
+```bash
+./pack.sh              # 生成 AtLua.love
+./pack.sh MyGame       # 生成 MyGame.love
+```
+
+`.love` 就是 zip 包，可直接用 `love AtLua.love` 运行，或改名/分发。脚本会排除
+`docs/`、`*.md`、`test_smoke.lua`，但**保留 `LICENSE` 与 `LICENSES/`**（字体的 OFL 要求）。
+
+## 目录结构
+
+```
+main.lua      # 演示程序
+At/           # 组件库本体
+docs/         # 使用文档
+LICENSES/     # 第三方许可全文（随包分发）
+test_smoke.lua# 无头测试
+pack.sh       # 打包脚本
+AGENTS.md     # 给 AI 代理/协作者的约定与陷阱
+```
+
+## 已知限制
+
+- 文本输入光标固定在末尾，不支持选区、左右移动与中间插入。
+- 布局不支持换行（`flex-wrap`）、grid、绝对定位；百分比需要父容器宽度已知。
+- 阴影是多次绘制叠加的近似模糊，层数越多越柔和也越耗绘制调用。
+- 无自动化渲染测试，圆角、阴影、字体观感需在真机确认。
+
+## 许可证
+
+- 项目代码：**MIT**，见 [LICENSE](LICENSE)。
+- 字体：`At/font/font.ttf`（Noto Sans SC Bold 2.004，© Adobe / Google）与
+  `At/font/emoji.ttf`（Noto Emoji 3.005，© Google LLC）均为 **SIL Open Font License 1.1**。
+  许可全文与逐字体版权声明见 [LICENSES/](LICENSES/)，总览见
+  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+OFL 要求随字体分发版权声明与许可全文，因此 `LICENSE` 与 `LICENSES/` 也会被打进 `.love`。
+
+## 贡献
+
+- 改代码前请读 [AGENTS.md](AGENTS.md)：里面有生命周期顺序、尺寸/像素约定、以及一批
+  "看起来能顺手改、实际会坏"的陷阱。
+- 提交前跑 `lua test_smoke.lua`；改动行为时补充断言。
+- 修改对外 API 时同步更新 `docs/` 与 README 的组件/布局表格。
