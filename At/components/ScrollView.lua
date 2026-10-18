@@ -339,9 +339,9 @@ function proto:layout()
 	end
 
 	-- 内容整体位移对齐到像素：拖动滚动时文字才不会发虚/抖动。
-	-- 过冲量只在拖动/回弹时非零，正常滚动不受影响。
-	content.x = pixel.round(self.x + pl - self.scrollX + (self._overX or 0))
-	content.y = pixel.round(self.y + pt - self.scrollY + (self._overY or 0))
+	-- 触边过冲只驱动边缘光，不推开内容（避免在容器里留出空隙、看起来像画到外面）。
+	content.x = pixel.round(self.x + pl - self.scrollX)
+	content.y = pixel.round(self.y + pt - self.scrollY)
 end
 
 -- ---------- 滚动条几何 ----------
@@ -443,6 +443,12 @@ function proto:_barDragTo(my)
 		t = 1
 	end
 
+	if t <= 0 then
+		self:_pulseEdge("top")
+	elseif t >= 1 then
+		self:_pulseEdge("bottom")
+	end
+
 	self:setScroll(t * (self._maxScrollY or 0))
 end
 
@@ -459,6 +465,12 @@ function proto:_hbarDragTo(mx)
 		t = 0
 	elseif t > 1 then
 		t = 1
+	end
+
+	if t <= 0 then
+		self:_pulseEdge("left")
+	elseif t >= 1 then
+		self:_pulseEdge("right")
 	end
 
 	self:setScrollX(t * (self._maxScrollX or 0))
@@ -527,41 +539,28 @@ function proto:_drawScrollbars()
 	end
 end
 
--- 触顶/触底：边缘渐隐光带。拖动时强度跟过冲量走，滚轮/惯性顶到边界时用脉冲闪一下。
--- 逐像素画渐变（smoothstep），并尽量裁剪到圆角，避免粗色带和"画到容器外"的观感。
+-- 触顶/触底：在容器边缘叠一条渐隐光带（始终在容器内）。
+-- 拖动时强度跟过冲量走，滚轮/惯性/滚动条拖到头时用脉冲闪一下。
 function proto:_drawEdgeEffects()
 	if not self.edgeEffect then
 		return
 	end
 
-	local maxOver = self.overscrollMax or 70
-	local pulses = self._edgePulse or {}
-	local overX, overY = self._overX or 0, self._overY or 0
 	local canY = (self._maxScrollY or 0) > 0
 	local canX = (self._maxScrollX or 0) > 0
 	if not canY and not canX then
 		return
 	end
 
+	local maxOver = math.max(1, self.overscrollMax or 70)
+	local pulses = self._edgePulse or {}
+	local overX, overY = self._overX or 0, self._overY or 0
 	local baseAlpha = (self.alpha or 255) / 255
+
 	local r = self:rect()
 	local x, y = pixel.xy(r.x, r.y)
 	local w, h = pixel.round(r.w), pixel.round(r.h)
-	local radius = r.radius or 0
 	local size = math.max(2, math.floor(self.edgeGlowSize or 28))
-
-	love.graphics.push("all")
-
-	-- 圆角容器用 stencil 把光带裁进圆角内；失败时退回矩形 scissor（外层的 clip）
-	local stencilOk = false
-	if radius > 0 and love.graphics.stencil and love.graphics.setStencilTest then
-		stencilOk = pcall(function()
-			love.graphics.stencil(function()
-				love.graphics.rectangle("fill", x, y, w, h, radius)
-			end, "replace", 1)
-			love.graphics.setStencilTest("greater", 0)
-		end)
-	end
 
 	local function drawBand(side, pull, pulse)
 		local distance = math.abs(pull or 0)
@@ -570,14 +569,10 @@ function proto:_drawEdgeEffects()
 			return
 		end
 
-		-- 拖出来的空隙只有 distance 像素：光带不长过它，避免糊到内容上；
-		-- 滚轮/惯性只有脉冲时退化成贴边的细高光（10px）。
-		local thickness = math.min(size, math.max(distance, (pulse or 0) > 0.01 and 10 or 0))
-		thickness = math.max(1, math.floor(thickness))
-		local last = math.max(1, thickness - 1)
-
-		local peak = 0.5 * amount * baseAlpha
-		for i = 0, thickness - 1 do
+		-- 宽度固定，靠 alpha 平滑变化；光带只覆盖容器边缘，不会画到外面
+		local peak = 0.6 * amount * baseAlpha
+		local last = math.max(1, size - 1)
+		for i = 0, size - 1 do
 			-- 0 = 贴边缘，1 = 光带内侧；smoothstep 让起止都不出现硬边
 			local t = i / last
 			local f = 1 - t
@@ -606,17 +601,6 @@ function proto:_drawEdgeEffects()
 		drawBand("left", overX > 0 and overX or 0, pulses.left)
 		drawBand("right", overX < 0 and -overX or 0, pulses.right)
 	end
-
-	if stencilOk then
-		pcall(love.graphics.setStencilTest)
-		-- 复位本区域的模板值，避免影响后面的组件
-		pcall(function()
-			love.graphics.stencil(function()
-				love.graphics.rectangle("fill", x, y, w, h, radius)
-			end, "replace", 0)
-		end)
-	end
-	love.graphics.pop()
 end
 
 -- ---------- 命中与事件 ----------

@@ -670,7 +670,7 @@ end
 | `scrollbarMargin` | 数字 | `2` | 滚动条与视口边缘的间距 |
 | `edgeEffect` | 布尔 | `true` | 触顶/触底时的橡皮筋过冲与边缘光 |
 | `edgeGlowColor` / `edgeGlowSize` | hex / 数字 | `"#9FB3D3"` / `28` | 边缘光颜色 / 光带宽度 |
-| `overscrollMax` / `overscrollResistance` | 数字 | `70` / `0.55` | 最大拉出像素 / 拉出阻力（越小越硬） |
+| `overscrollMax` / `overscrollResistance` | 数字 | `70` / `0.55` | 光带达到最亮所需的过冲量 / 拉动阻力（越小越硬） |
 | `edgeSpringStiffness` / `edgeSpringDamping` | 数字 | `380` / `30` | 松手回弹的弹簧刚度 / 阻尼 |
 | `scrollbarColor` / `scrollbarThumbColor` | hex 字符串 | `"#3A4150"` / `"#9FB3D3"` | 轨道/滑块颜色 |
 | `scrollbarActiveWidth` | 数字 | `8` | 指针靠近或拖动滚动条时的宽度（离开后缩回 `scrollbarWidth`） |
@@ -713,7 +713,8 @@ end
 - `scrollY` 是浮点数（平滑动画需要），绘制时会取整；`onScroll` 在平滑滚动过程中会**逐帧触发**，需要节流的话自己处理。
 - 右侧滚动条**可以拖**：按在滑块上拖动直接滚动；按在轨道空白处会跳转到对应位置。命中区按 `scrollbarHitWidth` 放大，手指也好按。
 - 指针碰到滚动条时它会**变宽**（`scrollbarWidth` → `scrollbarActiveWidth`，带缓动），离开后缩回，方便发现与触控。
-- **触顶/触底有橡皮筋效果**：拖到边界后继续拉，内容会多滑出一小段（`overscrollMax` 封顶、`overscrollResistance` 控制阻力），松手弹簧回弹，并在拉出的空隙里绘制渐隐光带（`edgeGlowColor` / `edgeGlowSize` 是最大宽度，光带不会长过空隙、不会盖到内容上）。滚轮或惯性顶到边界时没有过冲，但会在边缘闪一条 10px 的贴边高光。`edgeEffect = false` 可整体关闭。
+- **触顶/触底有边缘光效**：拖到边界后继续拉，内容不会离开边界，而是累积“过冲量”让边缘渐隐光带变亮（`overscrollMax` / `overscrollResistance` 控制达到最亮所需的拉动量与阻力），松手后光带由弹簧淡出。滚轮、惯性或拖动滚动条顶到两端时也会触发同样的边缘光。`edgeGlowColor` / `edgeGlowSize` 分别是颜色与光带宽度，`edgeEffect = false` 可整体关闭。
+- **光效始终画在容器内**：光带叠加在容器边缘的内容之上，并用视口裁剪，不会推开内容、不会露出空隙，也不会画到容器外。
 - **触边特效按轴隔离**：只有存在纵向滚动空间时才可能出现上下光带，只有存在横向滚动空间时才可能出现左右光带；单向滚动视口不会被另一轴的拖动带出特效。
 - 过冲只是绘制偏移（内部 `_overY` / `_overX`），**`scrollY` / `scrollX` 始终夹在合法范围内**，不会污染滚动 API 与 `onScroll`；`content.y` 在绘制时才会叠加过冲量。
 - 裁剪会与外层裁剪**求交**（见 `At.clip`），所以嵌套滚动、或滚动视口里再放输入框，都不会把内容画到视口外。

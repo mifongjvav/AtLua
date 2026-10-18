@@ -1499,7 +1499,7 @@ check(edgeView._overY > 0, "顶部下拉产生过冲: " .. edgeView._overY)
 check(edgeView._edgePulse.top == 0, "过冲光带由拉动量驱动，不额外打脉冲")
 local rectsBefore = draws.rect
 edgeView:draw()
-check(edgeView.content.y > restingY, "过冲把内容往下拉")
+check(edgeView.content.y == restingY, "过冲只画边缘光，不把内容推出容器")
 check(draws.rect > rectsBefore, "边缘光带参与绘制")
 
 mouseDown = false
@@ -1553,6 +1553,15 @@ edgeView._edgePulse.top = 0
 check(edgeView:wheelmoved(0, 1) == true, "滚轮在触顶时仍被消费")
 check(edgeView._edgePulse.top > 0, "滚轮触顶触发脉冲")
 
+-- 纵向滚动条拖到两端也会触发
+edgeView:setScroll(0)
+edgeView._edgePulse.top = 0
+edgeView:_barDragTo(edgeView.y + edgeView.h + 10)
+check(edgeView._edgePulse.bottom > 0, "纵向滚动条拖到底触发底部脉冲")
+edgeView._edgePulse.top = 0
+edgeView:_barDragTo(edgeView.y - 10)
+check(edgeView._edgePulse.top > 0, "纵向滚动条拖到顶触发顶部脉冲")
+
 -- 横向过冲与纵向互不影响
 local wideView = At.ScrollView({ x = 0, y = 0, w = 200, h = 100, content = At.Panel({ w = 500, h = 100 }) })
 wideView:layout()
@@ -1565,6 +1574,33 @@ mouseX = 50
 wideView:update(1 / 60)
 check(wideView._overX < 0, "右边界继续左拖产生横向过冲: " .. wideView._overX)
 check(wideView._edgePulse.right == 0, "靠过冲量画右侧光带，不额外打脉冲")
+
+-- 光带不能画到容器外（横竖都靠视口裁剪）
+local realRect = love.graphics.rectangle
+local escaped = false
+love.graphics.rectangle = function(mode, rx, ry, rw, rh, rr)
+	if
+		rx < wideView.x - 0.5
+		or ry < wideView.y - 0.5
+		or rx + rw > wideView.x + wideView.w + 0.5
+		or ry + rh > wideView.y + wideView.h + 0.5
+	then
+		escaped = true
+	end
+	realRect(mode, rx, ry, rw, rh, rr)
+end
+wideView:draw()
+love.graphics.rectangle = realRect
+check(not escaped, "边缘光带没有画到 ScrollView 之外")
+
+-- 拖动滚动条到两端也能触发边缘光（不只有拖动内容）
+wideView:setScrollX(0)
+wideView._edgePulse.right = 0
+wideView:_hbarDragTo(wideView.x + wideView.w + 10)
+check(wideView._edgePulse.right > 0, "横向滚动条拖到底触发右侧脉冲")
+wideView._edgePulse.left = 0
+wideView:_hbarDragTo(wideView.x - 10)
+check(wideView._edgePulse.left > 0, "横向滚动条拖到顶触发左侧脉冲")
 check(wideView._overY == 0, "横向过冲不影响纵向")
 mouseDown = false
 wideView:update(1 / 60)

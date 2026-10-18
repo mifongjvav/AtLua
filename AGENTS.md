@@ -239,7 +239,7 @@ At.Panel{
 28. `pack.sh` 直接覆盖同名 `.love`，排除 `pack.sh`、`test_*.lua`、`AGENTS.md`、`*.md`、`docs/`、`*.love`、`*.zip`、`*.bash`、`*.log`、`*.tmp`、`.gitignore` 与 `.git`/`.vscode`/`.idea`/`__pycache__`/`temp_package`/`node_modules`。排除规则在 python 与 zip 两条分支各写一份，新增产物类型时两处都要改。
 29. **动画不要自己积分**：手写 `value = value + (target - value) * (1 - exp(-speed*dt))` 在不同帧率下手感不同、且没法过冲。统一用 `At.motion.spring`（固定子步 1/240s），把它放在 `_tick(dt)`（可见组件）或组件自己的 `update(dt)`（隐藏时还要继续的动画，如控制台关闭）里推进；`animate = false` 时必须 `:snap()` 到目标，保证测试与低性能路径立即一致。绘制时把弹簧值 `math.min/max` 夹到用途需要的范围（例如 alpha 用 `min(1, v)`，否则 `>1` 会让半透明判定失效）。
 30. **控制台的开关动画跨越 `visible`**：`hide()` 只把 `visible` 置 `false`，窗口还要淡出，所以 `Console:update` 独立推进弹簧、`draw` 在 `visible or open > 0.001` 时继续画窗口，`open < 0.999` 时画 `LOG` 标签并让标签随进度淡出。动画期间窗口不接收鼠标事件（`visible == false`），这是有意的；改这里别把"隐藏"直接当成"不画"。
-31. **过冲不是 `scrollY`**：`ScrollView` 的触顶/触底过冲保存在 `_overX` / `_overY`，只作为绘制偏移叠加到 `content.x/y`；`scrollY` / `scrollX` 和 `onScroll` 永远夹在合法范围内。拖拽时用"期望位置 − 夹紧后位置"的差值累积过冲，松手由 `edgeSpring` 回弹；滚轮/惯性顶到边界只点亮 `_edgePulse`，不产生过冲。不要把 over 写回 `scrollY`，否则滚动条位置、`scrollToVisible` 与平滑滚动都会算错。另外**触边特效必须按轴隔离**：`_pulseEdge`、`tickAxis`、拖拽速度记录三处都要检查对应轴的 `maxScroll > 0`，否则横滚视口垂直拖动会在松手惯性的第一帧冒上下光；光带宽度也别超过拉出的空隙（会盖到内容上）。
+31. **过冲不是 `scrollY`，也不移动内容**：`ScrollView` 的触顶/触底过冲保存在 `_overX` / `_overY`，**只驱动边缘光带的强度**；`scrollX` / `scrollY`、`onScroll` 和 `content.x/y` 始终夹在合法范围内（内容不会被推出容器、不会留出空隙，光带叠加在容器边缘的内容上）。拖拽时用"期望位置 − 夹紧后位置"的差值累积过冲，松手由 `edgeSpring` 淡出；滚轮、惯性、拖动滚动条顶到两端时点亮 `_edgePulse`。不要把 over 写回 `scrollY`，也不要把 over 加到 `content.x/y` 上（会看起来画到容器外）。另外**触边特效必须按轴隔离**：`_pulseEdge`、`tickAxis`、拖拽速度记录三处都要检查对应轴的 `maxScroll > 0`，否则横滚视口垂直拖动会在松手惯性的第一帧冒上下光。
 
 ## 8. 改动检查清单
 
@@ -251,7 +251,7 @@ At.Panel{
 - [ ] 绘制后颜色/字体/线宽/线型/scissor 已恢复；嵌套裁剪走 `At.clip`；文字与形状坐标已对齐整数像素。
 - [ ] 对外 API 变了：更新 `docs/`（第 10 节）、本文件第 3/5 节、`main.lua` 演示与测试。
 - [ ] 新增可配置项时放进 `At/config.lua` 并同步 `docs/README.md` 的配置表与 `At.config.apply()`。
-- [ ] 有 LÖVE 时 `love .` 手动过一遍：悬停、按下、拖出/拖回、输入、开关动画、拖动滑动条、进度条过渡、滚轮平滑滚动、拖拽惯性、触顶/触底回弹与边缘光。
+- [ ] 有 LÖVE 时 `love .` 手动过一遍：悬停、按下、拖出/拖回、输入、开关动画、拖动滑动条、进度条过渡、滚轮平滑滚动、拖拽惯性、触顶/触底光效与滚动条端点反馈。
 - [ ] 涉及平滑滚动/惯性的断言必须模拟若干帧（`At.update(1/60)`），不能只改目标就断言位置。
 - [ ] 日志改动覆盖等级过滤、格式（字符串与函数）、缓冲裁剪；控制台改动覆盖显隐、拖动、滚动、开关动画。
 - [ ] 动画改动模拟多帧 `At.update(1/60)` 再断言（不能改完目标就断言最终值），并覆盖 `animate = false` 的立即落位。
