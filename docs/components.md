@@ -713,7 +713,8 @@ end
 - `scrollY` 是浮点数（平滑动画需要），绘制时会取整；`onScroll` 在平滑滚动过程中会**逐帧触发**，需要节流的话自己处理。
 - 右侧滚动条**可以拖**：按在滑块上拖动直接滚动；按在轨道空白处会跳转到对应位置。命中区按 `scrollbarHitWidth` 放大，手指也好按。
 - 指针碰到滚动条时它会**变宽**（`scrollbarWidth` → `scrollbarActiveWidth`，带缓动），离开后缩回，方便发现与触控。
-- **触顶/触底有橡皮筋效果**：拖到边界后继续拉，内容会多滑出一小段（`overscrollMax` 封顶、`overscrollResistance` 控制阻力），松手弹簧回弹，并向对应边缘渐隐泛光（`edgeGlowColor` / `edgeGlowSize`）。滚轮或惯性顶到边界时没有过冲，但会闪一次边缘光作为反馈。`edgeEffect = false` 可整体关闭。
+- **触顶/触底有橡皮筋效果**：拖到边界后继续拉，内容会多滑出一小段（`overscrollMax` 封顶、`overscrollResistance` 控制阻力），松手弹簧回弹，并在拉出的空隙里绘制渐隐光带（`edgeGlowColor` / `edgeGlowSize` 是最大宽度，光带不会长过空隙、不会盖到内容上）。滚轮或惯性顶到边界时没有过冲，但会在边缘闪一条 10px 的贴边高光。`edgeEffect = false` 可整体关闭。
+- **触边特效按轴隔离**：只有存在纵向滚动空间时才可能出现上下光带，只有存在横向滚动空间时才可能出现左右光带；单向滚动视口不会被另一轴的拖动带出特效。
 - 过冲只是绘制偏移（内部 `_overY` / `_overX`），**`scrollY` / `scrollX` 始终夹在合法范围内**，不会污染滚动 API 与 `onScroll`；`content.y` 在绘制时才会叠加过冲量。
 - 裁剪会与外层裁剪**求交**（见 `At.clip`），所以嵌套滚动、或滚动视口里再放输入框，都不会把内容画到视口外。
 - 子组件的坐标会被滚动位移实时改写，所以命中判断、`scrollToVisible` 都用当前的 `y`。

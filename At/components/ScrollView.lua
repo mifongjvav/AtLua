@@ -134,11 +134,20 @@ end
 
 -- 触边时点亮对应边缘（top/bottom/left/right），由 _tick 衰减
 function proto:_pulseEdge(side)
-	if not self.edgeEffect then
+	if not self.edgeEffect or not side then
 		return
 	end
+	-- 横向滚动不触发上下边缘，纵向滚动不触发左右边缘
+	if side == "top" or side == "bottom" then
+		if (self._maxScrollY or 0) <= 0 then
+			return
+		end
+	elseif (self._maxScrollX or 0) <= 0 then
+		return
+	end
+
 	local pulses = self._edgePulse
-	if pulses and side and pulses[side] ~= nil then
+	if pulses and pulses[side] ~= nil then
 		pulses[side] = 1
 	end
 end
@@ -308,6 +317,26 @@ function proto:layout()
 	self.scrollY = self:_clampScroll(self.scrollY)
 	self._scrollTargetX = self:_clampScrollX(self._scrollTargetX or self.scrollX)
 	self._scrollTarget = self:_clampScroll(self._scrollTarget or self.scrollY)
+
+	-- 没有滚动空间的轴不该保留过冲或触边光（内容变短/单向滚动时尤其明显）
+	if self._maxScrollY <= 0 then
+		self._overY = 0
+		if self._overSpringY then
+			self._overSpringY:snap(0)
+		end
+		if self._edgePulse then
+			self._edgePulse.top, self._edgePulse.bottom = 0, 0
+		end
+	end
+	if self._maxScrollX <= 0 then
+		self._overX = 0
+		if self._overSpringX then
+			self._overSpringX:snap(0)
+		end
+		if self._edgePulse then
+			self._edgePulse.left, self._edgePulse.right = 0, 0
+		end
+	end
 
 	-- 内容整体位移对齐到像素：拖动滚动时文字才不会发虚/抖动。
 	-- 过冲量只在拖动/回弹时非零，正常滚动不受影响。
@@ -499,6 +528,7 @@ function proto:_drawScrollbars()
 end
 
 -- 触顶/触底：边缘渐隐光带。拖动时强度跟过冲量走，滚轮/惯性顶到边界时用脉冲闪一下。
+-- 逐像素画渐变（smoothstep），并尽量裁剪到圆角，避免粗色带和"画到容器外"的观感。
 function proto:_drawEdgeEffects()
 	if not self.edgeEffect then
 		return
@@ -507,45 +537,86 @@ function proto:_drawEdgeEffects()
 	local maxOver = self.overscrollMax or 70
 	local pulses = self._edgePulse or {}
 	local overX, overY = self._overX or 0, self._overY or 0
-	local baseAlpha = (self.alpha or 255) / 255
+	local canY = (self._maxScrollY or 0) > 0
+	local canX = (self._maxScrollX or 0) > 0
+	if not canY and not canX then
+		return
+	end
 
-	local steps = 5
-	local size = self.edgeGlowSize or 28
+	local baseAlpha = (self.alpha or 255) / 255
+	local r = self:rect()
+	local x, y = pixel.xy(r.x, r.y)
+	local w, h = pixel.round(r.w), pixel.round(r.h)
+	local radius = r.radius or 0
+	local size = math.max(2, math.floor(self.edgeGlowSize or 28))
+
+	love.graphics.push("all")
+
+	-- 圆角容器用 stencil 把光带裁进圆角内；失败时退回矩形 scissor（外层的 clip）
+	local stencilOk = false
+	if radius > 0 and love.graphics.stencil and love.graphics.setStencilTest then
+		stencilOk = pcall(function()
+			love.graphics.stencil(function()
+				love.graphics.rectangle("fill", x, y, w, h, radius)
+			end, "replace", 1)
+			love.graphics.setStencilTest("greater", 0)
+		end)
+	end
 
 	local function drawBand(side, pull, pulse)
-		local amount = math.max(pulse or 0, math.min(1, math.abs(pull) / maxOver))
+		local distance = math.abs(pull or 0)
+		local amount = math.max(pulse or 0, math.min(1, distance / maxOver))
 		if amount <= 0.01 then
 			return
 		end
 
-		local thickness = math.max(1, math.ceil(size / steps))
-		local r = self:rect()
-		local x, y = pixel.xy(r.x, r.y)
-		local w, h = pixel.round(r.w), pixel.round(r.h)
+		-- 拖出来的空隙只有 distance 像素：光带不长过它，避免糊到内容上；
+		-- 滚轮/惯性只有脉冲时退化成贴边的细高光（10px）。
+		local thickness = math.min(size, math.max(distance, (pulse or 0) > 0.01 and 10 or 0))
+		thickness = math.max(1, math.floor(thickness))
+		local last = math.max(1, thickness - 1)
 
-		for i = 1, steps do
-			local t = (i - 0.5) / steps -- 0 = 贴着边缘，1 = 最里面
-			local alpha = math.floor(255 * amount * (1 - t) * 0.55 * baseAlpha)
+		local peak = 0.5 * amount * baseAlpha
+		for i = 0, thickness - 1 do
+			-- 0 = 贴边缘，1 = 光带内侧；smoothstep 让起止都不出现硬边
+			local t = i / last
+			local f = 1 - t
+			f = f * f * (3 - 2 * f)
+			local alpha = math.floor(255 * peak * f)
 			if alpha > 0 then
 				color.setColor(self.edgeGlowColor, alpha)
-				local offset = (i - 1) * thickness
 				if side == "top" then
-					love.graphics.rectangle("fill", x, y + offset, w, thickness)
+					love.graphics.rectangle("fill", x, y + i, w, 1)
 				elseif side == "bottom" then
-					love.graphics.rectangle("fill", x, y + h - offset - thickness, w, thickness)
+					love.graphics.rectangle("fill", x, y + h - 1 - i, w, 1)
 				elseif side == "left" then
-					love.graphics.rectangle("fill", x + offset, y, thickness, h)
+					love.graphics.rectangle("fill", x + i, y, 1, h)
 				else
-					love.graphics.rectangle("fill", x + w - offset - thickness, y, thickness, h)
+					love.graphics.rectangle("fill", x + w - 1 - i, y, 1, h)
 				end
 			end
 		end
 	end
 
-	drawBand("top", overY > 0 and overY or 0, pulses.top)
-	drawBand("bottom", overY < 0 and -overY or 0, pulses.bottom)
-	drawBand("left", overX > 0 and overX or 0, pulses.left)
-	drawBand("right", overX < 0 and -overX or 0, pulses.right)
+	if canY then
+		drawBand("top", overY > 0 and overY or 0, pulses.top)
+		drawBand("bottom", overY < 0 and -overY or 0, pulses.bottom)
+	end
+	if canX then
+		drawBand("left", overX > 0 and overX or 0, pulses.left)
+		drawBand("right", overX < 0 and -overX or 0, pulses.right)
+	end
+
+	if stencilOk then
+		pcall(love.graphics.setStencilTest)
+		-- 复位本区域的模板值，避免影响后面的组件
+		pcall(function()
+			love.graphics.stencil(function()
+				love.graphics.rectangle("fill", x, y, w, h, radius)
+			end, "replace", 0)
+		end)
+	end
+	love.graphics.pop()
 end
 
 -- ---------- 命中与事件 ----------
@@ -703,10 +774,11 @@ end
 function proto:_tickEdges(dt)
 	local pulses = self._edgePulse
 	if pulses then
-		local decay = (dt or 0) * 3
+		local k = math.exp(-4.5 * (dt or 0))
 		for side in pairs(pulses) do
 			if pulses[side] > 0 then
-				pulses[side] = math.max(0, pulses[side] - decay)
+				local value = pulses[side] * k
+				pulses[side] = value < 0.01 and 0 or value
 			end
 		end
 	end
@@ -729,6 +801,18 @@ local function tickAxis(self, dt, vertical)
 	local velocity = vertical and self._scrollVelocity or self._scrollVelocityX
 	local position = vertical and self.scrollY or self.scrollX
 	local maxValue = vertical and (self._maxScrollY or 0) or (self._maxScrollX or 0)
+
+	-- 没有滚动空间的轴不参与惯性/脉冲，避免"横滚触发上下光"这类串轴
+	if maxValue <= 0 then
+		if vertical then
+			self._scrollVelocity = 0
+			self._scrollTarget = 0
+		else
+			self._scrollVelocityX = 0
+			self._scrollTargetX = 0
+		end
+		return
+	end
 
 	if math.abs(velocity or 0) > 0.01 then
 		local rawValue = position + velocity * dt * 60
@@ -835,11 +919,6 @@ function proto:_tick(dt)
 					self._overY = self:_clampOver(self._overY - excess * (self.overscrollResistance or 0.55))
 					self._overSpringY.value = self._overY
 					self._overSpringY.velocity = 0
-					if desiredY < 0 then
-						self:_pulseEdge("top")
-					else
-						self:_pulseEdge("bottom")
-					end
 				else
 					self._overY = motion.damp(self._overY, 0, 22, dt)
 					self._overSpringY.value = self._overY
@@ -853,11 +932,6 @@ function proto:_tick(dt)
 					self._overX = self:_clampOver(self._overX - excess * (self.overscrollResistance or 0.55))
 					self._overSpringX.value = self._overX
 					self._overSpringX.velocity = 0
-					if desiredX < 0 then
-						self:_pulseEdge("left")
-					else
-						self:_pulseEdge("right")
-					end
 				else
 					self._overX = motion.damp(self._overX, 0, 22, dt)
 					self._overSpringX.value = self._overX
@@ -865,9 +939,18 @@ function proto:_tick(dt)
 				end
 			end
 
-			-- 记录速度（像素/帧），松手后转成惯性
-			self._dragVelocity = (self._dragVelocity or 0) * 0.6 + -dy * 0.4
-			self._dragVelocityX = (self._dragVelocityX or 0) * 0.6 + -dx * 0.4
+			-- 记录速度（像素/帧），松手后转成惯性；不可滚动轴不要记录，
+			-- 否则松手后会在另一轴上产生一次边界脉冲
+			if maxY > 0 then
+				self._dragVelocity = (self._dragVelocity or 0) * 0.6 + -dy * 0.4
+			else
+				self._dragVelocity = 0
+			end
+			if maxX > 0 then
+				self._dragVelocityX = (self._dragVelocityX or 0) * 0.6 + -dx * 0.4
+			else
+				self._dragVelocityX = 0
+			end
 			return
 		end
 		self._dragging = false

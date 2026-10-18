@@ -1496,7 +1496,7 @@ mouseY = 60
 edgeView:update(1 / 60)
 check(edgeView.scrollY == 0, "触顶后 scrollY 仍夹在 0")
 check(edgeView._overY > 0, "顶部下拉产生过冲: " .. edgeView._overY)
-check(edgeView._edgePulse.top > 0, "触顶时边缘脉冲点亮")
+check(edgeView._edgePulse.top == 0, "过冲光带由拉动量驱动，不额外打脉冲")
 local rectsBefore = draws.rect
 edgeView:draw()
 check(edgeView.content.y > restingY, "过冲把内容往下拉")
@@ -1526,6 +1526,22 @@ for _ = 1, 120 do
 end
 check(math.abs(edgeView._overY) < 0.1, "底部过冲也会回弹")
 
+-- 纵滚容器上横向拖动不应触发左右特效（反之亦然）
+edgeView:setScroll(0)
+mouseDown = true
+mouseX, mouseY = 100, 30
+edgeView:mousepressed(100, 30, 1)
+mouseX = 180
+edgeView:update(1 / 60)
+check(edgeView._overX == 0, "纵滚容器不产生横向过冲: " .. edgeView._overX)
+check(edgeView._edgePulse.left == 0 and edgeView._edgePulse.right == 0, "纵滚容器不触发左右特效")
+mouseDown = false
+edgeView:update(1 / 60)
+for _ = 1, 60 do
+	edgeView:update(1 / 60)
+end
+check(edgeView._edgePulse.left == 0 and edgeView._edgePulse.right == 0, "纵滚容器松手后也没有左右脉冲")
+
 -- 滚轮顶到边界：没有过冲也要有触边脉冲
 edgeView:setScroll(edgeView:maxScroll())
 edgeView._edgePulse.bottom = 0
@@ -1548,7 +1564,7 @@ wideView:mousepressed(150, 20, 1)
 mouseX = 50
 wideView:update(1 / 60)
 check(wideView._overX < 0, "右边界继续左拖产生横向过冲: " .. wideView._overX)
-check(wideView._edgePulse.right > 0, "右边界过冲点亮右侧脉冲")
+check(wideView._edgePulse.right == 0, "靠过冲量画右侧光带，不额外打脉冲")
 check(wideView._overY == 0, "横向过冲不影响纵向")
 mouseDown = false
 wideView:update(1 / 60)
@@ -1556,6 +1572,22 @@ for _ = 1, 120 do
 	wideView:update(1 / 60)
 end
 check(math.abs(wideView._overX) < 0.1, "横向过冲回弹收敛")
+
+-- 横滚容器上垂直拖动不应触发上下特效
+wideView:setScrollX(0)
+mouseDown = true
+mouseX, mouseY = 100, 20
+wideView:mousepressed(100, 20, 1)
+mouseY = 80
+wideView:update(1 / 60)
+check(wideView._overY == 0, "横滚容器不产生纵向过冲: " .. wideView._overY)
+check(wideView._edgePulse.top == 0 and wideView._edgePulse.bottom == 0, "横滚容器不触发上下特效")
+mouseDown = false
+wideView:update(1 / 60)
+for _ = 1, 60 do
+	wideView:update(1 / 60)
+end
+check(wideView._edgePulse.top == 0 and wideView._edgePulse.bottom == 0, "横滚容器松手后也没有上下脉冲")
 wideView:destroy()
 
 -- edgeEffect = false 时不产生过冲
