@@ -8,7 +8,7 @@
 
 - `At/` 是库本体（命名空间 `At`）。核心是**组件式**用法：组件创建即登记到注册表，事件由 `At.update / At.mousepressed / At.mousereleased / At.textinput / At.keypressed` 统一分发。
 - **布局**：`At.Panel` 提供 CSS 子集式排版（column/row、gap、padding、margin、百分比、auto、grow、align、justify），子组件不需要手写坐标。
-- **组件**：`At.Button`、`At.Label`、`At.TextInput`、`At.Switch`、`At.Checkbox`、`At.RadioGroup`、`At.Slider`、`At.ScrollView`、`At.Console`，全部继承 `At.Component` 基类。
+- **组件**：`At.Button`、`At.Label`、`At.TextInput`、`At.Switch`、`At.Checkbox`、`At.RadioGroup`、`At.Slider`、`At.ProgressBar`、`At.LoadingBar`、`At.ScrollView`、`At.Console`，全部继承 `At.Component` 基类。
 - **日志**：`At.log` 提供五级日志、可配置格式与条目缓冲；`At.Console` 显示这些日志。
 - 仍保留**立即模式**函数 `At.button(...)`（只画不记状态，无涟漪），仅供旧代码使用。
 - `main.lua` 是演示：一张卡片里排了全部组件。
@@ -85,7 +85,8 @@ At/
     log.lua         #   日志：等级、格式、缓冲、stdout、文件
   components/       # 具体组件
     Panel.lua Label.lua Button.lua TextInput.lua Switch.lua Checkbox.lua
-    RadioGroup.lua Slider.lua ScrollView.lua Console.lua
+    RadioGroup.lua Slider.lua ProgressBar.lua LoadingBar.lua ScrollView.lua
+    Console.lua
   effects/          # 视觉效果
     Ripple.lua      #   涟漪发射器
     blur.lua        #   背景模糊：canvas 快照 + 可插拔算法
@@ -156,7 +157,9 @@ At.Panel{
 | `At.Checkbox` | `text, checked, size, gap, checkColor` | `onChange(checked,self)` |
 | `At.RadioGroup` | `options, value(1 基), direction, gap, size, selectedColor` | `onChange(index,label,self)` |
 | `At.Slider` | `min,max,step,value, showValue, trackColor, fillColor, thumbColor` | `onChange(value,self)` |
-| `At.ScrollView` | `content, w, h, scrollX, scrollY, scrollbar, wheelStep, drag, smooth, smoothSpeed, momentum, padding` | `onScroll(value,maxScroll,self,axis)` |
+| `At.ProgressBar` | `value(0..1), w, h, radius, trackColor, fillColor, animate, springStiffness/springDamping` | `onChange(value,self)` |
+| `At.LoadingBar` | `w, h, radius, trackColor, fillColor, speed, segmentRatio, minSegment, running` | 无 |
+| `At.ScrollView` | `content, w, h, scrollX, scrollY, scrollbar, wheelStep, drag, smooth, smoothSpeed, momentum, padding, edgeEffect, edgeGlowColor/Size, overscrollMax, overscrollResistance` | `onScroll(value,maxScroll,self,axis)` |
 | `At.Console` | `w, h, visible, title, headerH, padding, levelColors, alpha, fontSize, animate, springStiffness/springDamping, openOffset` | 无（内部读 `At.log`） |
 
 基类方法：`draw/update/mousepressed/mousereleased/measure/destroy`、`contains(px,py)`、`setRect/setPosition/setSize`、`setEnabled/setVisible`、`isHovered/isPressed/isFocused/isInteractive`、`focus/blur`、`declaredWidth/declaredHeight/invalidateSize`、`font()`。
@@ -236,6 +239,7 @@ At.Panel{
 28. `pack.sh` 直接覆盖同名 `.love`，排除 `pack.sh`、`test_*.lua`、`AGENTS.md`、`*.md`、`docs/`、`*.love`、`*.zip`、`*.bash`、`*.log`、`*.tmp`、`.gitignore` 与 `.git`/`.vscode`/`.idea`/`__pycache__`/`temp_package`/`node_modules`。排除规则在 python 与 zip 两条分支各写一份，新增产物类型时两处都要改。
 29. **动画不要自己积分**：手写 `value = value + (target - value) * (1 - exp(-speed*dt))` 在不同帧率下手感不同、且没法过冲。统一用 `At.motion.spring`（固定子步 1/240s），把它放在 `_tick(dt)`（可见组件）或组件自己的 `update(dt)`（隐藏时还要继续的动画，如控制台关闭）里推进；`animate = false` 时必须 `:snap()` 到目标，保证测试与低性能路径立即一致。绘制时把弹簧值 `math.min/max` 夹到用途需要的范围（例如 alpha 用 `min(1, v)`，否则 `>1` 会让半透明判定失效）。
 30. **控制台的开关动画跨越 `visible`**：`hide()` 只把 `visible` 置 `false`，窗口还要淡出，所以 `Console:update` 独立推进弹簧、`draw` 在 `visible or open > 0.001` 时继续画窗口，`open < 0.999` 时画 `LOG` 标签并让标签随进度淡出。动画期间窗口不接收鼠标事件（`visible == false`），这是有意的；改这里别把"隐藏"直接当成"不画"。
+31. **过冲不是 `scrollY`**：`ScrollView` 的触顶/触底过冲保存在 `_overX` / `_overY`，只作为绘制偏移叠加到 `content.x/y`；`scrollY` / `scrollX` 和 `onScroll` 永远夹在合法范围内。拖拽时用"期望位置 − 夹紧后位置"的差值累积过冲，松手由 `edgeSpring` 回弹；滚轮/惯性顶到边界只点亮 `_edgePulse`，不产生过冲。不要把 over 写回 `scrollY`，否则滚动条位置、`scrollToVisible` 与平滑滚动都会算错。
 
 ## 8. 改动检查清单
 
@@ -247,7 +251,7 @@ At.Panel{
 - [ ] 绘制后颜色/字体/线宽/线型/scissor 已恢复；嵌套裁剪走 `At.clip`；文字与形状坐标已对齐整数像素。
 - [ ] 对外 API 变了：更新 `docs/`（第 10 节）、本文件第 3/5 节、`main.lua` 演示与测试。
 - [ ] 新增可配置项时放进 `At/config.lua` 并同步 `docs/README.md` 的配置表与 `At.config.apply()`。
-- [ ] 有 LÖVE 时 `love .` 手动过一遍：悬停、按下、拖出/拖回、输入、开关动画、拖动滑动条、滚轮平滑滚动、拖拽惯性。
+- [ ] 有 LÖVE 时 `love .` 手动过一遍：悬停、按下、拖出/拖回、输入、开关动画、拖动滑动条、进度条过渡、滚轮平滑滚动、拖拽惯性、触顶/触底回弹与边缘光。
 - [ ] 涉及平滑滚动/惯性的断言必须模拟若干帧（`At.update(1/60)`），不能只改目标就断言位置。
 - [ ] 日志改动覆盖等级过滤、格式（字符串与函数）、缓冲裁剪；控制台改动覆盖显隐、拖动、滚动、开关动画。
 - [ ] 动画改动模拟多帧 `At.update(1/60)` 再断言（不能改完目标就断言最终值），并覆盖 `animate = false` 的立即落位。

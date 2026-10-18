@@ -1180,6 +1180,8 @@ for _, name in ipairs({
 	"At.Slider",
 	"At.ScrollView",
 	"At.Console",
+	"At.ProgressBar",
+	"At.LoadingBar",
 }) do
 	check(fileContains("docs/components.md", name), "docs/components.md 缺少 " .. name)
 end
@@ -1478,6 +1480,148 @@ tabConsole:hide()
 tabConsole:draw()
 check(love.graphics.getScissor() == nil, "只画标签时状态正常")
 tabConsole:destroy()
+
+-- ---------- 触顶/触底特效（ScrollView 过冲） ----------
+At.registry.clear()
+local edgeContent = At.Panel({ w = 200, h = 400, padding = 0 })
+local edgeView = At.ScrollView({ x = 0, y = 0, w = 200, h = 100, content = edgeContent })
+edgeView:layout()
+check(edgeView:maxScroll() == 300, "过冲用例的内容可滚动: " .. edgeView:maxScroll())
+local restingY = edgeView.content.y
+
+mouseDown = true
+mouseX, mouseY = 20, 20
+check(edgeView:mousepressed(20, 20, 1) == true, "顶部按下开始拖动")
+mouseY = 60
+edgeView:update(1 / 60)
+check(edgeView.scrollY == 0, "触顶后 scrollY 仍夹在 0")
+check(edgeView._overY > 0, "顶部下拉产生过冲: " .. edgeView._overY)
+check(edgeView._edgePulse.top > 0, "触顶时边缘脉冲点亮")
+local rectsBefore = draws.rect
+edgeView:draw()
+check(edgeView.content.y > restingY, "过冲把内容往下拉")
+check(draws.rect > rectsBefore, "边缘光带参与绘制")
+
+mouseDown = false
+edgeView:update(1 / 60)
+check(edgeView._overY > 0, "松手后仍在回弹")
+for _ = 1, 120 do
+	edgeView:update(1 / 60)
+end
+check(math.abs(edgeView._overY) < 0.1, "顶部过冲回弹收敛: " .. edgeView._overY)
+
+-- 触底（在底部继续向上拉）
+edgeView:setScroll(edgeView:maxScroll())
+mouseDown = true
+mouseX, mouseY = 20, 50
+edgeView:mousepressed(20, 50, 1)
+mouseY = 10
+edgeView:update(1 / 60)
+check(edgeView.scrollY == edgeView:maxScroll(), "触底后 scrollY 停在最大值")
+check(edgeView._overY < 0, "底部上拉产生反向过冲: " .. edgeView._overY)
+mouseDown = false
+edgeView:update(1 / 60)
+for _ = 1, 120 do
+	edgeView:update(1 / 60)
+end
+check(math.abs(edgeView._overY) < 0.1, "底部过冲也会回弹")
+
+-- 滚轮顶到边界：没有过冲也要有触边脉冲
+edgeView:setScroll(edgeView:maxScroll())
+edgeView._edgePulse.bottom = 0
+mouseX, mouseY = 20, 20
+check(edgeView:wheelmoved(0, -1) == true, "滚轮在触底时仍被消费")
+check(edgeView._edgePulse.bottom > 0, "滚轮触底触发脉冲")
+edgeView:setScroll(0)
+edgeView._edgePulse.top = 0
+check(edgeView:wheelmoved(0, 1) == true, "滚轮在触顶时仍被消费")
+check(edgeView._edgePulse.top > 0, "滚轮触顶触发脉冲")
+
+-- 横向过冲与纵向互不影响
+local wideView = At.ScrollView({ x = 0, y = 0, w = 200, h = 100, content = At.Panel({ w = 500, h = 100 }) })
+wideView:layout()
+check(wideView:maxScroll() == 0 and wideView:maxScrollX() == 300, "横向用例只有横向可滚")
+wideView:setScrollX(wideView:maxScrollX())
+mouseDown = true
+mouseX, mouseY = 150, 20
+wideView:mousepressed(150, 20, 1)
+mouseX = 50
+wideView:update(1 / 60)
+check(wideView._overX < 0, "右边界继续左拖产生横向过冲: " .. wideView._overX)
+check(wideView._edgePulse.right > 0, "右边界过冲点亮右侧脉冲")
+check(wideView._overY == 0, "横向过冲不影响纵向")
+mouseDown = false
+wideView:update(1 / 60)
+for _ = 1, 120 do
+	wideView:update(1 / 60)
+end
+check(math.abs(wideView._overX) < 0.1, "横向过冲回弹收敛")
+wideView:destroy()
+
+-- edgeEffect = false 时不产生过冲
+local plainView = At.ScrollView({
+	x = 0,
+	y = 0,
+	w = 200,
+	h = 100,
+	edgeEffect = false,
+	content = At.Panel({ w = 200, h = 400 }),
+})
+plainView:layout()
+mouseDown = true
+mouseX, mouseY = 20, 20
+plainView:mousepressed(20, 20, 1)
+mouseY = 60
+plainView:update(1 / 60)
+check(plainView._overY == 0, "关闭 edgeEffect 后不产生过冲")
+mouseDown = false
+plainView:update(1 / 60)
+plainView:destroy()
+edgeView:destroy()
+
+-- ---------- 进度条 ----------
+At.registry.clear()
+local progress = At.ProgressBar({ x = 0, y = 0, w = 200, h = 12, value = 0.25 })
+check(progress:getValue() == 0.25, "确定性进度条初始值")
+progress:setValue(1.7)
+check(progress:getValue() == 1, "进度值夹到 1")
+progress:setValue(0.5)
+progress:update(1 / 60)
+check(progress._fill.value > 0.25 and progress._fill.value < 0.5, "进度条弹簧过渡")
+for _ = 1, 120 do
+	progress:update(1 / 60)
+end
+check(math.abs(progress._fill.value - 0.5) < 0.01, "进度条动画收敛: " .. progress._fill.value)
+
+local barRects = draws.rect
+progress:draw()
+check(draws.rect >= barRects + 2, "进度条画轨道与填充")
+progress:destroy()
+
+local instantBar = At.ProgressBar({ value = 0.7, animate = false })
+instantBar:update(1 / 60)
+check(instantBar._fill.value == 0.7, "animate=false 的进度条立即落位")
+instantBar:destroy()
+
+local loading = At.LoadingBar({ x = 0, y = 0, w = 200, h = 10 })
+check(loading:isRunning(), "不确定性进度条默认运行")
+loading:update(0.25)
+check(loading._phase > 0 and loading._phase < 1, "滑块相位在 0..1")
+local frozenPhase = loading._phase
+loading:setRunning(false)
+loading:update(1)
+check(loading._phase == frozenPhase, "停止后相位不再推进")
+loading:setRunning(true)
+barRects = draws.rect
+loading:draw()
+check(draws.rect > barRects, "不确定性进度条参与绘制")
+loading:destroy()
+
+local rolling = At.LoadingBar({ speed = 2 })
+rolling._phase = 0.9
+rolling:update(0.25)
+check(rolling._phase >= 0 and rolling._phase < 1, "相位会回绕到 0..1: " .. rolling._phase)
+rolling:destroy()
 
 -- ---------- 动画：弹簧与缓动 ----------
 local spring = At.motion.spring({ value = 0, stiffness = 300, damping = 24 })

@@ -44,6 +44,14 @@ local DEFAULTS = {
 	scrollbarHitWidth = 16, -- 滚动条的可拖拽宽度（比视觉宽度大，方便手指）
 	scrollbarMargin = 2,
 	wheelStep = 44,
+	-- 触顶/触底：拖到边界后可以再拉出一点（橡皮筋），松开弹回，并在边缘泛光
+	edgeEffect = true,
+	edgeGlowColor = "#9FB3D3",
+	edgeGlowSize = 28,
+	overscrollMax = 70, -- 最多能拉出多少像素
+	overscrollResistance = 0.55, -- 拉出距离的衰减（越小越硬）
+	edgeSpringStiffness = 380,
+	edgeSpringDamping = 30,
 	drag = true, -- 允许按住空白处拖动滚动（触屏也走鼠标事件）
 	smooth = true, -- 滚轮/代码滚动是否缓动（拖拽始终 1:1 跟手）
 	smoothSpeed = 14,
@@ -73,6 +81,20 @@ function ScrollView.new(opts)
 	self._scrollVelocityX = 0
 	self._dragVelocity = 0
 	self._dragVelocityX = 0
+
+	-- 过冲量：正数 = 内容被往下/往右拉，负数相反；绘制时叠加到 scroll 上
+	self._overX = 0
+	self._overY = 0
+	self._overSpringX = motion.spring({
+		stiffness = self.edgeSpringStiffness,
+		damping = self.edgeSpringDamping,
+	})
+	self._overSpringY = motion.spring({
+		stiffness = self.edgeSpringStiffness,
+		damping = self.edgeSpringDamping,
+	})
+	-- 触边脉冲：滚轮/惯性顶到边界时闪一下边缘光，没有过冲也看得见
+	self._edgePulse = { top = 0, bottom = 0, left = 0, right = 0 }
 	return self
 end
 
@@ -108,6 +130,28 @@ end
 
 function proto:_clampScrollX(value)
 	return clamp(value, self._maxScrollX or 0)
+end
+
+-- 触边时点亮对应边缘（top/bottom/left/right），由 _tick 衰减
+function proto:_pulseEdge(side)
+	if not self.edgeEffect then
+		return
+	end
+	local pulses = self._edgePulse
+	if pulses and side and pulses[side] ~= nil then
+		pulses[side] = 1
+	end
+end
+
+-- 过冲量的软限位：越拉越硬，避免拉出视口之外太远
+function proto:_clampOver(value)
+	local maxOver = self.overscrollMax or 70
+	if value > maxOver then
+		return maxOver + (value - maxOver) * 0.25
+	elseif value < -maxOver then
+		return -maxOver + (value + maxOver) * 0.25
+	end
+	return value
 end
 
 -- 直接改当前位置（拖拽、滚动条、scrollToVisible 用这个，保证 1:1 跟手）
@@ -265,9 +309,10 @@ function proto:layout()
 	self._scrollTargetX = self:_clampScrollX(self._scrollTargetX or self.scrollX)
 	self._scrollTarget = self:_clampScroll(self._scrollTarget or self.scrollY)
 
-	-- 内容整体位移对齐到像素：拖动滚动时文字才不会发虚/抖动
-	content.x = pixel.round(self.x + pl - self.scrollX)
-	content.y = pixel.round(self.y + pt - self.scrollY)
+	-- 内容整体位移对齐到像素：拖动滚动时文字才不会发虚/抖动。
+	-- 过冲量只在拖动/回弹时非零，正常滚动不受影响。
+	content.x = pixel.round(self.x + pl - self.scrollX + (self._overX or 0))
+	content.y = pixel.round(self.y + pt - self.scrollY + (self._overY or 0))
 end
 
 -- ---------- 滚动条几何 ----------
@@ -419,6 +464,7 @@ function proto:draw()
 		if self.content then
 			self.content:draw()
 		end
+		self:_drawEdgeEffects()
 		if self.scrollbar then
 			self:_drawScrollbars()
 		end
@@ -450,6 +496,56 @@ function proto:_drawScrollbars()
 		color.setColor(self.scrollbarThumbColor, self.alpha)
 		love.graphics.rectangle("fill", thumbX, trackY, thumbW, barW, barRadius)
 	end
+end
+
+-- 触顶/触底：边缘渐隐光带。拖动时强度跟过冲量走，滚轮/惯性顶到边界时用脉冲闪一下。
+function proto:_drawEdgeEffects()
+	if not self.edgeEffect then
+		return
+	end
+
+	local maxOver = self.overscrollMax or 70
+	local pulses = self._edgePulse or {}
+	local overX, overY = self._overX or 0, self._overY or 0
+	local baseAlpha = (self.alpha or 255) / 255
+
+	local steps = 5
+	local size = self.edgeGlowSize or 28
+
+	local function drawBand(side, pull, pulse)
+		local amount = math.max(pulse or 0, math.min(1, math.abs(pull) / maxOver))
+		if amount <= 0.01 then
+			return
+		end
+
+		local thickness = math.max(1, math.ceil(size / steps))
+		local r = self:rect()
+		local x, y = pixel.xy(r.x, r.y)
+		local w, h = pixel.round(r.w), pixel.round(r.h)
+
+		for i = 1, steps do
+			local t = (i - 0.5) / steps -- 0 = 贴着边缘，1 = 最里面
+			local alpha = math.floor(255 * amount * (1 - t) * 0.55 * baseAlpha)
+			if alpha > 0 then
+				color.setColor(self.edgeGlowColor, alpha)
+				local offset = (i - 1) * thickness
+				if side == "top" then
+					love.graphics.rectangle("fill", x, y + offset, w, thickness)
+				elseif side == "bottom" then
+					love.graphics.rectangle("fill", x, y + h - offset - thickness, w, thickness)
+				elseif side == "left" then
+					love.graphics.rectangle("fill", x + offset, y, thickness, h)
+				else
+					love.graphics.rectangle("fill", x + w - offset - thickness, y, thickness, h)
+				end
+			end
+		end
+	end
+
+	drawBand("top", overY > 0 and overY or 0, pulses.top)
+	drawBand("bottom", overY < 0 and -overY or 0, pulses.bottom)
+	drawBand("left", overX > 0 and overX or 0, pulses.left)
+	drawBand("right", overX < 0 and -overX or 0, pulses.right)
 end
 
 -- ---------- 命中与事件 ----------
@@ -561,6 +657,13 @@ function proto:mousereleased(mx, my, button)
 		local minSpeed = self.momentumMin or 1
 		local vy = self._dragVelocity or 0
 		local vx = self._dragVelocityX or 0
+		-- 拉出边界后先回弹，别再叠一层惯性
+		if math.abs(self._overY or 0) > 0.5 then
+			vy = 0
+		end
+		if math.abs(self._overX or 0) > 0.5 then
+			vx = 0
+		end
 
 		if math.abs(vy) >= minSpeed then
 			self._scrollVelocity = vy
@@ -596,6 +699,30 @@ function proto:_tickBars(dt)
 	self._barW = self._barSpring.value
 end
 
+-- 过冲回弹 + 触边脉冲衰减。拖拽期间 over 由 _tick 直接写入，不在这里收敛。
+function proto:_tickEdges(dt)
+	local pulses = self._edgePulse
+	if pulses then
+		local decay = (dt or 0) * 3
+		for side in pairs(pulses) do
+			if pulses[side] > 0 then
+				pulses[side] = math.max(0, pulses[side] - decay)
+			end
+		end
+	end
+
+	if not self._dragging then
+		self._overX = self._overSpringX:update(dt)
+		self._overY = self._overSpringY:update(dt)
+		if math.abs(self._overX) < 0.05 then
+			self._overX = 0
+		end
+		if math.abs(self._overY) < 0.05 then
+			self._overY = 0
+		end
+	end
+end
+
 -- 单轴缓动/惯性；vertical=true 操作 Y，否则操作 X
 local function tickAxis(self, dt, vertical)
 	local target = vertical and self._scrollTarget or self._scrollTargetX
@@ -604,7 +731,13 @@ local function tickAxis(self, dt, vertical)
 	local maxValue = vertical and (self._maxScrollY or 0) or (self._maxScrollX or 0)
 
 	if math.abs(velocity or 0) > 0.01 then
-		local nextValue = clamp(position + velocity * dt * 60, maxValue)
+		local rawValue = position + velocity * dt * 60
+		if rawValue < 0 then
+			self:_pulseEdge(vertical and "top" or "left")
+		elseif rawValue > maxValue then
+			self:_pulseEdge(vertical and "bottom" or "right")
+		end
+		local nextValue = clamp(rawValue, maxValue)
 
 		if vertical then
 			self:_applyScroll(nextValue)
@@ -660,6 +793,7 @@ end
 function proto:_tick(dt)
 	dt = dt or 1 / 60
 	self:_tickBars(dt)
+	self:_tickEdges(dt)
 
 	if self._barDragging then
 		if love.mouse.isDown(1) then
@@ -683,9 +817,53 @@ function proto:_tick(dt)
 			local dy = my - (self._lastY or my)
 			self._lastX, self._lastY = mx, my
 
-			-- 拖拽直接跟手，不走缓动
-			self:setScroll(self.scrollY - dy)
-			self:setScrollX(self.scrollX - dx)
+			-- 拖拽直接跟手，不走缓动；超出边界的部分转成过冲（橡皮筋）
+			local maxY = self._maxScrollY or 0
+			local maxX = self._maxScrollX or 0
+			local desiredY = self.scrollY - dy
+			local desiredX = self.scrollX - dx
+			local clampedY = clamp(desiredY, maxY)
+			local clampedX = clamp(desiredX, maxX)
+
+			self:setScroll(clampedY)
+			self:setScrollX(clampedX)
+
+			-- 只有该轴真的能滚动时才做过冲（单向滚动视口不会被另一轴的拖动带偏）
+			if self.edgeEffect and maxY > 0 then
+				if desiredY ~= clampedY then
+					local excess = desiredY - clampedY
+					self._overY = self:_clampOver(self._overY - excess * (self.overscrollResistance or 0.55))
+					self._overSpringY.value = self._overY
+					self._overSpringY.velocity = 0
+					if desiredY < 0 then
+						self:_pulseEdge("top")
+					else
+						self:_pulseEdge("bottom")
+					end
+				else
+					self._overY = motion.damp(self._overY, 0, 22, dt)
+					self._overSpringY.value = self._overY
+					self._overSpringY.velocity = 0
+				end
+			end
+
+			if self.edgeEffect and maxX > 0 then
+				if desiredX ~= clampedX then
+					local excess = desiredX - clampedX
+					self._overX = self:_clampOver(self._overX - excess * (self.overscrollResistance or 0.55))
+					self._overSpringX.value = self._overX
+					self._overSpringX.velocity = 0
+					if desiredX < 0 then
+						self:_pulseEdge("left")
+					else
+						self:_pulseEdge("right")
+					end
+				else
+					self._overX = motion.damp(self._overX, 0, 22, dt)
+					self._overSpringX.value = self._overX
+					self._overSpringX.velocity = 0
+				end
+			end
 
 			-- 记录速度（像素/帧），松手后转成惯性
 			self._dragVelocity = (self._dragVelocity or 0) * 0.6 + -dy * 0.4
@@ -733,6 +911,12 @@ function proto:wheelmoved(dx, dy)
 	-- 某个方向没有滚动空间时，退让给另一个方向（例如只有竖滚的视口收到横向滚轮）
 	if deltaX ~= 0 then
 		if canX then
+			local base = self._scrollTargetX or self.scrollX
+			if base + deltaX < 0 then
+				self:_pulseEdge("left")
+			elseif base + deltaX > (self._maxScrollX or 0) then
+				self:_pulseEdge("right")
+			end
 			self:scrollByX(deltaX)
 			handled = true
 		elseif deltaY == 0 and canY then
@@ -742,6 +926,12 @@ function proto:wheelmoved(dx, dy)
 	end
 	if deltaY ~= 0 then
 		if canY then
+			local base = self._scrollTarget or self.scrollY
+			if base + deltaY < 0 then
+				self:_pulseEdge("top")
+			elseif base + deltaY > (self._maxScrollY or 0) then
+				self:_pulseEdge("bottom")
+			end
 			self:scrollBy(deltaY)
 			handled = true
 		elseif deltaX == 0 and canX then

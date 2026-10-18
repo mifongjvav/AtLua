@@ -26,6 +26,8 @@ At.Switch = require("At.components.Switch")
 At.Checkbox = require("At.components.Checkbox")
 At.RadioGroup = require("At.components.RadioGroup")
 At.Slider = require("At.components.Slider")
+At.ProgressBar = require("At.components.ProgressBar")
+At.LoadingBar = require("At.components.LoadingBar")
 At.ScrollView = require("At.components.ScrollView")
 At.Console = require("At.components.Console")
 

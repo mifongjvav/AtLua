@@ -112,7 +112,9 @@ At.config.apply()
 | `At.Checkbox` | 多选框，点击整行切换 | [components.md#at-checkbox](components.md#at-checkbox) |
 | `At.RadioGroup` | 单选组，`value` 是 1 基下标 | [components.md#at-radiogroup](components.md#at-radiogroup) |
 | `At.Slider` | 滑动条，支持步进、拖动与方向键 | [components.md#at-slider](components.md#at-slider) |
-| `At.ScrollView` | 可滚动视口：横纵自动滚动条、平滑滚动、惯性 | [components.md#at-scrollview](components.md#at-scrollview) |
+| `At.ProgressBar` | 确定性进度条，填充宽度弹簧过渡 | [components.md#at-progressbar](components.md#at-progressbar) |
+| `At.LoadingBar` | 不确定性进度条，高光循环滑动 | [components.md#at-loadingbar](components.md#at-loadingbar) |
+| `At.ScrollView` | 可滚动视口：横纵自动滚动条、平滑滚动、惯性、触顶触底回弹 | [components.md#at-scrollview](components.md#at-scrollview) |
 | `At.Console` | 浮动调试控制台：显示 `At.log` 日志、着色、可拖动 | [components.md#at-console](components.md#at-console) |
 
 ### 动画
@@ -121,7 +123,7 @@ At.config.apply()
 
 - `At.Switch` 旋钮、`At.Checkbox` 勾、`At.RadioGroup` 圆点：状态变化时弹入/缩回。
 - `At.TextInput` 聚焦边框、`At.Button` 悬停/按下高光：颜色与宽度平滑过渡。
-- `At.ScrollView` 滚动条碰到指针时变宽、`At.Console` 打开/关闭时淡入淡出并轻微滑动。
+- `At.ProgressBar` 的填充宽度；`At.ScrollView` 滚动条碰到指针时变宽、触顶/触底有橡皮筋与边缘光；`At.Console` 打开/关闭时淡入淡出并轻微滑动。
 
 所有动画都在 `At.update(dt)` 里推进，参数（`springStiffness` / `springDamping`）见各组件属性表；`animate = false` 可关闭。
 想给自己的组件加动画，直接用公开的 `At.motion`：

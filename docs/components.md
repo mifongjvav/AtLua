@@ -31,7 +31,7 @@
 
 **被动组件**：只做展示、不响应鼠标的组件（`At.Label`）会自动判定为不可交互（`interactive = false`），它们不会消费点击、也不会挡住 `ScrollView` 的拖动。自己写的纯展示组件请显式设 `interactive = false`。
 
-**动画**：开关、勾选、单选圆点、输入框聚焦边框、按钮悬停/按下高光、滚动条变宽、控制台开关都默认带过渡，由 `At.motion` 的弹簧驱动（`animate = true`）。这些动画只在 `At.update(dt)` 里推进，不调用就停在第 0 帧；每类组件都可以用 `animate = false` 关闭，或用 `springStiffness` / `springDamping` 调整手感。具体参数见各组件的属性表。
+**动画**：开关、勾选、单选圆点、输入框聚焦边框、按钮悬停/按下高光、进度条填充、滚动条变宽、`ScrollView` 触顶/触底回弹、控制台开关都默认带过渡，由 `At.motion` 的弹簧驱动（`animate = true`）。这些动画只在 `At.update(dt)` 里推进，不调用就停在第 0 帧；开关/勾选/单选/输入框/进度条可用 `animate = false` 关闭，或用 `springStiffness` / `springDamping` 调整手感。具体参数见各组件的属性表。
 
 ## At.Panel
 
@@ -546,6 +546,113 @@ volume:focus()          -- 之后左右方向键可微调
 volume:draw()
 ```
 
+## At.ProgressBar
+
+确定性进度条：`value` 是 `0`–`1` 的比例，填充宽度用弹簧平滑过渡。
+
+### 属性
+
+| 属性 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `x` / `y` | 数字 | `0` | 左上角坐标 |
+| `w` / `h` | 数字 / 百分比 / `"auto"` | `220` / `12` | 尺寸 |
+| `radius` | 数字 | `nil` | 圆角；缺省取高度的一半（胶囊形） |
+| `value` | 数字 | `0` | 进度比例 `0..1`，超出范围自动夹紧 |
+| `trackColor` | hex 字符串 | `"#4A5160"` | 轨道底色 |
+| `fillColor` | hex 字符串 | `"#9FB3D3"` | 已填充部分颜色 |
+| `alpha` | 数字 0–255 | `255` | 透明度 |
+| `animate` | 布尔 | `true` | 填充宽度是否用弹簧过渡；`false` 立即落位 |
+| `springStiffness` / `springDamping` | 数字 | `260` / `30` | 填充动画的弹簧刚度 / 阻尼 |
+| `onChange` | 函数 | `nil` | 进度变化回调 |
+
+### 方法
+
+| 方法 | 说明 |
+| --- | --- |
+| `:getValue()` | 返回当前进度（`0..1`） |
+| `:setValue(value, silent?)` | 设进度并夹到 `0..1`；`silent` 为真时不触发 `onChange` |
+| `:measure()` | 返回声明尺寸；auto 时用默认宽高 |
+
+### 回调
+
+| 回调 | 参数 | 时机 |
+| --- | --- | --- |
+| `onChange` | `(value, self)` | 值变化且非 silent 时 |
+
+注意：
+
+- **`value` 是 `0..1`**，不是 `0..100`；要显示百分比请自己乘 100，或放一个 `At.Label`。
+- 动画在 `At.update(dt)` 里推进；`animate = false` 时立即到目标值。
+- 填充宽度小于 1px 时不画，避免圆角在极窄宽度下糊成一团。
+- 不确定总进度时用 [`At.LoadingBar`](#at-loadingbar)。
+
+### 示例
+
+```lua
+local At = require("At.At")
+
+local progress = At.ProgressBar{
+    x = 40, y = 40, w = 240, h = 12,
+    value = 0.35,
+}
+
+progress:setValue(0.8)   -- 平滑动画到 80%
+progress:draw()
+```
+
+## At.LoadingBar
+
+不确定性进度条：一段高光在轨道里循环滑过，适合不知道总进度的加载中状态。
+
+### 属性
+
+| 属性 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `x` / `y` | 数字 | `0` | 左上角坐标 |
+| `w` / `h` | 数字 / 百分比 / `"auto"` | `220` / `12` | 尺寸 |
+| `radius` | 数字 | `nil` | 圆角；缺省取高度的一半（胶囊形） |
+| `trackColor` | hex 字符串 | `"#4A5160"` | 轨道底色 |
+| `fillColor` | hex 字符串 | `"#9FB3D3"` | 滑过高光的颜色 |
+| `alpha` | 数字 0–255 | `255` | 透明度 |
+| `speed` | 数字 | `1.1` | 每秒循环次数 |
+| `segmentRatio` | 数字 | `0.35` | 高光段占轨道宽度的比例 |
+| `minSegment` | 数字 | `24` | 高光段最小像素宽度 |
+| `running` | 布尔 | `true` | 是否继续滑动 |
+
+### 方法
+
+| 方法 | 说明 |
+| --- | --- |
+| `:isRunning()` | 是否正在滑动 |
+| `:setRunning(running)` | 开始 / 暂停，返回自身 |
+| `:measure()` | 返回声明尺寸；auto 时用默认宽高 |
+
+注意：
+
+- 相位在 `At.update(dt)` 里推进，**不调用不会动**；`setRunning(false)` 只是暂停，相位保留。
+- 高光段从左滑到右后回绕，每次都在轨道外，不会看到跳变；`easeInOut` 让两端慢、中间快。
+- 高光绘制会与外层裁剪求交，放进 `ScrollView` 也不会溢出视口。
+- 任务结束后建议 `setRunning(false)` 或 `destroy()`，它不知道进度，不会自己停。
+
+### 示例
+
+```lua
+local At = require("At.At")
+
+local loading = At.LoadingBar{
+    x = 40, y = 70, w = 240, h = 10,
+    speed = 1.2,
+}
+
+function love.update(dt)
+    At.update(dt)          -- 推进滑动
+end
+
+function love.draw()
+    loading:draw()
+end
+```
+
 ## At.ScrollView
 
 可滚动视口：内容比视口高时用滚轮、拖动或触摸上下滑动查看，超出视口的部分会被裁剪（scissor），右侧带滚动条。
@@ -561,6 +668,10 @@ volume:draw()
 | `scrollbar` | 布尔 | `true` | 是否画滚动条 |
 | `scrollbarWidth` | 数字 | `4` | 滚动条宽度（横竖共用） |
 | `scrollbarMargin` | 数字 | `2` | 滚动条与视口边缘的间距 |
+| `edgeEffect` | 布尔 | `true` | 触顶/触底时的橡皮筋过冲与边缘光 |
+| `edgeGlowColor` / `edgeGlowSize` | hex / 数字 | `"#9FB3D3"` / `28` | 边缘光颜色 / 光带宽度 |
+| `overscrollMax` / `overscrollResistance` | 数字 | `70` / `0.55` | 最大拉出像素 / 拉出阻力（越小越硬） |
+| `edgeSpringStiffness` / `edgeSpringDamping` | 数字 | `380` / `30` | 松手回弹的弹簧刚度 / 阻尼 |
 | `scrollbarColor` / `scrollbarThumbColor` | hex 字符串 | `"#3A4150"` / `"#9FB3D3"` | 轨道/滑块颜色 |
 | `scrollbarActiveWidth` | 数字 | `8` | 指针靠近或拖动滚动条时的宽度（离开后缩回 `scrollbarWidth`） |
 | `scrollbarSpringStiffness` / `scrollbarSpringDamping` | 数字 | `700` / `42` | 滚动条变宽的弹簧刚度 / 阻尼 |
@@ -602,6 +713,8 @@ volume:draw()
 - `scrollY` 是浮点数（平滑动画需要），绘制时会取整；`onScroll` 在平滑滚动过程中会**逐帧触发**，需要节流的话自己处理。
 - 右侧滚动条**可以拖**：按在滑块上拖动直接滚动；按在轨道空白处会跳转到对应位置。命中区按 `scrollbarHitWidth` 放大，手指也好按。
 - 指针碰到滚动条时它会**变宽**（`scrollbarWidth` → `scrollbarActiveWidth`，带缓动），离开后缩回，方便发现与触控。
+- **触顶/触底有橡皮筋效果**：拖到边界后继续拉，内容会多滑出一小段（`overscrollMax` 封顶、`overscrollResistance` 控制阻力），松手弹簧回弹，并向对应边缘渐隐泛光（`edgeGlowColor` / `edgeGlowSize`）。滚轮或惯性顶到边界时没有过冲，但会闪一次边缘光作为反馈。`edgeEffect = false` 可整体关闭。
+- 过冲只是绘制偏移（内部 `_overY` / `_overX`），**`scrollY` / `scrollX` 始终夹在合法范围内**，不会污染滚动 API 与 `onScroll`；`content.y` 在绘制时才会叠加过冲量。
 - 裁剪会与外层裁剪**求交**（见 `At.clip`），所以嵌套滚动、或滚动视口里再放输入框，都不会把内容画到视口外。
 - 子组件的坐标会被滚动位移实时改写，所以命中判断、`scrollToVisible` 都用当前的 `y`。
 - 不支持边界回弹（惯性已有，但没有橡皮筋效果）、无限滚动，以及嵌套滚动时"内层滚到底再传给外层"的滚动链（内外层各自独立消费滚轮）。

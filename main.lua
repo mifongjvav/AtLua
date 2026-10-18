@@ -11,6 +11,7 @@ local state = {
 }
 
 local card, viewport, statusLabel, volumeLabel, stateLabel
+local volumeProgress
 local submitBtn, nameInput, logConsole
 
 local function setStatus(text)
@@ -155,8 +156,18 @@ card:add(At.Slider({
 			At.log.debug("音量: %d", value)
 		end
 		volumeLabel:setText("音量：" .. value)
+		if volumeProgress then
+			volumeProgress:setValue(value / 100)
+		end
 	end,
 }))
+
+card:add(At.Label({ text = "确定性进度条（跟随音量）", fontSize = 13, color = "#8F98A8" }))
+volumeProgress = At.ProgressBar({ w = "100%", h = 10, value = state.volume / 100 })
+card:add(volumeProgress)
+
+card:add(At.Label({ text = "不确定性进度条", fontSize = 13, color = "#8F98A8" }))
+card:add(At.LoadingBar({ w = "100%", h = 10, speed = 1.2 }))
 
 local resetBtn = At.Button({
 	w = "48%",
