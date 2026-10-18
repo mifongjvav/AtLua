@@ -33,105 +33,105 @@ At.Console = require("At.components.Console")
 -- 返回值表示事件是否被某个组件消费，可用于"点空白处关闭面板"之类的判断。
 
 function At.add(component)
-    -- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-At.config.apply()
+	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
+	At.config.apply()
 
-return At.registry.add(component)
+	return At.registry.add(component)
 end
 
 function At.remove(component)
-    -- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-At.config.apply()
+	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
+	At.config.apply()
 
-return At.registry.remove(component)
+	return At.registry.remove(component)
 end
 
 function At.update(dt)
-    At.registry.update(dt)
+	At.registry.update(dt)
 end
 
 function At.mousepressed(x, y, button, istouch, presses)
-    -- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-At.config.apply()
+	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
+	At.config.apply()
 
-return At.registry.mousepressed(x, y, button, istouch, presses)
+	return At.registry.mousepressed(x, y, button, istouch, presses)
 end
 
 function At.mousereleased(x, y, button, istouch, presses)
-    -- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-At.config.apply()
+	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
+	At.config.apply()
 
-return At.registry.mousereleased(x, y, button, istouch, presses)
+	return At.registry.mousereleased(x, y, button, istouch, presses)
 end
 
 -- 文本输入与按键只发给当前焦点组件（TextInput / Slider 等）
 function At.textinput(text)
-    -- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-At.config.apply()
+	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
+	At.config.apply()
 
-return At.registry.textinput(text)
+	return At.registry.textinput(text)
 end
 
 function At.keypressed(key, scancode, isrepeat)
-    -- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-At.config.apply()
+	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
+	At.config.apply()
 
-return At.registry.keypressed(key, scancode, isrepeat)
+	return At.registry.keypressed(key, scancode, isrepeat)
 end
 
 function At.wheelmoved(dx, dy)
-    -- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-At.config.apply()
+	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
+	At.config.apply()
 
-return At.registry.wheelmoved(dx, dy)
+	return At.registry.wheelmoved(dx, dy)
 end
 
 function At.focus(component)
-    -- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-At.config.apply()
+	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
+	At.config.apply()
 
-return At.registry.setFocus(component)
+	return At.registry.setFocus(component)
 end
 
 function At.clearFocus()
-    -- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-At.config.apply()
+	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
+	At.config.apply()
 
-return At.registry.setFocus(nil)
+	return At.registry.setFocus(nil)
 end
 
 function At.getFocus()
-    -- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-At.config.apply()
+	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
+	At.config.apply()
 
-return At.registry.getFocus()
+	return At.registry.getFocus()
 end
 
 -- 便捷构造：At.button 是旧式立即绘制，At.Button 是组件式（推荐）
 function At.newButton(opts)
-    -- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
-At.config.apply()
+	-- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可
+	At.config.apply()
 
-return At.Button.new(opts)
+	return At.Button.new(opts)
 end
 
 -- ---------- 旧式立即模式绘制（保留兼容） ----------
 -- 注意：它不持有任何状态，也没有涟漪；新代码请用 At.Button。
 function At.button(x, y, w, h, res, hex, alpha, shadow, shadowArgs)
-    if shadow then
-        if shadowArgs then
-            At.shadow.shadow(x, y, w, h, res, unpack(shadowArgs))
-        else
-            At.shadow.shadow(x, y, w, h, res, { 0, 0, 0, 0.2 }, 5, 20, 2, 3)
-        end
-    end
-    if hex then
-        At.color.setColor(hex, alpha)
-    else
-        At.color.setColor("000000")
-    end
-    love.graphics.rectangle("fill", x, y, w, h, res)
-    return { x = x, y = y, w = w, h = h, radius = res }
+	if shadow then
+		if shadowArgs then
+			At.shadow.shadow(x, y, w, h, res, unpack(shadowArgs))
+		else
+			At.shadow.shadow(x, y, w, h, res, { 0, 0, 0, 0.2 }, 5, 20, 2, 3)
+		end
+	end
+	if hex then
+		At.color.setColor(hex, alpha)
+	else
+		At.color.setColor("000000")
+	end
+	love.graphics.rectangle("fill", x, y, w, h, res)
+	return { x = x, y = y, w = w, h = h, radius = res }
 end
 
 -- 把 At/config.lua 的默认值推给各模块；运行时改了 config 再调一次 apply() 即可

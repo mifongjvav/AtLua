@@ -11,35 +11,35 @@ local CONFIG = config.font or {}
 local cache = {}
 
 local function build(size)
-    local mainPath = CONFIG.main or "/At/assets/font.ttf"
-    local emojiPath = CONFIG.emoji or "/At/assets/emoji.ttf"
-    local main = love.graphics.newFont(mainPath, size)
-    local emojiFont = love.graphics.newFont(emojiPath, size)
-    main:setFallbacks(emojiFont)
-    return { main = main, emoji = emojiFont }
+	local mainPath = CONFIG.main or "/At/assets/font.ttf"
+	local emojiPath = CONFIG.emoji or "/At/assets/emoji.ttf"
+	local main = love.graphics.newFont(mainPath, size)
+	local emojiFont = love.graphics.newFont(emojiPath, size)
+	main:setFallbacks(emojiFont)
+	return { main = main, emoji = emojiFont }
 end
 
 local function entry(size)
-    size = size or CONFIG.size or 12
-    local cached = cache[size]
-    if not cached then
-        cached = build(size)
-        cache[size] = cached
-    end
-    return cached
+	size = size or CONFIG.size or 12
+	local cached = cache[size]
+	if not cached then
+		cached = build(size)
+		cache[size] = cached
+	end
+	return cached
 end
 
 -- 取指定字号的字体（带缓存），不改变当前绘制字体
 function font.get(size)
-    return entry(size).main
+	return entry(size).main
 end
 
 -- 初始化默认字体：设置全局 mainFont / emoji，并把主字体应用为当前字体
 function font.init(size)
-    local cached = entry(size)
-    mainFont = cached.main
-    emoji = cached.emoji
-    love.graphics.setFont(cached.main)
+	local cached = entry(size)
+	mainFont = cached.main
+	emoji = cached.emoji
+	love.graphics.setFont(cached.main)
 end
 
 return font

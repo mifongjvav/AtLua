@@ -23,91 +23,154 @@ local currentCanvas = nil
 local shiftDown = false
 
 local function makeFont(size)
-    return {
-        size = size,
-        setFallbacks = function(self, fallback) self.fallback = fallback end,
-        getWidth = function(_, s) return #s * size * 0.5 end,
-        getHeight = function() return size end,
-        getWrap = function(_, s, limit) return limit, { s } end,
-    }
+	return {
+		size = size,
+		setFallbacks = function(self, fallback)
+			self.fallback = fallback
+		end,
+		getWidth = function(_, s)
+			return #s * size * 0.5
+		end,
+		getHeight = function()
+			return size
+		end,
+		getWrap = function(_, s, limit)
+			return limit, { s }
+		end,
+	}
 end
 
 love = {
-    graphics = {
-        setColor = function(r, g, b, a) colorState = { r, g, b, a } end,
-        getColor = function()
-            return colorState[1], colorState[2], colorState[3], colorState[4]
-        end,
-        setFont = function(f) currentFont = f end,
-        getFont = function() return currentFont or makeFont(16) end,
-        newFont = function(_, size) return makeFont(size) end,
-        rectangle = function() draws.rect = draws.rect + 1 end,
-        print = function(text, x, y)
-            draws.print = draws.print + 1
-            lastPrint = { text = text, x = x, y = y }
-        end,
-        printf = function() draws.print = draws.print + 1 end,
-        line = function() draws.line = (draws.line or 0) + 1 end,
-        circle = function() draws.circle = (draws.circle or 0) + 1 end,
-        setLineWidth = function(w) lineWidth = w end,
-        getLineWidth = function() return lineWidth end,
-        setLineStyle = function(style) lineStyle = style end,
-        getLineStyle = function() return lineStyle end,
-        setScissor = function(x, y, w, h)
-            if x == nil then
-                scissor = nil
-            else
-                scissor = { x, y, w, h }
-            end
-        end,
-        getScissor = function()
-            if scissor then
-                return scissor[1], scissor[2], scissor[3], scissor[4]
-            end
-            return nil
-        end,
-        setBackgroundColor = function() end,
-        getBackgroundColor = function() return 0.1, 0.1, 0.1, 1 end,
-        draw = function() draws.draw = (draws.draw or 0) + 1 end,
-        clear = function() end,
-        setCanvas = function(canvas) currentCanvas = canvas end,
-        getCanvas = function() return currentCanvas end,
-        newCanvas = function(w, h)
-            return {
-                width = w, height = h,
-                getWidth = function() return w end,
-                getHeight = function() return h end,
-                getDimensions = function() return w, h end,
-                setFilter = function() end,
-                release = function() end,
-            }
-        end,
-        newShader = function() return { send = function() end } end,
-        newQuad = function(qx, qy, qw, qh) return { x = qx, y = qy, w = qw, h = qh } end,
-        setShader = function() end,
-        getShader = function() return nil end,
-        stencil = function() end,
-        setStencilTest = function() end,
-        push = function() end,
-        pop = function() end,
-        setBlendMode = function() end,
-        getDimensions = function() return 800, 600 end,
-        getWidth = function() return 800 end,
-        getHeight = function() return 600 end,
-    },
-    mouse = {
-        getPosition = function() return mouseX, mouseY end,
-        isDown = function(button) return mouseDown and button == 1 end,
-    },
-    keyboard = {
-        setTextInput = function(enabled, x, y, w, h)
-            textInputOn = enabled and true or false
-            textInputRect = { x, y, w, h }
-        end,
-        isDown = function(key)
-            return shiftDown and (key == "lshift" or key == "rshift")
-        end,
-    },
+	graphics = {
+		setColor = function(r, g, b, a)
+			colorState = { r, g, b, a }
+		end,
+		getColor = function()
+			return colorState[1], colorState[2], colorState[3], colorState[4]
+		end,
+		setFont = function(f)
+			currentFont = f
+		end,
+		getFont = function()
+			return currentFont or makeFont(16)
+		end,
+		newFont = function(_, size)
+			return makeFont(size)
+		end,
+		rectangle = function()
+			draws.rect = draws.rect + 1
+		end,
+		print = function(text, x, y)
+			draws.print = draws.print + 1
+			lastPrint = { text = text, x = x, y = y }
+		end,
+		printf = function()
+			draws.print = draws.print + 1
+		end,
+		line = function()
+			draws.line = (draws.line or 0) + 1
+		end,
+		circle = function()
+			draws.circle = (draws.circle or 0) + 1
+		end,
+		setLineWidth = function(w)
+			lineWidth = w
+		end,
+		getLineWidth = function()
+			return lineWidth
+		end,
+		setLineStyle = function(style)
+			lineStyle = style
+		end,
+		getLineStyle = function()
+			return lineStyle
+		end,
+		setScissor = function(x, y, w, h)
+			if x == nil then
+				scissor = nil
+			else
+				scissor = { x, y, w, h }
+			end
+		end,
+		getScissor = function()
+			if scissor then
+				return scissor[1], scissor[2], scissor[3], scissor[4]
+			end
+			return nil
+		end,
+		setBackgroundColor = function() end,
+		getBackgroundColor = function()
+			return 0.1, 0.1, 0.1, 1
+		end,
+		draw = function()
+			draws.draw = (draws.draw or 0) + 1
+		end,
+		clear = function() end,
+		setCanvas = function(canvas)
+			currentCanvas = canvas
+		end,
+		getCanvas = function()
+			return currentCanvas
+		end,
+		newCanvas = function(w, h)
+			return {
+				width = w,
+				height = h,
+				getWidth = function()
+					return w
+				end,
+				getHeight = function()
+					return h
+				end,
+				getDimensions = function()
+					return w, h
+				end,
+				setFilter = function() end,
+				release = function() end,
+			}
+		end,
+		newShader = function()
+			return { send = function() end }
+		end,
+		newQuad = function(qx, qy, qw, qh)
+			return { x = qx, y = qy, w = qw, h = qh }
+		end,
+		setShader = function() end,
+		getShader = function()
+			return nil
+		end,
+		stencil = function() end,
+		setStencilTest = function() end,
+		push = function() end,
+		pop = function() end,
+		setBlendMode = function() end,
+		getDimensions = function()
+			return 800, 600
+		end,
+		getWidth = function()
+			return 800
+		end,
+		getHeight = function()
+			return 600
+		end,
+	},
+	mouse = {
+		getPosition = function()
+			return mouseX, mouseY
+		end,
+		isDown = function(button)
+			return mouseDown and button == 1
+		end,
+	},
+	keyboard = {
+		setTextInput = function(enabled, x, y, w, h)
+			textInputOn = enabled and true or false
+			textInputRect = { x, y, w, h }
+		end,
+		isDown = function(key)
+			return shiftDown and (key == "lshift" or key == "rshift")
+		end,
+	},
 }
 
 local At = require("At.At")
@@ -115,9 +178,9 @@ At.log.setPrint(false) -- 测试期间不要污染 stdout（镜像能力单独�
 At.config.log.print = false -- 防止之后 config.apply() 又把镜像打开
 
 local function check(cond, msg)
-    if not cond then
-        error("FAIL: " .. msg, 2)
-    end
+	if not cond then
+		error("FAIL: " .. msg, 2)
+	end
 end
 
 -- ---------- 字体 ----------
@@ -136,14 +199,24 @@ check(dark == "#717171", "shade 调暗: " .. dark)
 
 -- ---------- 按钮基本行为 ----------
 local clicks, presses, releases = 0, 0, 0
-local btn = At.Button{
-    x = 100, y = 100, w = 160, h = 60, radius = 12,
-    text = "OK",
-    fontSize = 16,
-    onPress = function() presses = presses + 1 end,
-    onRelease = function() releases = releases + 1 end,
-    onClick = function() clicks = clicks + 1 end,
-}
+local btn = At.Button({
+	x = 100,
+	y = 100,
+	w = 160,
+	h = 60,
+	radius = 12,
+	text = "OK",
+	fontSize = 16,
+	onPress = function()
+		presses = presses + 1
+	end,
+	onRelease = function()
+		releases = releases + 1
+	end,
+	onClick = function()
+		clicks = clicks + 1
+	end,
+})
 check(At.registry.contains(btn), "创建即自动登记")
 check(btn:contains(150, 130), "中心点命中")
 check(not btn:contains(20, 20), "外部点不命中")
@@ -201,7 +274,7 @@ check(not btn:isPressed(), "松开后复位")
 
 -- 涟漪最终回收
 for _ = 1, 240 do
-    At.update(1 / 60)
+	At.update(1 / 60)
 end
 check(btn:rippleCount() == 0, "涟漪淡出后被回收")
 
@@ -212,8 +285,12 @@ fx60:add(0, 0, 100, 100, 100, 50, 10)
 fx120:add(0, 0, 100, 100, 100, 50, 10)
 fx60:release()
 fx120:release()
-for _ = 1, 60 do fx60:update(1 / 60) end
-for _ = 1, 120 do fx120:update(1 / 120) end
+for _ = 1, 60 do
+	fx60:update(1 / 60)
+end
+for _ = 1, 120 do
+	fx120:update(1 / 120)
+end
 local a60 = fx60.ripples[1] and fx60.ripples[1].alpha or 0
 local a120 = fx120.ripples[1] and fx120.ripples[1].alpha or 0
 check(math.abs(a60 - a120) < 0.02, "1s 后透明度与帧率无关: " .. a60 .. " vs " .. a120)
@@ -222,7 +299,9 @@ check(math.abs(a60 - a120) < 0.02, "1s 后透明度与帧率无关: " .. a60 .. 
 At.Ripple.add(1, 1, 0, 0, 50, 20, 4)
 check(At.Ripple.count() == 1, "旧 Ripple.add 可用")
 At.Ripple.release() -- 不松手的涟漪不会被回收（与旧实现一致）
-for _ = 1, 240 do At.Ripple.update() end
+for _ = 1, 240 do
+	At.Ripple.update()
+end
 check(At.Ripple.count() == 0, "旧 Ripple.update 回收")
 At.Ripple.setEnabled(false)
 check(At.Ripple.add(1, 1, 0, 0, 50, 20, 4) == false, "旧 Ripple.setEnabled 生效")
@@ -233,12 +312,12 @@ local rect = At.button(10, 10, 50, 20, 4, "#000000", 255, true, { { 0, 0, 0, 0.2
 check(rect.w == 50 and rect.radius == 4, "旧 At.button 仍返回矩形表")
 
 -- ---------- 禁用 / 销毁 ----------
-local disabled = At.Button{ x = 0, y = 0, w = 50, h = 50, enabled = false, text = "X" }
+local disabled = At.Button({ x = 0, y = 0, w = 50, h = 50, enabled = false, text = "X" })
 disabled:draw()
 check(At.mousepressed(10, 10, 1) == false, "禁用按钮不消费事件")
 check(disabled:rippleCount() == 0, "禁用按钮不产生涟漪")
 
-local temp = At.Button{ x = 700, y = 700, w = 50, h = 50 }
+local temp = At.Button({ x = 700, y = 700, w = 50, h = 50 })
 check(At.registry.contains(temp), "临时按钮已登记")
 temp:destroy()
 check(not At.registry.contains(temp), "destroy 后注销")
@@ -264,7 +343,7 @@ At.input.input()
 check(At.input.isActive(), "旧 input() 仍可切换")
 
 -- ---------- 样式解析 ----------
-local styled = At.Button{ x = 0, y = 0, w = 10, h = 10, color = "#808080" }
+local styled = At.Button({ x = 0, y = 0, w = 10, h = 10, color = "#808080" })
 styled._hover = true
 check(styled:fillColor() == "#8D8D8D", "悬停色由 shade 推导: " .. styled:fillColor())
 styled._pressed = true
@@ -278,7 +357,7 @@ styled:destroy()
 At.registry.clear()
 
 local function approx(a, b, eps)
-    return math.abs(a - b) < (eps or 1e-6)
+	return math.abs(a - b) < (eps or 1e-6)
 end
 
 check(At.layout.pixels(120) == 120, "pixels 数字")
@@ -291,14 +370,19 @@ local sl2, st2, sr2, sb2 = At.layout.sides(4)
 check(sl2 == 4 and st2 == 4 and sr2 == 4 and sb2 == 4, "sides 数字")
 
 -- 列方向：gap + padding + auto 高度
-local col = At.Panel{
-    x = 100, y = 50, w = 200, h = "auto",
-    direction = "column", gap = 10, padding = 10,
-    children = {
-        At.Label{ text = "A", fontSize = 10 },
-        At.Label{ text = "BB", fontSize = 10 },
-    },
-}
+local col = At.Panel({
+	x = 100,
+	y = 50,
+	w = 200,
+	h = "auto",
+	direction = "column",
+	gap = 10,
+	padding = 10,
+	children = {
+		At.Label({ text = "A", fontSize = 10 }),
+		At.Label({ text = "BB", fontSize = 10 }),
+	},
+})
 col:draw()
 check(approx(col.h, 54), "列方向 auto 高度 = 12+10+12+20: " .. col.h)
 check(approx(col.children[1].y, 60), "第一个子项 y")
@@ -307,64 +391,96 @@ check(approx(col.children[1].w, 5), "Label auto 宽度")
 check(approx(col.children[1].x, 110), "左边距 + padding")
 
 -- 行方向 + 百分比
-local rowPct = At.Panel{
-    x = 0, y = 0, w = 200, h = 40, direction = "row", gap = 0, padding = 0,
-    children = { At.Label{ text = "x", w = "50%", fontSize = 10 } },
-}
+local rowPct = At.Panel({
+	x = 0,
+	y = 0,
+	w = 200,
+	h = 40,
+	direction = "row",
+	gap = 0,
+	padding = 0,
+	children = { At.Label({ text = "x", w = "50%", fontSize = 10 }) },
+})
 rowPct:draw()
 check(approx(rowPct.children[1].w, 100), "百分比宽度: " .. rowPct.children[1].w)
 
 -- grow：主轴上瓜分剩余空间
-local rowGrow = At.Panel{
-    x = 0, y = 0, w = 200, h = 40, direction = "row", gap = 10, padding = 0,
-    children = {
-        At.Button{ w = 50, h = 40, text = "" },
-        At.Button{ w = "auto", h = 40, grow = 1, text = "b", fontSize = 10 },
-    },
-}
+local rowGrow = At.Panel({
+	x = 0,
+	y = 0,
+	w = 200,
+	h = 40,
+	direction = "row",
+	gap = 10,
+	padding = 0,
+	children = {
+		At.Button({ w = 50, h = 40, text = "" }),
+		At.Button({ w = "auto", h = 40, grow = 1, text = "b", fontSize = 10 }),
+	},
+})
 rowGrow:draw()
 check(approx(rowGrow.children[2].w, 140), "grow 撑满剩余: " .. rowGrow.children[2].w)
 
 -- 交叉轴居中
-local centered = At.Panel{
-    x = 0, y = 0, w = 100, h = 30, direction = "column", align = "center",
-    children = { At.Label{ text = "x", w = 40, h = 10, fontSize = 10 } },
-}
+local centered = At.Panel({
+	x = 0,
+	y = 0,
+	w = 100,
+	h = 30,
+	direction = "column",
+	align = "center",
+	children = { At.Label({ text = "x", w = 40, h = 10, fontSize = 10 }) },
+})
 centered:draw()
 check(approx(centered.children[1].x, 30), "align center: " .. centered.children[1].x)
 
 -- 主轴居中（justify）
-local justified = At.Panel{
-    x = 0, y = 0, w = 50, h = 100, direction = "column", justify = "center",
-    children = { At.Label{ text = "x", w = 10, h = 20, fontSize = 10 } },
-}
+local justified = At.Panel({
+	x = 0,
+	y = 0,
+	w = 50,
+	h = 100,
+	direction = "column",
+	justify = "center",
+	children = { At.Label({ text = "x", w = 10, h = 20, fontSize = 10 }) },
+})
 justified:draw()
 check(approx(justified.children[1].y, 40), "justify center: " .. justified.children[1].y)
 
 -- margin 与嵌套容器
-local outer = At.Panel{
-    x = 10, y = 10, w = "auto", h = "auto", padding = 5,
-    children = {
-        At.Panel{
-            direction = "row", gap = 6, padding = 0,
-            children = {
-                At.Label{ text = "aa", fontSize = 10 },
-                At.Label{ text = "bb", fontSize = 10 },
-            },
-        },
-        At.Label{ text = "z", fontSize = 10, margin = { left = 4 } },
-    },
-}
+local outer = At.Panel({
+	x = 10,
+	y = 10,
+	w = "auto",
+	h = "auto",
+	padding = 5,
+	children = {
+		At.Panel({
+			direction = "row",
+			gap = 6,
+			padding = 0,
+			children = {
+				At.Label({ text = "aa", fontSize = 10 }),
+				At.Label({ text = "bb", fontSize = 10 }),
+			},
+		}),
+		At.Label({ text = "z", fontSize = 10, margin = { left = 4 } }),
+	},
+})
 outer:draw()
 check(approx(outer.w, 10 + 6 + 10 + 10), "嵌套容器 auto 宽度: " .. outer.w)
 check(approx(outer.children[2].x, 15 + 4), "margin.left 生效")
 check(approx(outer.children[1].children[2].x, 15 + 10 + 6), "嵌套行方向排布")
 
 -- 重排不会把 auto 尺寸固化死
-local relayout = At.Panel{
-    x = 0, y = 0, w = 100, h = "auto", padding = 0,
-    children = { At.Label{ text = "abc", fontSize = 10 } },
-}
+local relayout = At.Panel({
+	x = 0,
+	y = 0,
+	w = 100,
+	h = "auto",
+	padding = 0,
+	children = { At.Label({ text = "abc", fontSize = 10 }) },
+})
 relayout:draw()
 check(approx(relayout.h, 12), "首次排版高度")
 relayout.children[1]:setText("abcdef")
@@ -376,19 +492,28 @@ check(relayout.children[1].w == 30, "文字变长后重新测量: " .. relayout.
 At.registry.clear()
 
 local typed, submitted
-local ti = At.TextInput{
-    x = 10, y = 10, w = 200, h = 40,
-    onChange = function(text) typed = text end,
-    onSubmit = function(text) submitted = text end,
-}
+local ti = At.TextInput({
+	x = 10,
+	y = 10,
+	w = 200,
+	h = 40,
+	onChange = function(text)
+		typed = text
+	end,
+	onSubmit = function(text)
+		submitted = text
+	end,
+})
 
 mouseX, mouseY = 20, 20
 check(At.mousepressed(20, 20, 1) == true, "输入框消费点击")
 At.mousereleased(20, 20, 1)
 check(ti:isFocused(), "点击后获得焦点")
 check(textInputOn == true, "聚焦时启用文本输入（唤起软键盘）")
-check(textInputRect ~= nil and textInputRect[3] == ti.w and textInputRect[4] == ti.h,
-    "把输入框矩形传给 setTextInput，系统据此定位软键盘")
+check(
+	textInputRect ~= nil and textInputRect[3] == ti.w and textInputRect[4] == ti.h,
+	"把输入框矩形传给 setTextInput，系统据此定位软键盘"
+)
 
 At.textinput("你")
 At.textinput("好")
@@ -421,10 +546,14 @@ check(love.graphics.getScissor() == nil, "绘制后 scissor 已恢复")
 At.registry.clear()
 
 local swValue
-local sw = At.Switch{
-    x = 0, y = 0, value = false,
-    onChange = function(value) swValue = value end,
-}
+local sw = At.Switch({
+	x = 0,
+	y = 0,
+	value = false,
+	onChange = function(value)
+		swValue = value
+	end,
+})
 
 check(sw.value == false, "开关初始关闭")
 mouseX, mouseY = 10, 10
@@ -433,7 +562,7 @@ At.mousereleased(10, 10, 1)
 check(sw.value == true and swValue == true, "点击后打开")
 
 for _ = 1, 60 do
-    sw:update(1 / 60)
+	sw:update(1 / 60)
 end
 check(sw._t > 0.95, "打开动画收敛: " .. sw._t)
 
@@ -472,10 +601,14 @@ check(sw.value == true, "没拖动时按点击切换")
 At.registry.clear()
 
 local cbValue
-local cb = At.Checkbox{
-    x = 0, y = 0, text = "记住我",
-    onChange = function(value) cbValue = value end,
-}
+local cb = At.Checkbox({
+	x = 0,
+	y = 0,
+	text = "记住我",
+	onChange = function(value)
+		cbValue = value
+	end,
+})
 
 check(cb.checked == false, "多选框初始未选")
 mouseX, mouseY = 5, 5
@@ -489,13 +622,18 @@ check(draws.line > 0, "勾选画了线段")
 At.registry.clear()
 
 local rgValue
-local rg = At.RadioGroup{
-    x = 0, y = 0,
-    options = { "A", "B", "C" },
-    value = 1,
-    gap = 4, size = 20, textGap = 8,
-    onChange = function(index, label) rgValue = tostring(index) .. label end,
-}
+local rg = At.RadioGroup({
+	x = 0,
+	y = 0,
+	options = { "A", "B", "C" },
+	value = 1,
+	gap = 4,
+	size = 20,
+	textGap = 8,
+	onChange = function(index, label)
+		rgValue = tostring(index) .. label
+	end,
+})
 
 check(approx(rg:_itemHeight(), 20), "选项高度取 size 与字高较大值")
 mouseX, mouseY = 5, 30
@@ -509,9 +647,13 @@ check(rg.value == 2, "重复点同一项不触发变更")
 rg:draw()
 check(draws.circle > 0, "单选框画了圆")
 
-local rgRow = At.RadioGroup{
-    x = 0, y = 100, options = { "a", "b" }, direction = "row", gap = 10,
-}
+local rgRow = At.RadioGroup({
+	x = 0,
+	y = 100,
+	options = { "a", "b" },
+	direction = "row",
+	gap = 10,
+})
 rgRow:draw()
 check(rgRow.children == nil, "RadioGroup 不持有子组件")
 check(approx(rgRow.w, (20 + 8 + 8) * 2 + 10), "横排 auto 宽度: " .. rgRow.w)
@@ -520,11 +662,19 @@ check(approx(rgRow.w, (20 + 8 + 8) * 2 + 10), "横排 auto 宽度: " .. rgRow.w)
 At.registry.clear()
 
 local slValue
-local sl = At.Slider{
-    x = 0, y = 0, w = 200, h = 28,
-    min = 0, max = 100, step = 5, value = 0,
-    onChange = function(value) slValue = value end,
-}
+local sl = At.Slider({
+	x = 0,
+	y = 0,
+	w = 200,
+	h = 28,
+	min = 0,
+	max = 100,
+	step = 5,
+	value = 0,
+	onChange = function(value)
+		slValue = value
+	end,
+})
 
 mouseX, mouseY = 100, 14
 At.mousepressed(100, 14, 1)
@@ -549,7 +699,7 @@ check(sl.value == 100, "方向键上限")
 sl:draw()
 
 -- 步长吸附
-local slStep = At.Slider{ x = 0, y = 0, min = 0, max = 10, step = 3, value = 0 }
+local slStep = At.Slider({ x = 0, y = 0, min = 0, max = 10, step = 3, value = 0 })
 slStep:setValue(7)
 check(slStep.value == 6, "按 step 吸附: " .. tostring(slStep.value))
 slStep:setValue(100)
@@ -559,15 +709,26 @@ check(slStep.value == 9, "clamp 到能取到的最大值: " .. tostring(slStep.v
 At.registry.clear()
 
 local clicked = 0
-local inner = At.Button{
-    x = 0, y = 0, w = 60, h = 24, text = "in",
-    onClick = function() clicked = clicked + 1 end,
-}
-local wrap = At.Panel{
-    x = 0, y = 0, w = 200, h = 100, gap = 8, padding = 0,
-    background = "#222831",
-    children = { At.Label{ text = "t", fontSize = 10 }, inner },
-}
+local inner = At.Button({
+	x = 0,
+	y = 0,
+	w = 60,
+	h = 24,
+	text = "in",
+	onClick = function()
+		clicked = clicked + 1
+	end,
+})
+local wrap = At.Panel({
+	x = 0,
+	y = 0,
+	w = 200,
+	h = 100,
+	gap = 8,
+	padding = 0,
+	background = "#222831",
+	children = { At.Label({ text = "t", fontSize = 10 }), inner },
+})
 
 check(not At.registry.contains(wrap), "Panel 不登记到事件表")
 wrap:draw()
@@ -580,12 +741,12 @@ check(clicked == 1, "容器内的按钮点击生效")
 -- ---------- ScrollView ----------
 At.registry.clear()
 
-local contentPanel = At.Panel{ w = "100%", h = "auto", gap = 10, padding = 10, direction = "column" }
+local contentPanel = At.Panel({ w = "100%", h = "auto", gap = 10, padding = 10, direction = "column" })
 for i = 1, 8 do
-    contentPanel:add(At.Label{ text = "行 " .. i, fontSize = 12, w = 60 })
+	contentPanel:add(At.Label({ text = "行 " .. i, fontSize = 12, w = 60 }))
 end
 
-local view = At.ScrollView{ x = 0, y = 0, w = 200, h = 100, content = contentPanel }
+local view = At.ScrollView({ x = 0, y = 0, w = 200, h = 100, content = contentPanel })
 view:draw()
 
 check(view:maxScroll() > 0, "内容超出视口可滚动: " .. view:maxScroll())
@@ -596,7 +757,7 @@ check(At.wheelmoved(0, -1) == true, "滚轮被视口消费")
 check(view._scrollTarget == 44, "滚轮只设置平滑滚动目标: " .. tostring(view._scrollTarget))
 check(view.scrollY == 0, "平滑滚动不会瞬移")
 for _ = 1, 60 do
-    view:update(1 / 60)
+	view:update(1 / 60)
 end
 check(approx(view.scrollY, 44, 0.6), "平滑滚动收敛到目标: " .. view.scrollY)
 
@@ -635,23 +796,28 @@ check(view.scrollY == 20, "拖动仍然 1:1 跟手: " .. view.scrollY)
 mouseDown = false
 At.mousereleased(180, 70, 1)
 for _ = 1, 5 do
-    view:update(1 / 60)
+	view:update(1 / 60)
 end
 check(view.scrollY > 20, "松手后惯性继续滚动: " .. view.scrollY)
 
 for _ = 1, 180 do
-    view:update(1 / 60)
+	view:update(1 / 60)
 end
 check(view._scrollVelocity == 0, "惯性最终停止")
 
 -- smooth = false 时立即到位
-local instantView = At.ScrollView{
-    x = 0, y = 0, w = 200, h = 60, content = contentPanel, smooth = false,
-}
+local instantView = At.ScrollView({
+	x = 0,
+	y = 0,
+	w = 200,
+	h = 60,
+	content = contentPanel,
+	smooth = false,
+})
 instantView:layout()
 instantView:scrollTo(30)
 check(instantView.scrollY == 30, "smooth = false 时直接到位: " .. instantView.scrollY)
-instantView.content = nil   -- 内容与 view 共用，别连带销毁
+instantView.content = nil -- 内容与 view 共用，别连带销毁
 instantView:destroy()
 
 -- Label 是被动组件：压在文字上也能拖动滚动
@@ -673,10 +839,15 @@ view:update(1 / 60)
 At.mousereleased(mouseX, mouseY, 1)
 
 -- 可交互子组件才拦截拖动
-local blockContent = At.Panel{ w = "100%", h = "auto", padding = 0, children = {
-    At.Button{ x = 0, y = 0, w = 100, h = 40, text = "b" },
-} }
-local blockView = At.ScrollView{ x = 0, y = 0, w = 200, h = 100, content = blockContent }
+local blockContent = At.Panel({
+	w = "100%",
+	h = "auto",
+	padding = 0,
+	children = {
+		At.Button({ x = 0, y = 0, w = 100, h = 40, text = "b" }),
+	},
+})
+local blockView = At.ScrollView({ x = 0, y = 0, w = 200, h = 100, content = blockContent })
 blockView:draw()
 
 local blockBtn = blockContent.children[1]
@@ -750,8 +921,8 @@ check(view.scrollY > 0, "点轨道跳转: " .. view.scrollY)
 local alphas = {}
 local realSetColor = love.graphics.setColor
 love.graphics.setColor = function(r, g, b, a)
-    alphas[#alphas + 1] = a
-    realSetColor(r, g, b, a)
+	alphas[#alphas + 1] = a
+	realSetColor(r, g, b, a)
 end
 At.shadow.shadow(0, 0, 100, 50, 6, { 0, 0, 0, 0.25 }, 6, 20, 0, 4)
 love.graphics.setColor = realSetColor
@@ -759,7 +930,7 @@ love.graphics.setColor = realSetColor
 check(#alphas == 21, "阴影按 layers+1 层绘制: " .. #alphas)
 local alphaSum = 0
 for _, a in ipairs(alphas) do
-    alphaSum = alphaSum + a
+	alphaSum = alphaSum + a
 end
 check(alphaSum < 0.6, "阴影透明度按层数归一化，不会叠成黑底: " .. alphaSum)
 check(alphaSum > 0.1, "阴影仍然可见: " .. alphaSum)
@@ -772,21 +943,21 @@ local baseBarW = select(3, view:_barMetrics())
 local hoverX, hoverY = view:_barMetrics()
 mouseX, mouseY = hoverX + 2, view.y + view.h / 2
 for _ = 1, 40 do
-    view:update(1 / 60)
+	view:update(1 / 60)
 end
 local grownBarW = select(3, view:_barMetrics())
 check(grownBarW > baseBarW, "指针碰到滚动条后变宽: " .. baseBarW .. " → " .. grownBarW)
 
 mouseX, mouseY = 5, 5
 for _ = 1, 60 do
-    view:update(1 / 60)
+	view:update(1 / 60)
 end
 check(select(3, view:_barMetrics()) < grownBarW, "移开后滚动条恢复宽度")
 
 -- ---------- 横向滚动 ----------
 At.registry.clear()
-local wide = At.Panel{ w = 420, h = 80, padding = 0 }
-local hview = At.ScrollView{ x = 0, y = 0, w = 200, h = 100, content = wide }
+local wide = At.Panel({ w = 420, h = 80, padding = 0 })
+local hview = At.ScrollView({ x = 0, y = 0, w = 200, h = 100, content = wide })
 hview:draw()
 check(hview:maxScrollX() > 0, "内容超宽时出现横向滚动: " .. hview:maxScrollX())
 check(hview:maxScroll() == 0, "高度不超时没有纵向滚动")
@@ -802,7 +973,7 @@ mouseX, mouseY = 100, 50
 check(hview:wheelmoved(1, 0) == true, "横向滚轮被消费")
 check(hview._scrollTargetX > 0, "横向滚轮设置目标")
 for _ = 1, 30 do
-    hview:update(1 / 60)
+	hview:update(1 / 60)
 end
 check(hview.scrollX > 0, "横向平滑滚动到位: " .. hview.scrollX)
 
@@ -831,8 +1002,8 @@ hview:destroy()
 
 -- 只有纵向空间时，横向滚轮退化为纵向
 At.registry.clear()
-local tall = At.Panel{ w = 100, h = 400, padding = 0 }
-local vview = At.ScrollView{ x = 0, y = 0, w = 200, h = 100, content = tall }
+local tall = At.Panel({ w = 100, h = 400, padding = 0 })
+local vview = At.ScrollView({ x = 0, y = 0, w = 200, h = 100, content = tall })
 vview:draw()
 mouseX, mouseY = 100, 50
 check(vview:wheelmoved(1, 0) == true, "只有纵向空间时横向滚轮也消费")
@@ -842,10 +1013,10 @@ vview:destroy()
 
 -- 嵌套滚动：外层不抢内层的事件
 At.registry.clear()
-local innerContent = At.Panel{ w = 600, h = 40, padding = 0 }
-local innerView = At.ScrollView{ x = 0, y = 0, w = 200, h = 60, content = innerContent }
-local outerContent = At.Panel{ w = 200, h = 800, padding = 0, children = { innerView } }
-local outerView = At.ScrollView{ x = 0, y = 0, w = 220, h = 120, content = outerContent }
+local innerContent = At.Panel({ w = 600, h = 40, padding = 0 })
+local innerView = At.ScrollView({ x = 0, y = 0, w = 200, h = 60, content = innerContent })
+local outerContent = At.Panel({ w = 200, h = 800, padding = 0, children = { innerView } })
+local outerView = At.ScrollView({ x = 0, y = 0, w = 220, h = 120, content = outerContent })
 outerView:draw()
 check(outerView:maxScroll() > 0, "外层可纵向滚动")
 mouseDown = true
@@ -862,8 +1033,8 @@ innerView:destroy()
 
 -- 内容不超出宽高时：没有滚动空间，也不吞点击
 At.registry.clear()
-local narrow = At.Panel{ w = 100, h = 40, padding = 0 }
-local nview = At.ScrollView{ x = 0, y = 0, w = 200, h = 100, content = narrow }
+local narrow = At.Panel({ w = 100, h = 40, padding = 0 })
+local nview = At.ScrollView({ x = 0, y = 0, w = 200, h = 100, content = narrow })
 nview:draw()
 check(nview:maxScrollX() == 0 and nview:maxScroll() == 0, "内容不超出时没有滚动空间")
 check(At.mousepressed(100, 50, 1) == false, "无滚动空间时不吞点击")
@@ -871,25 +1042,32 @@ nview.content = nil
 nview:destroy()
 
 -- ---------- 像素对齐 / 线型 ----------
-local aligned = At.Panel{
-    x = 0, y = 0, w = 101, h = "auto", padding = 0, direction = "row",
-    children = {
-        At.Label{ text = "a", w = "33%", fontSize = 10 },
-        At.Label{ text = "b", w = "33%", fontSize = 10 },
-        At.Label{ text = "c", w = "33%", fontSize = 10 },
-    },
-}
+local aligned = At.Panel({
+	x = 0,
+	y = 0,
+	w = 101,
+	h = "auto",
+	padding = 0,
+	direction = "row",
+	children = {
+		At.Label({ text = "a", w = "33%", fontSize = 10 }),
+		At.Label({ text = "b", w = "33%", fontSize = 10 }),
+		At.Label({ text = "c", w = "33%", fontSize = 10 }),
+	},
+})
 aligned:draw()
 for i = 1, #aligned.children do
-    local child = aligned.children[i]
-    check(child.x == math.floor(child.x), "子项 x 对齐整数: " .. child.x)
-    check(child.w == math.floor(child.w), "子项 w 对齐整数: " .. child.w)
+	local child = aligned.children[i]
+	check(child.x == math.floor(child.x), "子项 x 对齐整数: " .. child.x)
+	check(child.w == math.floor(child.w), "子项 w 对齐整数: " .. child.w)
 end
 
 aligned.children[1]:draw()
 check(lastPrint ~= nil, "文字已经绘制")
-check(lastPrint.x == math.floor(lastPrint.x) and lastPrint.y == math.floor(lastPrint.y),
-    "文字位置对齐整数像素")
+check(
+	lastPrint.x == math.floor(lastPrint.x) and lastPrint.y == math.floor(lastPrint.y),
+	"文字位置对齐整数像素"
+)
 
 check(love.graphics.getLineStyle() == "smooth", "绘制后线型已恢复为 smooth")
 check(love.graphics.getLineWidth() == 1, "绘制后线宽已恢复")
@@ -897,7 +1075,7 @@ check(love.graphics.getLineWidth() == 1, "绘制后线宽已恢复")
 -- ---------- 演示程序接线（main.lua 回调） ----------
 At.input.setActive(false)
 At.registry.clear()
-At.config.log.print = false   -- 演示里的 config.apply 不要把日志打到测试输出
+At.config.log.print = false -- 演示里的 config.apply 不要把日志打到测试输出
 dofile("main.lua")
 
 love.load()
@@ -906,15 +1084,17 @@ love.draw()
 check(love.graphics.getFont() ~= nil, "演示绘制后字体状态可用")
 
 local function findComponent(predicate)
-    for _, component in ipairs(At.registry.all()) do
-        if predicate(component) then
-            return component
-        end
-    end
-    return nil
+	for _, component in ipairs(At.registry.all()) do
+		if predicate(component) then
+			return component
+		end
+	end
+	return nil
 end
 
-local demoInput = findComponent(function(c) return c.textinput ~= nil end)
+local demoInput = findComponent(function(c)
+	return c.textinput ~= nil
+end)
 check(demoInput ~= nil, "演示里有 TextInput")
 
 mouseX, mouseY = demoInput.x + demoInput.w / 2, demoInput.y + demoInput.h / 2
@@ -928,7 +1108,7 @@ love.textinput("试")
 check(demoInput:getText() == "测试", "演示里能输入中文")
 
 local submit = findComponent(function(c)
-    return c.onClick ~= nil and c.text == "提交"
+	return c.onClick ~= nil and c.text == "提交"
 end)
 check(submit ~= nil, "演示里有提交按钮")
 
@@ -938,11 +1118,13 @@ love.mousepressed(mouseX, mouseY, 1)
 love.mousereleased(mouseX, mouseY, 1)
 
 local statusShown = findComponent(function(c)
-    return c.text ~= nil and type(c.text) == "string" and c.text:find("已提交", 1, true) ~= nil
+	return c.text ~= nil and type(c.text) == "string" and c.text:find("已提交", 1, true) ~= nil
 end)
 check(statusShown ~= nil, "提交按钮更新了状态标签")
 
-local demoConsole = findComponent(function(c) return c.levelColors ~= nil end)
+local demoConsole = findComponent(function(c)
+	return c.levelColors ~= nil
+end)
 check(demoConsole ~= nil, "演示创建了控制台")
 check(demoConsole.visible == false, "演示控制台初始隐藏")
 love.keypressed("f1")
@@ -967,7 +1149,7 @@ love.draw()
 local demoLogFile = At.log.getFileName()
 At.log.closeFile()
 if demoLogFile then
-    os.remove(demoLogFile)
+	os.remove(demoLogFile)
 end
 
 -- 演示改过全局 config，复位，避免后续用例继承 log.file=true / blur=true
@@ -977,20 +1159,28 @@ At.config.apply()
 
 -- ---------- 文档同步 ----------
 local function fileContains(path, needle)
-    local file = io.open(path, "r")
-    if not file then
-        return false
-    end
-    local content = file:read("*a")
-    file:close()
-    return content:find(needle, 1, true) ~= nil
+	local file = io.open(path, "r")
+	if not file then
+		return false
+	end
+	local content = file:read("*a")
+	file:close()
+	return content:find(needle, 1, true) ~= nil
 end
 
 for _, name in ipairs({
-    "At.Button", "At.Label", "At.Panel", "At.TextInput",
-    "At.Switch", "At.Checkbox", "At.RadioGroup", "At.Slider", "At.ScrollView", "At.Console",
+	"At.Button",
+	"At.Label",
+	"At.Panel",
+	"At.TextInput",
+	"At.Switch",
+	"At.Checkbox",
+	"At.RadioGroup",
+	"At.Slider",
+	"At.ScrollView",
+	"At.Console",
 }) do
-    check(fileContains("docs/components.md", name), "docs/components.md 缺少 " .. name)
+	check(fileContains("docs/components.md", name), "docs/components.md 缺少 " .. name)
 end
 
 check(fileContains("docs/layout.md", "grow"), "docs/layout.md 缺少 grow 说明")
@@ -1025,7 +1215,7 @@ At.blur.setAlgorithm("downscale")
 check(At.blur.getAlgorithm() == "downscale", "可以切换算法")
 check(pcall(At.blur.setAlgorithm, "no-such-algorithm") == false, "未知算法报错")
 local customAlgorithm = function(snapshot, x, y, w, h)
-    return snapshot, x, y, w, h
+	return snapshot, x, y, w, h
 end
 At.blur.setAlgorithm(customAlgorithm)
 check(At.blur.getAlgorithm() == customAlgorithm, "可以传自定义函数")
@@ -1033,16 +1223,26 @@ At.blur.setAlgorithm("downscale")
 
 At.blur.resetStats()
 check(At.blur.beginFrame() == true, "beginFrame 生效")
-local translucentPanel = At.Panel{
-    x = 10, y = 10, w = 120, h = 80, radius = 8,
-    background = "#202020", alpha = 180,
-}
+local translucentPanel = At.Panel({
+	x = 10,
+	y = 10,
+	w = 120,
+	h = 80,
+	radius = 8,
+	background = "#202020",
+	alpha = 180,
+})
 translucentPanel:draw()
 check(At.blur.stats().backdrops == 1, "半透明 Panel 触发模糊")
-local opaquePanel = At.Panel{
-    x = 10, y = 10, w = 120, h = 80, radius = 8,
-    background = "#202020", alpha = 255,
-}
+local opaquePanel = At.Panel({
+	x = 10,
+	y = 10,
+	w = 120,
+	h = 80,
+	radius = 8,
+	background = "#202020",
+	alpha = 255,
+})
 opaquePanel:draw()
 check(At.blur.stats().backdrops == 1, "不透明 Panel 不触发模糊")
 opaquePanel:destroy()
@@ -1052,19 +1252,18 @@ check(At.blur.endFrame() == true, "endFrame 生效")
 -- 自定义算法收到的区域参数
 local captured = {}
 At.blur.setAlgorithm(function(snapshot, x, y, w, h, strength)
-    captured = { x = x, y = y, w = w, h = h, strength = strength }
-    return snapshot, x, y, w, h
+	captured = { x = x, y = y, w = w, h = h, strength = strength }
+	return snapshot, x, y, w, h
 end)
 At.blur.beginFrame()
 check(At.blur.drawBackdrop(5, 6, 30, 40, 4) == true, "自定义算法被调用")
-check(captured.x == 5 and captured.y == 6 and captured.w == 30 and captured.h == 40,
-    "算法收到正确的区域")
+check(captured.x == 5 and captured.y == 6 and captured.w == 30 and captured.h == 40, "算法收到正确的区域")
 At.blur.endFrame()
 
 -- 控制台默认半透明（alpha=205），绘制时也会触发模糊
 At.blur.setAlgorithm("downscale")
 At.blur.beginFrame()
-local blurConsole = At.Console{ x = 0, y = 0, w = 200, h = 100 }
+local blurConsole = At.Console({ x = 0, y = 0, w = 200, h = 100 })
 blurConsole:show()
 local beforeConsole = At.blur.stats().backdrops
 blurConsole:draw()
@@ -1087,7 +1286,7 @@ check(At.log.getPrint() == false, "测试里已关闭 stdout 镜像")
 
 local mirrored = {}
 At.log.setPrint(function(text)
-    mirrored[#mirrored + 1] = text
+	mirrored[#mirrored + 1] = text
 end)
 At.log.setLevel("debug")
 At.log.info("镜像 %d", 1)
@@ -1112,11 +1311,13 @@ check(At.log.count() == 1, "计数正确")
 
 local namedEntry
 local function logFromNamed()
-    namedEntry = At.log.error("命名调用")
+	namedEntry = At.log.error("命名调用")
 end
 logFromNamed()
-check(namedEntry ~= nil and namedEntry.func == "logFromNamed",
-    "函数名取自调用者: " .. tostring(namedEntry and namedEntry.func))
+check(
+	namedEntry ~= nil and namedEntry.func == "logFromNamed",
+	"函数名取自调用者: " .. tostring(namedEntry and namedEntry.func)
+)
 
 local defaultText = At.log.formatEntry(warnEntry)
 check(defaultText:find("WARN", 1, true) ~= nil, "默认格式含等级")
@@ -1125,11 +1326,13 @@ check(defaultText:sub(1, 1) == "[", "默认格式以时间开头: " .. defaultTe
 
 At.log.setFormat("[%s]%s/%s>%s")
 local customText = At.log.formatEntry(warnEntry)
-check(customText:find("WARN/", 1, true) ~= nil and customText:find(">警告 7", 1, true) ~= nil,
-    "自定义格式生效: " .. customText)
+check(
+	customText:find("WARN/", 1, true) ~= nil and customText:find(">警告 7", 1, true) ~= nil,
+	"自定义格式生效: " .. customText
+)
 
 At.log.setFormat(function(entry)
-    return "F:" .. entry.levelName .. ":" .. entry.message
+	return "F:" .. entry.levelName .. ":" .. entry.message
 end)
 check(At.log.formatEntry(warnEntry) == "F:WARN:警告 7", "格式函数生效")
 
@@ -1139,7 +1342,7 @@ At.log.setLevel("debug")
 At.log.setMaxEntries(3)
 At.log.clear()
 for i = 1, 5 do
-    At.log.info("第 %d 条", i)
+	At.log.info("第 %d 条", i)
 end
 check(At.log.count() == 3, "缓冲按上限裁剪: " .. At.log.count())
 check(At.log.getEntries()[1].message == "第 3 条", "最旧的被丢弃")
@@ -1154,8 +1357,7 @@ At.log.setFilePattern("test_atlog_%Y%m%d_%H%M%S.log")
 check(At.log.setFile(true) == true, "开启文件输出")
 check(At.log.isFileEnabled() == true, "文件输出已启用")
 local logFileName = At.log.getFileName()
-check(logFileName:match("^test_atlog_%d+_%d+%.log$") ~= nil,
-    "文件名按 pattern 生成: " .. tostring(logFileName))
+check(logFileName:match("^test_atlog_%d+_%d+%.log$") ~= nil, "文件名按 pattern 生成: " .. tostring(logFileName))
 
 At.log.setLevel("debug")
 At.log.clear()
@@ -1178,8 +1380,10 @@ check(At.log.isFileEnabled() == false, "关闭后不再写入")
 At.log.setFilePattern(nil)
 check(At.log.getFilePattern() == "%Y-%m-%d %H:%M:%S.log", "默认文件名格式")
 local sampleName = os.date(At.log.getFilePattern())
-check(sampleName:match("^%d%d%d%d%-%d%d%-%d%d %d%d:%d%d:%d%d%.log$") ~= nil,
-    "默认文件名形如 2026-10-18 16:43:40.log: " .. sampleName)
+check(
+	sampleName:match("^%d%d%d%d%-%d%d%-%d%d %d%d:%d%d:%d%d%.log$") ~= nil,
+	"默认文件名形如 2026-10-18 16:43:40.log: " .. sampleName
+)
 
 At.log.setFilePattern("%Y-%m-%d %H:%M:%S.log")
 At.log.setLevel(savedLevel)
@@ -1189,10 +1393,10 @@ At.log.clear()
 At.registry.clear()
 At.log.setLevel("debug")
 for i = 1, 20 do
-    At.log.info("第 %d 行日志", i)
+	At.log.info("第 %d 行日志", i)
 end
 
-local console = At.Console{ x = 100, y = 100, w = 300, h = 100 }
+local console = At.Console({ x = 100, y = 100, w = 300, h = 100 })
 check(console.visible == false, "控制台默认隐藏")
 check(console:contains(150, 110), "命中窗口区域")
 check(not console:contains(150, 400), "窗口外不命中")
@@ -1226,7 +1430,7 @@ console:show()
 console:draw()
 check(love.graphics.getScissor() == nil, "控制台绘制后 scissor 已恢复")
 
-local console2 = At.Console{ x = 0, y = 0, w = 200, h = 80 }
+local console2 = At.Console({ x = 0, y = 0, w = 200, h = 80 })
 console.levelColors.info = "#000001"
 check(console2.levelColors.info ~= "#000001", "levelColors 不在实例间共享")
 
@@ -1234,7 +1438,7 @@ check(console2.levelColors.info ~= "#000001", "levelColors 不在实例间共享
 console:show()
 At.log.clear()
 for i = 1, 10 do
-    At.log.info("浮动偏移 %d", i)
+	At.log.info("浮动偏移 %d", i)
 end
 console._offset = 2.6
 console:draw()
@@ -1249,7 +1453,7 @@ check(At.log.count() == 0, "clear 清空日志缓冲")
 
 -- C 按钮清空
 for i = 1, 3 do
-    At.log.info("待清空 %d", i)
+	At.log.info("待清空 %d", i)
 end
 console:show()
 local clearX, clearY = console.x + console.w - 45, console.y + 4
@@ -1260,7 +1464,7 @@ console:destroy()
 console2:destroy()
 
 -- 隐藏时的 LOG 标签（移动端入口）
-local tabConsole = At.Console{ x = 0, y = 0, w = 200, h = 100 }
+local tabConsole = At.Console({ x = 0, y = 0, w = 200, h = 100 })
 check(tabConsole.tab == true, "默认显示 LOG 标签")
 local tab = tabConsole:_tabRect()
 check(tabConsole:mousepressed(tab.x + 2, tab.y + 2, 1) == true, "点 LOG 标签")
@@ -1277,16 +1481,12 @@ tabConsole:destroy()
 check(fileContains("LICENSE", "MIT License"), "LICENSE 是 MIT 许可")
 check(fileContains("docs/README.md", "LICENSE"), "README 有许可证章节")
 
-check(fileContains("LICENSES/OFL-1.1.txt", "SIL OPEN FONT LICENSE Version 1.1"),
-    "OFL 1.1 许可全文存在")
+check(fileContains("LICENSES/OFL-1.1.txt", "SIL OPEN FONT LICENSE Version 1.1"), "OFL 1.1 许可全文存在")
 check(fileContains("THIRD_PARTY_NOTICES.md", "Noto Sans SC"), "第三方声明缺少 Noto Sans SC")
 check(fileContains("THIRD_PARTY_NOTICES.md", "Noto Emoji"), "第三方声明缺少 Noto Emoji")
-check(fileContains("THIRD_PARTY_NOTICES.md", "SIL Open Font License"),
-    "第三方声明缺少 OFL 说明")
-check(fileContains("LICENSES/Noto-Sans-SC.txt", "Adobe"),
-    "Noto Sans SC 缺少版权方声明")
-check(fileContains("LICENSES/Noto-Emoji.txt", "Google"),
-    "Noto Emoji 缺少版权方声明")
+check(fileContains("THIRD_PARTY_NOTICES.md", "SIL Open Font License"), "第三方声明缺少 OFL 说明")
+check(fileContains("LICENSES/Noto-Sans-SC.txt", "Adobe"), "Noto Sans SC 缺少版权方声明")
+check(fileContains("LICENSES/Noto-Emoji.txt", "Google"), "Noto Emoji 缺少版权方声明")
 check(fileContains("LICENSES/README.txt", "MIT"), "LICENSES/README.txt 汇总许可说明")
 
 print(string.format("SMOKE OK  绘制调用: rect=%d print=%d", draws.rect, draws.print))

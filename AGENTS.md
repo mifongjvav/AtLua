@@ -177,7 +177,7 @@ At.Panel{
 
 ## 6. 代码约定
 
-- **缩进 4 空格**，注释用中文，注释说明"为什么"而不是复述代码。
+- **缩进用 tab（显示宽度 4）**，由格式化工具统一；注释用中文，注释说明"为什么"而不是复述代码。改完代码保持格式化后的风格，不要混入空格缩进（GLSL 字符串里的缩进属于 shader 代码，不受影响）。
 - 模块形状：`local M = {} ... return M`。require 路径从源码根开始且**不带 `.lua`**：`require("At.core.color")`。
 - **目录分层固定**：`At/core/`（基础设施）、`At/components/`（组件）、`At/effects/`（视觉特效）、`At/assets/`（资源）。新组件放 `At/components/`，新基础设施放 `At/core/`。
 - **新组件必须继承 `At.Component`**（`require("At.core.component")`）：`local proto = setmetatable({}, { __index = Component })`，构造函数调 `Component.instantiate(proto, opts, DEFAULTS)`，并导出 `setmetatable(MyComp, { __call = ... })` 以便 `At.Xxx{...}`。
