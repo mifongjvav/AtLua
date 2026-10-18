@@ -1,0 +1,17 @@
+Noto Emoji Regular
+==================
+
+文件：At/font/emoji.ttf
+字体内部名称（name 表）：Noto Emoji / Regular，PostScript 名 NotoEmoji-Regular
+版本：Version 3.005
+
+Copyright 2013 Google LLC. Noto is a trademark of Google Inc.
+
+许可：SIL Open Font License, Version 1.1
+许可全文：同目录 OFL-1.1.txt
+官方许可页：https://openfontlicense.org
+字体来源：https://github.com/googlefonts/noto-emoji （Noto Emoji）
+
+说明：本仓库按原样分发该字体文件，未改名、未声明为修改版；
+若替换或子集化该字体，需更新本文件并遵守 OFL 第 3 条（不得使用保留字体名），
+同时保留上述版权声明与许可。
