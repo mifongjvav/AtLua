@@ -140,7 +140,9 @@ local qt = At.system.getAccentColor(false, "qt")             -- 只取 Qt
   `nil, "unsupported"`。桌面返回 `light` / `dark`，无法判断时返回 `nil, "unknown"`。
 - **系统主题色**：LÖVE 没有原生 API，`At.system` 在桌面平台按 best-effort 读取：
   - GNOME/GTK：`gsettings get org.gnome.desktop.interface accent-color`（如 `blue` / `pink`）
-  - KDE/Qt：`kreadconfig6/5` 或 `~/.config/kdeglobals` 的 `[Colors:View] Highlight`
+  - Qt：读取 qt6ct/qt5ct 的 `color_scheme_path`，再取该调色板的 `[ColorScheme] active_colors` accent；
+    KDE 环境下回退 `kreadconfig6/5` 或 `~/.config/kdeglobals` 的 `[Colors:Selection] BackgroundNormal` /
+    `[Colors:View] Highlight` / `DecorationFocus`
   - Windows：DWM `ColorizationColor`
   - macOS：`defaults read -g AppleAccentColor`
   - `AT_ACCENT_COLOR`（或 `AT_THEME_COLOR`）环境变量优先级最高，格式 `#RRGGBB`

@@ -14,7 +14,7 @@
 -- 系统主题明暗由 LÖVE 12 的 love.window.getSystemTheme 提供；LÖVE 11 没有
 -- 这个 API，本模块会返回 unsupported。主题色没有 LÖVE 原生 API，因此只在
 -- 桌面平台通过固定命令/配置文件尽力读取：GNOME/GTK 的 accent-color、
--- KDE/Qt 的 kdeglobals Highlight、Windows DWM、macOS AppleAccentColor。
+-- qt6ct/qt5ct 调色板、KDE kdeglobals、Windows DWM、macOS AppleAccentColor。
 -- 也可以用 AT_ACCENT_COLOR（或 AT_THEME_COLOR）显式覆盖，格式 "#RRGGBB"。
 --
 -- 外部命令只在第一次调用 getAccentColor 时执行，之后缓存；At.system.reset()
@@ -98,6 +98,83 @@ local function run(command)
 	return output
 end
 
+local function readIniValue(path, sectionName, key)
+	local file = io.open(path, "r")
+	if not file then
+		return nil
+	end
+
+	local wanted = sectionName:lower()
+	local section
+	for line in file:lines() do
+		local nextSection = line:match("^%[([^%]]+)%]")
+		if nextSection then
+			section = nextSection:lower()
+		end
+		if section == wanted then
+			local value = line:match("^%s*" .. key .. "%s*=%s*(.+)$")
+			if value then
+				file:close()
+				return trim(value)
+			end
+		end
+	end
+	file:close()
+	return nil
+end
+
+local function homePath()
+	local home = os.getenv("HOME") or os.getenv("USERPROFILE")
+	if not home then
+		return nil
+	end
+	return home
+end
+
+-- qt6ct/qt5ct 的 active_colors 是 Qt 调色板；最后一项是 accent，
+-- 没有 accent 的旧版本回退到第 13 项 highlight。
+local function readQtScheme(path)
+	local value = readIniValue(path, "ColorScheme", "active_colors")
+	if not value then
+		return nil
+	end
+	local colors = {}
+	for part in value:gmatch("[^,]+") do
+		colors[#colors + 1] = trim(part)
+	end
+	local accent = normalizeHex(colors[#colors])
+	if accent then
+		return accent
+	end
+	return normalizeHex(colors[13])
+end
+
+local function tryQt()
+	local home = homePath()
+	if not home then
+		return nil
+	end
+	local configs = {
+		{ path = home .. "/.config/qt6ct/qt6ct.conf", source = "Qt/qt6ct" },
+		{ path = home .. "/.config/qt5ct/qt5ct.conf", source = "Qt/qt5ct" },
+	}
+	local theme = (os.getenv("QT_QPA_PLATFORMTHEME") or ""):lower()
+	if theme:find("qt5ct", 1, true) then
+		configs[1], configs[2] = configs[2], configs[1]
+	end
+
+	for _, config in ipairs(configs) do
+		local scheme = readIniValue(config.path, "Appearance", "color_scheme_path")
+		if scheme then
+			scheme = scheme:gsub('^"(.*)"$', "%1")
+			local color = readQtScheme(scheme)
+			if color then
+				return color, config.source
+			end
+		end
+	end
+end
+
 local function currentOS()
 	if love and love.system and love.system.getOS then
 		local ok, osName = pcall(love.system.getOS)
@@ -131,39 +208,41 @@ local function tryGnome()
 end
 
 local function tryKdeCommand()
+	local queries = {
+		{ "Colors:Selection", "BackgroundNormal" },
+		{ "Colors:View", "Highlight" },
+		{ "Colors:View", "DecorationFocus" },
+		{ "Colors:Window", "DecorationFocus" },
+	}
 	for _, command in ipairs({ "kreadconfig6", "kreadconfig5" }) do
-		local output = run(command .. " --file kdeglobals --group Colors:View --key Highlight 2>/dev/null")
-		local color = parseColor(output)
-		if color then
-			return color, "KDE/Qt"
+		for _, query in ipairs(queries) do
+			local output =
+				run(command .. " --file kdeglobals --group " .. query[1] .. " --key " .. query[2] .. " 2>/dev/null")
+			local color = parseColor(output)
+			if color then
+				return color, "KDE/Qt"
+			end
 		end
 	end
 end
 
 local function tryKdeFile()
-	local home = os.getenv("HOME") or os.getenv("USERPROFILE")
+	local home = homePath()
 	if not home then
 		return nil
 	end
+	local queries = {
+		{ "Colors:Selection", "BackgroundNormal" },
+		{ "Colors:View", "Highlight" },
+		{ "Colors:View", "DecorationFocus" },
+		{ "Colors:Window", "DecorationFocus" },
+	}
 	for _, path in ipairs({ home .. "/.config/kdeglobals", home .. "/.config/kdedefaults/kdeglobals" }) do
-		local file = io.open(path, "r")
-		if file then
-			local section
-			for line in file:lines() do
-				local nextSection = line:match("^%[([^%]]+)%]")
-				if nextSection then
-					section = nextSection:lower()
-				end
-				if section == "colors:view" then
-					local value = line:match("^Highlight=(.+)$")
-					local color = parseColor(value)
-					if color then
-						file:close()
-						return color, "KDE/Qt"
-					end
-				end
+		for _, query in ipairs(queries) do
+			local color = parseColor(readIniValue(path, query[1], query[2]))
+			if color then
+				return color, "KDE/Qt"
 			end
-			file:close()
 		end
 	end
 end
@@ -231,7 +310,10 @@ local function detectAccentColors()
 	local osName = currentOS()
 	if osName == "Linux" or osName == "FreeBSD" then
 		local gtk = tryGnome()
-		local qt = tryKdeCommand()
+		local qt = tryQt()
+		if not qt then
+			qt = tryKdeCommand()
+		end
 		if not qt then
 			qt = tryKdeFile()
 		end
