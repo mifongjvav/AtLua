@@ -8,4 +8,5 @@ function love.conf(t)
 
 	-- 背景模糊的圆角模板需要 stencil；LÖVE 11/12 默认也是 true，这里显式声明
 	t.window.stencil = true
+	t.window.resizable = true
 end

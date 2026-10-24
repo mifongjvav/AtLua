@@ -9,6 +9,7 @@ local initialAppearance = (initialSystemMode == "light" or initialSystemMode == 
 local lastSystemMode = initialSystemMode
 local systemOS = love.system and love.system.getOS and love.system.getOS() or ""
 local showGtkQt = systemOS == "Linux" or systemOS == "FreeBSD"
+local CONTENT_WIDTH = 420
 
 local state = {
 	ripples = true,
@@ -119,15 +120,17 @@ local function viewportSize(screenW, screenH)
 	if not screenW or not screenH then
 		screenW, screenH = love.graphics.getDimensions()
 	end
-	local w = math.min(420, math.max(240, screenW - 80))
+	-- 内容卡固定宽度，窗口更窄时让外层 ScrollView 出现横向滚动条，
+	-- 而不是把固定宽度的行（主题色、系统色、旋钮行）裁掉。
+	local w = math.min(CONTENT_WIDTH, math.max(160, screenW - 40))
 	local h = math.max(160, screenH - 80)
-	return w, h, math.max(20, math.floor((screenW - w) / 2))
+	return w, h, math.max(10, math.floor((screenW - w) / 2))
 end
 
 -- ---------- 卡片内容 ----------
 
 card = At.Panel({
-	w = "100%",
+	w = CONTENT_WIDTH,
 	h = "auto",
 	direction = "column",
 	gap = 14,
@@ -141,7 +144,7 @@ card.background = resolvedAppearance() == "light" and "#FFFFFF" or "@surface"
 
 card:add(At.Label({ text = "At 组件演示", fontSize = 22 }))
 card:add(At.Label({
-	text = "卡片由 Panel 排版；外层 ScrollView 负责裁剪与滚动，窗口小的时候用滚轮或拖动空白处查看下面的内容。",
+	text = "卡片由 Panel 排版；外层 ScrollView 负责裁剪与滚动，窗口小的时候用滚轮或拖动空白处查看下面的内容，极窄时可用横向滚动查看右侧。",
 	wrap = true,
 	w = "100%",
 	lineHeight = 1.4,
