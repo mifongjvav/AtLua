@@ -614,6 +614,169 @@ relayout:draw()
 check(approx(relayout.h, 12), "高度仍是单行")
 check(relayout.children[1].w == 30, "文字变长后重新测量: " .. relayout.children[1].w)
 
+-- flex-wrap：行方向按可用宽度换行
+rowPct = At.Panel({
+	x = 0,
+	y = 0,
+	w = 100,
+	h = "auto",
+	direction = "row",
+	gap = 4,
+	wrap = true,
+	children = {
+		At.Label({ text = "a", w = 40, h = 10, fontSize = 10 }),
+		At.Label({ text = "b", w = 40, h = 10, fontSize = 10 }),
+		At.Label({ text = "c", w = 40, h = 10, fontSize = 10 }),
+	},
+})
+rowPct:draw()
+check(rowPct.children[1].x == 0 and rowPct.children[2].x == 44, "flex-wrap 第一行位置")
+check(rowPct.children[3].x == 0 and rowPct.children[3].y == 14, "flex-wrap 第二行位置")
+check(rowPct.h == 24, "flex-wrap 自动高度: " .. rowPct.h)
+
+-- grid：两列等宽，自动行高
+rowGrow = At.Panel({
+	x = 0,
+	y = 0,
+	w = 200,
+	h = "auto",
+	display = "grid",
+	grid = { columns = 2, gap = 10 },
+	children = {
+		At.Label({ text = "1", w = 50, h = 10, fontSize = 10 }),
+		At.Label({ text = "2", w = 50, h = 10, fontSize = 10 }),
+		At.Label({ text = "3", w = 50, h = 10, fontSize = 10 }),
+	},
+})
+rowGrow:draw()
+check(rowGrow.children[2].x == 105, "grid 第二列位置: " .. rowGrow.children[2].x)
+check(rowGrow.children[3].x == 0 and rowGrow.children[3].y == 20, "grid 第二行位置")
+check(rowGrow.h == 30, "grid 自动高度: " .. rowGrow.h)
+
+-- absolute：不参与流式布局
+centered = At.Panel({
+	x = 10,
+	y = 20,
+	w = 100,
+	h = 100,
+	children = {
+		At.Label({ text = "flow", w = 20, h = 10, fontSize = 10 }),
+		At.Label({ text = "abs", position = "absolute", left = 30, top = 40, w = 20, h = 10, fontSize = 10 }),
+	},
+})
+centered:draw()
+check(centered.children[1].x == 10 and centered.children[1].y == 20, "absolute 不挤占流式位置")
+check(centered.children[2].x == 40 and centered.children[2].y == 60, "absolute left/top 生效")
+
+-- zIndex：只影响绘制顺序
+col = At.Panel({
+	x = 0,
+	y = 0,
+	w = 100,
+	h = 100,
+	children = {
+		At.Label({ text = "high", zIndex = 10, w = 20, h = 10, fontSize = 10 }),
+		At.Label({ text = "low", zIndex = 0, w = 20, h = 10, fontSize = 10 }),
+	},
+})
+col:draw()
+check(lastPrint and lastPrint.text == "high", "zIndex 高的子项最后绘制")
+
+-- 列方向 flex-wrap：换到下一列
+col = At.Panel({
+	x = 0,
+	y = 0,
+	w = "auto",
+	h = 80,
+	direction = "column",
+	gap = 4,
+	wrap = true,
+	children = {
+		At.Label({ text = "a", w = 10, h = 30, fontSize = 10 }),
+		At.Label({ text = "b", w = 10, h = 30, fontSize = 10 }),
+		At.Label({ text = "c", w = 10, h = 30, fontSize = 10 }),
+	},
+})
+col:draw()
+check(col.children[1].x == 0 and col.children[1].y == 0, "column wrap 第一列")
+check(col.children[3].x == 14 and col.children[3].y == 0, "column wrap 第二列")
+check(col.w == 24 and col.h == 80, "column wrap 自动宽度: " .. col.w .. "x" .. col.h)
+
+-- grid auto 宽度：至少按子项自然宽度撑开
+rowGrow = At.Panel({
+	x = 0,
+	y = 0,
+	w = "auto",
+	h = "auto",
+	display = "grid",
+	grid = { columns = 2, gap = 10 },
+	children = {
+		At.Label({ text = "a", w = 50, h = 10, fontSize = 10 }),
+		At.Label({ text = "b", w = 50, h = 10, fontSize = 10 }),
+		At.Label({ text = "c", w = 50, h = 10, fontSize = 10 }),
+	},
+})
+rowGrow:draw()
+check(rowGrow.w == 110 and rowGrow.h == 30, "grid auto 尺寸: " .. rowGrow.w .. "x" .. rowGrow.h)
+
+-- absolute 使用 right/bottom
+centered = At.Panel({
+	x = 10,
+	y = 20,
+	w = 100,
+	h = 100,
+	children = {
+		At.Label({ text = "abs", position = "absolute", right = 10, bottom = 10, w = 20, h = 10, fontSize = 10 }),
+	},
+})
+centered:draw()
+check(centered.children[1].x == 80 and centered.children[1].y == 100, "absolute right/bottom 生效")
+
+-- alignContent：多行整体居中
+rowPct = At.Panel({
+	x = 0,
+	y = 0,
+	w = 100,
+	h = 50,
+	direction = "row",
+	gap = 4,
+	wrap = true,
+	alignContent = "center",
+	children = {
+		At.Label({ text = "a", w = 40, h = 10, fontSize = 10 }),
+		At.Label({ text = "b", w = 40, h = 10, fontSize = 10 }),
+		At.Label({ text = "c", w = 40, h = 10, fontSize = 10 }),
+	},
+})
+rowPct:draw()
+check(rowPct.children[1].y == 13 and rowPct.children[3].y == 27, "alignContent center")
+
+-- absolute 左右同时存在时 auto 宽度拉伸
+centered = At.Panel({
+	x = 0,
+	y = 0,
+	w = 100,
+	h = 100,
+	children = {
+		At.Label({ text = "stretch", position = "absolute", left = 10, right = 10, top = 10, h = 10, fontSize = 10 }),
+	},
+})
+centered:draw()
+check(centered.children[1].x == 10 and centered.children[1].w == 80, "absolute 左右拉伸")
+
+-- absolute 也接受初始 x/y 作为 left/top
+centered = At.Panel({
+	x = 10,
+	y = 20,
+	w = 100,
+	h = 100,
+	children = {
+		At.Label({ text = "xy", position = "absolute", x = 20, y = 30, w = 20, h = 10, fontSize = 10 }),
+	},
+})
+centered:draw()
+check(centered.children[1].x == 30 and centered.children[1].y == 50, "absolute x/y 别名")
+
 -- ---------- TextInput ----------
 At.registry.clear()
 
@@ -1598,6 +1761,10 @@ end
 
 check(fileContains("docs/layout.md", "grow"), "docs/layout.md 缺少 grow 说明")
 check(fileContains("docs/layout.md", "justify"), "docs/layout.md 缺少 justify 说明")
+check(fileContains("docs/layout.md", "flex-wrap"), "docs/layout.md 缺少 flex-wrap 说明")
+check(fileContains("docs/layout.md", "grid"), "docs/layout.md 缺少 grid 说明")
+check(fileContains("docs/layout.md", "position: absolute"), "docs/layout.md 缺少 absolute 说明")
+check(fileContains("docs/layout.md", "zIndex"), "docs/layout.md 缺少 zIndex 说明")
 check(fileContains("docs/README.md", "love.update"), "docs/README.md 缺少快速开始")
 check(fileContains("docs/README.md", "At.log"), "docs/README.md 缺少日志说明")
 check(fileContains("docs/logging.md", "setLevel"), "docs/logging.md 缺少 setLevel")

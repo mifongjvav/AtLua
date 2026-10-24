@@ -578,6 +578,81 @@ card:add(At.Label({
 }))
 
 card:add(At.Label({
+	text = "布局：flex-wrap / grid / absolute / zIndex",
+	fontSize = 13,
+	color = "@textFaint",
+}))
+
+-- flex-wrap：窄行自动换行
+tagRow = At.Panel({ w = "100%", direction = "row", wrap = true, gap = 8, padding = 0 })
+for i = 1, 5 do
+	tagRow:add(At.Button({
+		text = "Wrap " .. i,
+		w = 72,
+		h = 28,
+		fontSize = 12,
+		shadow = false,
+	}))
+end
+card:add(tagRow)
+
+-- grid：三列等宽
+tagRow = At.Panel({ display = "grid", grid = { columns = 3, gap = 8 }, w = "100%", padding = 0 })
+for i = 1, 6 do
+	tagRow:add(At.Button({
+		text = "Grid " .. i,
+		w = "100%",
+		h = 28,
+		fontSize = 12,
+		shadow = false,
+	}))
+end
+card:add(tagRow)
+
+-- absolute + zIndex：两个角标重叠，高 zIndex 后绘制
+tagRow = At.Panel({
+	w = "100%",
+	h = 66,
+	padding = 0,
+	background = "@surfaceAlt",
+	borderColor = "@border",
+	borderWidth = 1,
+	radius = 8,
+})
+tagRow:add(
+	At.Label({ text = "absolute 与 zIndex", fontSize = 13, color = "@textMuted", margin = { left = 12, top = 8 } })
+)
+tagRow:add(At.Panel({
+	position = "absolute",
+	left = 12,
+	bottom = 8,
+	w = 120,
+	h = 28,
+	background = "@surfaceStrong",
+	borderColor = "@border",
+	borderWidth = 1,
+	radius = 6,
+	zIndex = 0,
+	children = {
+		At.Label({ text = "zIndex 0", w = 120, h = 28, align = "center", fontSize = 12 }),
+	},
+}))
+tagRow:add(At.Panel({
+	position = "absolute",
+	left = 40,
+	bottom = 14,
+	w = 120,
+	h = 28,
+	background = "@primary",
+	radius = 6,
+	zIndex = 10,
+	children = {
+		At.Label({ text = "zIndex 10", w = 120, h = 28, align = "center", fontSize = 12, color = "@onPrimary" }),
+	},
+}))
+card:add(tagRow)
+
+card:add(At.Label({
 	text = "点右上角 LOG（或 F1）开关控制台 · C 清空 · F3 背景模糊",
 	fontSize = 13,
 	color = "@textFaint",

@@ -39,7 +39,7 @@
 
 ## At.Panel
 
-布局容器：用 CSS 子集把子组件排成一行或一列，可选背景、描边、圆角、阴影，做成卡片。
+布局容器：用 CSS 子集把子组件排成 flex 行/列、换行 flex 或 grid，可选背景、描边、圆角、阴影，做成卡片。
 
 ### 属性
 
@@ -47,8 +47,12 @@
 | -------------- | ------------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `x` / `y`      | 数字                     | `0`        | 左上角坐标                                                                                                                                                 |
 | `w` / `h`      | 数字 / 百分比 / `"auto"` | `"auto"`   | 容器尺寸；auto 由子项撑开                                                                                                                                  |
-| `direction`    | 字符串                   | `"column"` | 主轴方向：`"column"` / `"row"`                                                                                                                             |
-| `gap`          | 数字                     | `8`        | 子项间距                                                                                                                                                   |
+| `direction`    | 字符串                   | `"column"` | flex 主轴方向：`"column"` / `"row"`                                                                                                                        |
+| `display`      | 字符串                   | `"flex"`   | 布局模式：`"flex"` / `"grid"`                                                                                                                              |
+| `wrap`         | 布尔                     | `false`    | flex 是否换行；`flexWrap = "wrap"` 等价                                                                                                                    |
+| `alignContent` | 字符串                   | `"start"`  | 换行后多行/多列整体对齐：`start` / `center` / `end` / `space-between` / `stretch`                                                                          |
+| `grid`         | 数字或表                 | `nil`      | grid 配置：`{ columns = 2, gap = 8 }` 或 `{ columns = { 120, "1fr" } }`；也可直接设 `columns` / `rows`                                                     |
+| `gap`          | 数字                     | `8`        | 子项间距；grid 下同时作为行列间距的默认值                                                                                                                  |
 | `padding`      | 数字或表                 | `0`        | 内边距，表为 `{ left, top, right, bottom }`                                                                                                                |
 | `align`        | 字符串                   | `"start"`  | 交叉轴对齐：`start` / `center` / `end` / `stretch`                                                                                                         |
 | `justify`      | 字符串                   | `"start"`  | 主轴分布：`start` / `center` / `end` / `space-between`                                                                                                     |
@@ -62,6 +66,16 @@
 | `shadowArgs`   | 表                       | `nil`      | `{ 颜色, spread, layers, offsetX, offsetY }`；`nil` 时使用 `At.config.shadow` 的默认值（默认深色主题色、较小的 spread/偏移）。颜色可传 RGBA 表或 hex/token |
 | `autoRegister` | 布尔                     | `false`    | 容器不登记到 registry                                                                                                                                      |
 | `passthrough`  | 布尔                     | `true`     | 不消费鼠标事件                                                                                                                                             |
+
+子项还可使用这些布局属性：
+
+| 子项属性                            | 说明                                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `position = "absolute"`             | 脱离流式布局，用 `left` / `top` / `right` / `bottom` 相对父容器内容区定位；不参与父容器 auto 尺寸 |
+| `left` / `top` / `right` / `bottom` | 绝对定位偏移；支持数字或百分比                                                                    |
+| `zIndex`（或 `z`）                  | 同一 `Panel` 内的绘制层级，值越大越后画；只影响绘制，不改变事件注册顺序                           |
+
+`display = "grid"` 时默认按行优先填充；支持 `grid.columns` 为数字（等宽）或表（数字 / `"1fr"` / `"auto"`），`grid.rows` 可传固定行高表。详见 [layout.md](layout.md#grid)。
 
 ### 方法
 

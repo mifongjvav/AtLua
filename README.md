@@ -24,12 +24,14 @@ function love.draw() card:draw() end
 
 ## 特性
 
-- **布局引擎**（`At.Panel` / `At.layout`）：`column`/`row`、`gap`、`padding`/`margin`、
-  数字/百分比/`auto` 尺寸、`grow` 瓜分剩余空间、`align`/`justify` 对齐，支持嵌套。
+- **布局引擎**（`At.Panel` / `At.layout`）：`column`/`row`、`flex-wrap`、基础 `grid`、
+  `position: absolute`、绘制层级 `zIndex`、`gap`、`padding`/`margin`、数字/百分比/`auto` 尺寸、
+  `grow` 瓜分剩余空间、`align`/`justify` 对齐，支持嵌套。
 - **组件**全部继承同一个基类，统一 `draw/update/mousepressed/mousereleased/measure/destroy` 协议：
   `Panel`、`Label`、`Button`、`TextInput`、`Switch`、`Checkbox`、`RadioGroup`、`Slider`、`Dial`、`ScrollView`。
 - **系统主题**：LÖVE 12+ 默认跟随系统明暗；`At.system.getAccentColor()` 尽力读取 Qt/GTK 等桌面主题色，示例可切换白色主题与系统主题色。
 - **主题色系统**：三个基色（主题色 `#A7DCFF`、黑 `#3D3D3D`、白 `#FFFFFF`）派生整套语义色；组件默认颜色是 `@primary` / `@text` 这类 token，运行时 `At.theme.set{...}` 换色，已有组件立即生效。
+- **高级布局**：flex-wrap 行/列换行、基础 grid（等宽列/固定或 `1fr` 列宽）、`position: absolute` 四向定位、同一 Panel 内的 `zIndex` 绘制层级。
 - **交互细节**：按钮涟漪与拖出/拖回语义、开关左右拖动、滑动条拖动与方向键微调、圆形旋钮拖动与 wrapping、输入框软键盘与光标、
   唯一键盘焦点、点空白自动失焦。
 - **滚动视口**：横向/纵向都支持，内容超出宽或高时**自动出现对应滚动条**；平滑滚动、双向惯性、可拖滚动条、悬停变宽、支持嵌套、`scrollToVisible`。
@@ -113,20 +115,23 @@ end
 
 ## 组件一览
 
-| 组件            | 作用                                                                 |
-| --------------- | -------------------------------------------------------------------- |
-| `At.Panel`      | 布局容器 / 卡片，支持背景、描边、圆角、阴影                          |
-| `At.Label`      | 文字标签，支持换行与对齐                                             |
-| `At.Button`     | 按钮：悬停/按下/禁用、涟漪、居中文字、回调                           |
-| `At.TextInput`  | 单行输入框：点击定位光标、方向键、中间编辑、密码、长度限制、回车提交 |
-| `At.Switch`     | 开关：点击或左右拖动切换，带过渡动画                                 |
-| `At.Checkbox`   | 多选框                                                               |
-| `At.RadioGroup` | 单选组（`value` 为 1 基下标）                                        |
-| `At.Slider`     | 滑动条：点击跳转、拖动、方向键微调、步长吸附                         |
-| `At.Dial`       | 圆形旋钮：点击/拖动、角度映射、wrapping、刻度与数值显示              |
-| `At.ScrollView` | 可滚动视口：横向/纵向自动滚动条、平滑滚动、惯性                      |
-| `At.Console`    | 浮动调试控制台：显示 `At.log` 日志、着色、可拖动                     |
-| `At.Toast`      | 窗口下方居中、自动关闭的一次性 Toast 通知                            |
+| 组件             | 作用                                                                 |
+| ---------------- | -------------------------------------------------------------------- |
+| `At.Panel`       | 布局容器 / 卡片，支持背景、描边、圆角、阴影                          |
+| `At.Label`       | 文字标签，支持换行与对齐                                             |
+| `At.Button`      | 按钮：悬停/按下/禁用、涟漪、居中文字、回调                           |
+| `At.TextInput`   | 单行输入框：点击定位光标、方向键、中间编辑、密码、长度限制、回车提交 |
+| `At.Switch`      | 开关：点击或左右拖动切换，带过渡动画                                 |
+| `At.Checkbox`    | 多选框                                                               |
+| `At.RadioGroup`  | 单选组（`value` 为 1 基下标）                                        |
+| `At.Slider`      | 滑动条：点击跳转、拖动、方向键微调、步长吸附                         |
+| `At.Dial`        | 圆形旋钮：点击/拖动、角度映射、wrapping、刻度与数值显示              |
+| `At.ScrollView`  | 可滚动视口：横向/纵向自动滚动条、平滑滚动、惯性                      |
+| `At.ProgressBar` | 确定性进度条：弹簧过渡、圆角、轨道/填充色                            |
+| `At.LoadingBar`  | 不确定性循环加载条                                                   |
+| `At.Console`     | 浮动调试控制台：显示 `At.log` 日志、着色、可拖动                     |
+| `At.Toast`       | 窗口下方居中、自动关闭的一次性 Toast 通知                            |
+| `At.Dialog`      | 全屏/浮动一次性模态对话框：压暗/模糊、拖动、actions、自动销毁        |
 
 ## 布局速查（CSS 子集）
 
@@ -140,7 +145,7 @@ end
 | `align`              | `align-items`      | `start` / `center` / `end` / `stretch`       |
 | `justify`            | `justify-content`  | `start` / `center` / `end` / `space-between` |
 
-不支持 `flex-wrap`、`grid`、绝对定位、`z-index`。父容器没有确定宽度时百分比会退化成 `auto`。
+支持 `flex-wrap`、基础 `grid`、`position: absolute` 与绘制层级 `zIndex`。父容器没有确定宽度时百分比会退化成 `auto`。
 
 ## 文档
 
@@ -216,7 +221,7 @@ At.config.apply()                    -- 推给各模块（At.lua 启动时已调
 ## 已知限制
 
 - 文本输入支持点击/拖动定位光标与方向键，但不支持选区、复制粘贴和撤销/重做。
-- 布局不支持换行（`flex-wrap`）、grid、绝对定位；百分比需要父容器宽度已知。
+- 布局不支持 grid 跨行/跨列与 `wrap-reverse`；`zIndex` 只影响绘制层级；百分比需要父容器宽度已知。
 - `legacy` 阴影是多次绘制叠加的近似模糊，层数越多越柔和也越耗绘制调用；默认 `glsl` 是单次 SDF 绘制。
 - 无自动化渲染测试，圆角、阴影、字体观感需在真机确认。
 

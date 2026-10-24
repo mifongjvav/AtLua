@@ -27,7 +27,12 @@ local DEFAULTS = {
 	w = "auto",
 	h = "auto",
 	direction = "column", -- column / row
+	display = "flex", -- flex / grid
 	gap = 8,
+	wrap = false, -- flex-wrap
+	flexWrap = nil, -- 兼容 CSS 命名；"wrap" 等价 wrap = true
+	alignContent = "start", -- wrap 后多行/多列的整体对齐
+	grid = nil, -- { columns = 2 } / { columns = { 120, "1fr" }, rows = ... }
 	padding = 0, -- number 或 { left, top, right, bottom }
 	align = "start", -- start / center / end / stretch
 	justify = "start", -- start / center / end / space-between
@@ -119,8 +124,21 @@ function proto:draw()
 	self:layout()
 	self:_draw()
 
+	-- zIndex 只影响绘制层级；事件顺序仍由注册表创建顺序决定。
+	local order = {}
 	for i = 1, #self.children do
-		local child = self.children[i]
+		order[i] = i
+	end
+	table.sort(order, function(a, b)
+		local za = self.children[a].zIndex or self.children[a].z or 0
+		local zb = self.children[b].zIndex or self.children[b].z or 0
+		if za ~= zb then
+			return za < zb
+		end
+		return a < b
+	end)
+	for i = 1, #order do
+		local child = self.children[order[i]]
 		if child.draw then
 			child:draw()
 		end

@@ -16,6 +16,11 @@
 | `grow = 1`                                                       | `flex-grow: 1`                   | 按权重瓜分主轴剩余空间                                 |
 | `align = "center"`                                               | `align-items: center`            | 交叉轴对齐：`start` / `center` / `end` / `stretch`     |
 | `justify = "center"`                                             | `justify-content: center`        | 主轴分布：`start` / `center` / `end` / `space-between` |
+| `wrap = true` / `flexWrap = "wrap"`                              | `flex-wrap: wrap`                | 主轴空间不足时换行/换列                                |
+| `alignContent = "center"`                                        | `align-content: center`          | 换行后的多行/多列整体对齐                              |
+| `display = "grid"` + `grid = { columns = 2 }`                    | `display: grid`                  | 基础 grid；行优先填充                                  |
+| `position = "absolute"` + `left/top/right/bottom`                | `position: absolute`             | 脱离流式布局，相对父内容区定位                         |
+| `zIndex = 2`                                                     | `z-index: 2`                     | 同一 Panel 内的绘制层级                                |
 
 与 CSS 的差异：
 
@@ -24,6 +29,8 @@
 - `align` 默认 `start`，不是 CSS 的 `stretch`。
 - 没有 `flex-shrink`，空间不够时子项**不会自动缩小**。
 - `margin` 没有 `auto`。
+- `zIndex` 只影响绘制顺序；事件顺序仍由组件创建顺序决定（后创建先收事件）。
+- grid 不支持命名区域、`grid-column`/`grid-row` 跨格和 `auto-flow: column`。
 
 ## 尺寸：`pixels` 支持三种写法
 
@@ -121,6 +128,104 @@ At.Panel{
 
 `stretch` 只对**声明为 `auto` 的尺寸**生效：`column` 里拉伸 `auto` 的宽度，`row` 里拉伸 `auto` 的高度。显式写了数字或百分比的子项保持原尺寸。交叉轴内容尺寸未知时也无法拉伸。
 
+## flex-wrap
+
+在 `At.Panel` 上设 `wrap = true`（或 CSS 风格的 `flexWrap = "wrap"`）后，主轴空间不足会换行/换列：
+
+```lua
+At.Panel{
+    direction = "row",
+    wrap = true,
+    alignContent = "start",
+    gap = 8,
+    w = 300,
+    children = { ... },
+}
+```
+
+- `direction = "row"`：宽度不够时换到下一行。
+- `direction = "column"`：高度不够时换到下一列。
+- `align` 控制每一行/列内部的交叉轴对齐。
+- `alignContent` 控制多行/多列整体在交叉轴上的位置：`start` / `center` / `end` / `space-between` / `stretch`。
+- `justify` 逐行/逐列生效；`grow` 也在每一行/列内部瓜分剩余空间。
+- 行的交叉轴尺寸取该行最高的子项；列的交叉轴尺寸取该列最宽的子项。
+- `wrap` 依赖主轴可用尺寸；父容器主轴上没有确定尺寸时不会换行。
+
+## grid
+
+`display = "grid"` 使用基础网格布局，按行优先放置子项：
+
+```lua
+At.Panel{
+    display = "grid",
+    grid = {
+        columns = 2,          -- 等宽两列；也可写 { 120, "1fr" }
+        rows = nil,           -- 可选：固定行高表，如 { 40, "auto" }
+        gap = 10,             -- 行列间距
+        columnGap = nil,      -- 可分别覆盖
+        rowGap = nil,
+    },
+    w = 400,
+    children = {
+        At.Label{ text = "左上" },
+        At.Label{ text = "右上" },
+        At.Label{ text = "左下" },
+        At.Label{ text = "右下" },
+    },
+}
+```
+
+- `columns`：
+  - 数字：等宽列数。
+  - 表：每一项可以是固定像素、`"50%"`、`"auto"`、`"1fr"`。
+- `rows`：可选固定行高表；不传时行高由该行最高子项决定。
+- `gap` 同时作为默认行列间距；`columnGap` / `rowGap` 可覆盖。
+- 子项的百分比宽度以所在单元格为基数；`"100%"` 会填满单元格。
+- 单元格内的水平/垂直对齐使用 `justify` / `align`。
+- 子项可以继续嵌套自己的布局；不支持跨行/跨列。
+- grid 和 flex 一样可以包含绝对定位子项。
+
+## 绝对定位
+
+子项设 `position = "absolute"` 后不再参与流式排版，也不会影响父容器的 auto 尺寸：
+
+```lua
+At.Panel{
+    w = 320, h = 180,
+    children = {
+        At.Label{ text = "流式内容" },
+        At.Label{
+            text = "角标",
+            position = "absolute",
+            right = 12, bottom = 12,
+            w = 48, h = 28,
+        },
+    },
+}
+```
+
+- `left` / `top` / `right` / `bottom` 相对父容器的**内容区**（减去 padding）；也可以把初始 `x` / `y` 当作 `left` / `top` 的别名。
+- 同时给左右偏移且 `w = "auto"` 时，宽度会被拉伸到两者之间；上下同理。
+- 同时给 `left` 和 `right` 且显式给 `w` 时，以 `left` 为准。
+- 绝对定位子项仍然可以在 `Panel.children` 里，参与绘制与 registry 事件；z 顺序由 `zIndex` 控制绘制。
+
+## z-index
+
+子项的 `zIndex`（别名 `z`）控制它在同一个 `Panel` 内的绘制顺序：
+
+```lua
+At.Panel{
+    children = {
+        At.Panel{ zIndex = 0, ... },
+        At.Panel{ zIndex = 10, ... }, -- 后画，盖在上面
+    },
+}
+```
+
+- 数值越大越后绘制；相同值按创建顺序。
+- 只影响绘制顺序，不改变事件注册顺序；需要点击在上层时，仍建议后创建它，或把交互组件放进对应的高 zIndex 子容器。
+- 嵌套 Panel 各自排序，跨层级的 zIndex 不互相比较。
+
 ## 像素对齐
 
 排版结果会四舍五入到整数：`x/y/w/h` 都对齐到像素（`At.pixel.round`），这样文字、圆角与 1px 边框不会落在半个像素上发虚。副作用是百分比/居中会产生 ±1px 的取整差，例如三个 `"33%"` 的子项实际宽度是 `33/33/35`（总和仍等于容器宽度）。
@@ -143,14 +248,14 @@ local view = At.ScrollView{
 
 ## 限制
 
-- 不支持 `flex-wrap`（不会换行）。
-- 不支持 `grid`。
-- 不支持 `position: absolute`（所有子项都参与流式排列）。
-- 不支持 `z-index`；绘制与事件顺序由创建顺序决定（后创建的在上层）。
 - 不支持 `flex-shrink`、`min-width` / `max-width`、`order`、`aspect-ratio`。
+- 不支持 grid 的命名区域、跨行/跨列、`auto-flow: column`。
+- 不支持 `wrap-reverse`；换行始终从主轴起点开始。
+- `zIndex` 只影响绘制，不影响事件命中顺序。
 - 交叉轴 `stretch` 只对 `auto` 尺寸生效。
 - 百分比需要父容器宽度已知；否则按 auto 处理。
 - 只做单遍排版：没有 CSS 那样的多轮内在尺寸迭代。
+- grid 的 `auto`/`fr` 列在容器宽度未知时按子项自然宽度估算。
 
 ## 示例
 

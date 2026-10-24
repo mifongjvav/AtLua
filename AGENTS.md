@@ -7,7 +7,7 @@
 一个 **LÖVE (Love2D) 的轻量 UI 组件库 + 演示程序**，纯 Lua，无第三方依赖、无包管理器。
 
 - `At/` 是库本体（命名空间 `At`）。核心是**组件式**用法：组件创建即登记到注册表，事件由 `At.update / At.mousepressed / At.mousereleased / At.textinput / At.keypressed` 统一分发。
-- **布局**：`At.Panel` 提供 CSS 子集式排版（column/row、gap、padding、margin、百分比、auto、grow、align、justify），子组件不需要手写坐标。
+- **布局**：`At.Panel` 提供 CSS 子集式排版（column/row、flex-wrap、基础 grid、absolute、zIndex、gap、padding、margin、百分比、auto、grow、align、justify），子组件不需要手写坐标。
 - **组件**：`At.Button`、`At.Label`、`At.TextInput`、`At.Switch`、`At.Checkbox`、`At.RadioGroup`、`At.Slider`、`At.Dial`、`At.ProgressBar`、`At.LoadingBar`、`At.ScrollView`、`At.Console`、`At.Toast`、`At.Dialog`，全部继承 `At.Component` 基类。
 - **日志**：`At.log` 提供五级日志、可配置格式与条目缓冲；`At.Console` 显示这些日志。
 - **阴影**：`At.shadow` 默认 GLSL SDF 单次绘制，保留旧式多层矩形（`legacy`），可全局切换。
@@ -143,16 +143,21 @@ function love.wheelmoved(dx, dy)       At.wheelmoved(dx, dy)             end
 At.Panel{
     x, y, w, h,                    -- 数字 / "50%" / "auto"
     direction = "column",          -- column / row
+    display = "flex",              -- flex / grid
+    wrap = false,                  -- flex-wrap；flexWrap = "wrap" 等价
+    alignContent = "start",        -- 多行/多列的交叉轴整体对齐
     gap = 8,
     padding = 0,                   -- number 或 { left, top, right, bottom }
     align = "start",               -- start / center / end / stretch
     justify = "start",             -- start / center / end / space-between
+    grid = nil,                    -- { columns = 2, rows = {...}, gap = 8 }
     background, borderColor, borderWidth, radius, shadow, alpha,
     children = { ... },
 }
 ```
 
-子组件可用 `w/h`（数字/百分比/auto）、`margin`（数字或具名表）、`grow`（数字，>0 才参与瓜分主轴剩余空间）、`visible`。
+子组件可用 `w/h`（数字/百分比/auto）、`margin`（数字或具名表）、`grow`（数字，>0 才参与瓜分主轴剩余空间）、`visible`；
+绝对定位子项用 `position = "absolute"` + `left/top/right/bottom`，脱离流式布局；`zIndex`（或 `z`）只控制同一 Panel 内的绘制层级。
 `At.layout` 纯函数：`pixels(value, base)`、`sides(value)`、`childMeasure(child, availW, availH)`、`measure(node, availW, availH)`、`arrange(node, availW, availH)`。
 `At.clip`：`capture/apply/restore/resolve`，所有嵌套裁剪必须用 `clip.apply` 求交，不能直接 `setScissor`。
 `At.pixel`：`round(value)`、`xy(x, y)`，绘制前对齐整数像素。
@@ -276,7 +281,8 @@ At.Panel{
 38. **Toast 是一次性组件，必须最后画并接 `At.update`**：`At.Toast` 自动登记，`At.update(dt)` 才能推进淡入、倒计时与淡出；到时间后自行 `destroy()`，不能假设变量在关闭后仍然可画。它默认 `interactive = false`，不挡下层点击；同一时刻只建议一个实例，顺序创建前先 `destroy()` 旧的。`love.draw` 中要在页面（以及 `At.Console`）之后调用 `toast:draw()`，否则会被盖住；文字换行和窄窗口宽度由 `measure` 按当前窗口重算。
 39. **系统通知是进程外交互，不能当成必需依赖**：`At.notify` 只在 Linux 上探测/调用 `notify-send`，没有桌面通知守护进程、没有 `notify-send` 或非 Linux 时返回 `false, reason`，不得报错或阻塞启动。`error`/`critical` 映射 `--urgency critical`；是否显示为重要通知由桌面决定。`send()` 通过 `os.execute` 调用外部命令，参数必须 shell quote；不要在每帧循环里发通知。
 40. **Dialog 是模态、一次性、必须最后绘制**：两种模式卡片尺寸相同；`fullscreen = true` 时整窗铺遮罩、压暗背景、禁止拖动，开启 `At.blur` 时整窗背景模糊（依赖 `beginFrame/endFrame`）；`false` 时浮动、可拖标题栏、不压暗。无论哪种模式都会拦截背景输入，因此 Dialog 必须在页面组件之后创建/最后 `draw()`，否则会被页面盖住或被页面组件抢事件。卡片内部组件会被提到注册表末尾以保证按钮/输入框优先收到事件；关闭动画结束后 `destroy()` 会连带销毁 `card` 与 `content`，不要再手动使用。没有自动超时关闭，`Esc` 也不自动关闭。
-41. **主题 token 在绘制时解析，不要在构造时缓存**：组件默认色是 `"@primary"` 这类字符串，`At.color` 的 `hexToRGBA/setColor/shade/mix` 内部调用 `color.resolve`；因此 `At.theme.set` 能热更新已有组件。若在 `new` 里用 `At.theme.get` 转成具体 hex 存起来，就只影响新组件。`color.lua` 对 `theme` 是**惰性 require**（只在遇到 `@` 时加载），用来避开 `theme -> color -> theme` 的加载环；不要改成顶层 `require("At.core.theme")`。`theme.set` 只接受三基色，`@danger/@warning/@success` 是固定语义色。
+41. **高级布局的边界**：`wrap` 依赖主轴可用尺寸，主轴未知时不会换行；`alignContent` 只对换行后的行/列生效；`grid` 是基础行优先网格，不支持跨行/跨列、命名区域和 `auto-flow: column`，`auto`/`fr` 列在容器宽度未知时按子项自然宽度估算。绝对定位使用父容器**内容区**的 `left/top/right/bottom`（初始 `x/y` 可作为别名，但 `left/top` 优先），且不参与父容器 auto 尺寸。`zIndex` 只改 `Panel` 的绘制排序，不改变 registry 的事件创建顺序；点击层级仍需要靠创建顺序或高 zIndex 的容器保证。
+42. **主题 token 在绘制时解析，不要在构造时缓存**：组件默认色是 `"@primary"` 这类字符串，`At.color` 的 `hexToRGBA/setColor/shade/mix` 内部调用 `color.resolve`；因此 `At.theme.set` 能热更新已有组件。若在 `new` 里用 `At.theme.get` 转成具体 hex 存起来，就只影响新组件。`color.lua` 对 `theme` 是**惰性 require**（只在遇到 `@` 时加载），用来避开 `theme -> color -> theme` 的加载环；不要改成顶层 `require("At.core.theme")`。`theme.set` 只接受三基色，`@danger/@warning/@success` 是固定语义色。
 
 ## 8. 改动检查清单
 
@@ -302,6 +308,7 @@ At.Panel{
 - [ ] 涉及平滑滚动/惯性的断言必须模拟若干帧（`At.update(1/60)`），不能只改目标就断言位置。
 - [ ] 日志改动覆盖等级过滤、格式（字符串与函数）、缓冲裁剪；控制台改动覆盖显隐、拖动、滚动、开关动画。
 - [ ] 动画改动模拟多帧 `At.update(1/60)` 再断言（不能改完目标就断言最终值），并覆盖 `animate = false` 的立即落位。
+- [ ] 高级布局改动验证：`wrap` 行/列换行与 `alignContent`、grid 行列定位/auto 尺寸、absolute 四向定位与 auto 父尺寸、`zIndex` 绘制顺序，并同步 `docs/layout.md` 与 `test_smoke.lua`。
 - [ ] 提交前跑过 `stylua .`，且 `stylua --check .` 通过。
 - [ ] 改了任意 `.md` 后跑过 `prettier --write .`，并检查 Markdown diff（表格/换行/代码块/链接没有被误改）。
 - [ ] 改了目录/资源后跑 `./pack.sh`，并 `unzip -Z1 AtLua.love` 抽查（不应出现 `docs/`、`*.md`、`test_*.lua`；**应包含 LICENSE 与 LICENSES/**）。
