@@ -1037,3 +1037,119 @@ end
 ```
 
 需要窗口失焦后仍然可见的通知，使用 [系统通知](notifications.md) 的 `At.notify`。
+
+## At.Dialog
+
+一次性模态对话框，仿 Qt/GTK 的标题栏 + 内容 + 底部操作区布局。
+
+- `fullscreen = true`：铺满窗口（保留 `inset` 边距）、压暗背景、不可拖动。
+- `fullscreen = false`：浮动窗口、可拖动标题栏、**不压暗背景**。
+
+### 属性
+
+| 属性                                | 类型        | 默认值                     | 说明                                               |
+| ----------------------------------- | ----------- | -------------------------- | -------------------------------------------------- |
+| `fullscreen`                        | 布尔        | `false`                    | 全屏模式；全屏时不可拖动并压暗背景                 |
+| `title`                             | 字符串      | `"对话框"`                 | 标题栏文字                                         |
+| `message`                           | 字符串      | `""`                       | 标题下方的说明文字；可换行                         |
+| `width`                             | 数字        | `380`                      | 非全屏时的窗口宽度；屏幕过窄会自动收窄             |
+| `inset`                             | 数字        | `24`                       | 全屏时卡片距离窗口边缘的边距；背景暗层在它外侧可见 |
+| `padding` / `gap`                   | 数字        | `20` / `12`                | 卡片内边距与子项间距                               |
+| `radius`                            | 数字        | `14`                       | 卡片圆角                                           |
+| `background` / `borderColor`        | hex / token | `"@surface"` / `"@border"` | 卡片背景 / 边框                                    |
+| `shadow`                            | 布尔        | `true`                     | 非全屏时是否画卡片阴影                             |
+| `titleColor` / `textColor`          | hex / token | `"@text"` / `"@textMuted"` | 标题 / 正文颜色                                    |
+| `actions`                           | 表          | `{}`                       | 操作按钮数组，见下                                 |
+| `content`                           | 表          | `{}`                       | 额外内容组件数组，按顺序放进正文区域               |
+| `closeButton`                       | 布尔        | `true`                     | 是否显示右上角 `×`                                 |
+| `dimAlpha`                          | 数字 0–1    | `0.55`                     | 全屏背景暗层的不透明度                             |
+| `animate`                           | 布尔        | `true`                     | 是否使用弹簧动画                                   |
+| `springStiffness` / `springDamping` | 数字        | `380` / `28`               | 进退动画的弹簧参数                                 |
+| `onClose`                           | 函数        | `nil`                      | 完全关闭、销毁前调用：`onClose(self)`              |
+
+`actions` 的每一项：
+
+```lua
+{
+    text = "确定",
+    color = "@primary", -- 缺省为次要按钮 "@surfaceStrong"
+    width = 96,         -- 可选
+    close = true,       -- 缺省 true：点击后自动关闭
+    onClick = function(dialog, button, mx, my) ... end,
+}
+```
+
+`content` 里放任意组件，例如输入框或自定义 Panel；它们会被放在正文区域，并按 Dialog 的宽度排版。
+
+### 方法
+
+| 方法             | 说明                                                    |
+| ---------------- | ------------------------------------------------------- |
+| `:close()`       | 开始淡出；动画结束后销毁并触发 `onClose`                |
+| `:isOpen()`      | 是否仍在显示/尚未开始关闭                               |
+| `:draw()`        | 绘制；**必须在 `love.draw` 最后调用**，盖住页面与控制台 |
+| `:isDestroyed()` | 是否已销毁（继承自 `Component`）                        |
+
+### 交互
+
+- Dialog 是模态的：打开后点击不会穿透到下面的页面；全屏和浮动模式都会拦截输入。
+- 浮动模式拖动**标题栏**移动窗口，位置会被夹在窗口内；全屏模式忽略拖动。
+- 右上角 `×` 关闭；底部 action 默认点击后关闭，可用 `close = false` 保留打开状态。
+- `Esc` 不自动关闭（对话框可能包含输入框，避免误关）；需要时在 action 或外部按键逻辑里调用 `:close()`。
+- 没有自动超时关闭，必须由用户点击关闭按钮/action 或调用 `:close()`。
+
+### 生命周期
+
+- 创建即自动登记；每帧 `At.update(dt)` 推进动画和拖动。
+- 关闭动画结束后自动 `destroy()`，同时销毁卡片与 `content` 里的子组件；不需要手动清理。
+- 对话框必须最后创建（或至少最后绘制），否则会被页面内容盖住；`love.draw` 中应在页面和 `At.Console` 之后、Toast 之前绘制。
+
+### 示例
+
+```lua
+local At = require("At.At")
+
+local dialog
+
+local function confirmDelete()
+    dialog = At.Dialog{
+        title = "删除文件",
+        message = "删除后不可恢复，确定继续吗？",
+        fullscreen = false,
+        actions = {
+            { text = "取消" },
+            {
+                text = "删除",
+                color = "@danger",
+                onClick = function()
+                    -- 执行删除
+                end,
+            },
+        },
+    }
+end
+
+function love.update(dt)
+    At.update(dt)
+end
+
+function love.draw()
+    -- 页面内容
+    if dialog and not dialog:isDestroyed() then
+        dialog:draw() -- 最后画
+    end
+end
+```
+
+全屏移动端样式：
+
+```lua
+local dialog = At.Dialog{
+    title = "设置",
+    message = "全屏对话框会压暗背景，且不能拖动。",
+    fullscreen = true,
+    actions = {
+        { text = "关闭" },
+    },
+}
+```

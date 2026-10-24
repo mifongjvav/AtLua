@@ -148,6 +148,7 @@ token 列表、默认派生色、`At.theme.get` / `At.theme.set` / `At.theme.res
 | `At.ScrollView`  | 可滚动视口：横纵自动滚动条、平滑滚动、惯性、触顶触底光效        | [components.md#at-scrollview](components.md#at-scrollview)   |
 | `At.Console`     | 浮动调试控制台：显示 `At.log` 日志、着色、可拖动                | [components.md#at-console](components.md#at-console)         |
 | `At.Toast`       | 窗口下方居中、自动关闭的一次性 Toast 通知                       | [components.md#at-toast](components.md#at-toast)             |
+| `At.Dialog`      | 一次性模态对话框：全屏/浮动两种模式，浮动可拖动                 | [components.md#at-dialog](components.md#at-dialog)           |
 
 ### 动画
 

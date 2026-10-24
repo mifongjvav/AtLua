@@ -27,7 +27,7 @@ local volumeProgress
 local angleLabel, angleDial, angleSwitch
 local themeStateLabel
 local submitBtn, nameInput, logConsole
-local toast
+local toast, dialog
 
 local function setStatus(text)
 	if statusLabel then
@@ -41,6 +41,35 @@ local function showToast(text, level)
 		toast:destroy()
 	end
 	toast = At.Toast({ text = text, level = level or "info", duration = 3 })
+end
+
+local function showDialog(fullscreen)
+	if dialog and not dialog:isDestroyed() then
+		dialog:destroy()
+	end
+	local nextDialog
+	nextDialog = At.Dialog({
+		title = fullscreen and "全屏对话框" or "窗口对话框",
+		message = fullscreen and "这是全屏 Dialog：背景会压暗，标题栏不能拖动。"
+			or "这是窗口 Dialog：背景不压暗，拖动标题栏可以移动位置。",
+		fullscreen = fullscreen,
+		actions = {
+			{ text = "取消" },
+			{
+				text = "确定",
+				color = "@primary",
+				onClick = function()
+					showToast("对话框已确认", "success")
+				end,
+			},
+		},
+		onClose = function()
+			if dialog == nextDialog then
+				dialog = nil
+			end
+		end,
+	})
+	dialog = nextDialog
 end
 
 local function sendSystemNotification(level, title, body)
@@ -505,6 +534,31 @@ card:add(At.Panel({
 	},
 }))
 
+card:add(At.Panel({
+	direction = "row",
+	gap = 10,
+	children = {
+		At.Button({
+			w = 130,
+			text = "窗口 Dialog",
+			color = "@surfaceStrong",
+			onClick = function()
+				showDialog(false)
+				setStatus("窗口对话框")
+			end,
+		}),
+		At.Button({
+			w = 130,
+			text = "全屏 Dialog",
+			color = "@surfaceStrong",
+			onClick = function()
+				showDialog(true)
+				setStatus("全屏对话框")
+			end,
+		}),
+	},
+}))
+
 statusLabel = At.Label({ text = "试试点击、拖动、输入", fontSize = 15, color = "@primary" })
 card:add(statusLabel)
 
@@ -590,8 +644,11 @@ function love.draw()
 	At.blur.beginFrame() -- 启用模糊时把画面收进内部 canvas
 	viewport:draw()
 	logConsole:draw() -- 控制台先画
+	if dialog and not dialog:isDestroyed() then
+		dialog:draw() -- 对话框在页面/控制台之上
+	end
 	if toast and not toast:isDestroyed() then
-		toast:draw() -- Toast 在窗口最上层
+		toast:draw() -- Toast 在最上层
 	end
 	At.blur.endFrame()
 end

@@ -1182,6 +1182,37 @@ check(
 )
 shadowBtn._check:destroy()
 
+-- Dialog：全屏/浮动、拖动、模态、关闭
+shadowBtn._dialog = At.Dialog({
+	title = "T",
+	message = "M",
+	animate = false,
+	actions = { { text = "OK" } },
+})
+shadowBtn._dialog:draw()
+check(shadowBtn._dialog.fullscreen == false and shadowBtn._dialog:isOpen(), "Dialog 默认浮动且打开")
+shadowBtn._dx = shadowBtn._dialog.card.x + 12
+shadowBtn._dy = shadowBtn._dialog.card.y + 12
+mouseX, mouseY = shadowBtn._dx, shadowBtn._dy
+shadowBtn._dialog:_press(shadowBtn._dx, shadowBtn._dy)
+check(shadowBtn._dialog._dragging, "浮动 Dialog 可拖标题栏")
+shadowBtn._oldCardX = shadowBtn._dialog._cardX
+mouseX, mouseY = shadowBtn._dx + 30, shadowBtn._dy + 20
+mouseDown = true
+shadowBtn._dialog:_tick(1 / 60)
+mouseDown = false
+check(shadowBtn._dialog._cardX ~= shadowBtn._oldCardX, "Dialog 拖动更新位置")
+shadowBtn._dialog:_release()
+shadowBtn._dialog:close()
+check(shadowBtn._dialog:isDestroyed(), "Dialog 关闭后销毁")
+
+shadowBtn._fullDialog = At.Dialog({ title = "F", fullscreen = true, animate = false })
+shadowBtn._fullDialog:draw()
+shadowBtn._fullDialog:_press(0, 0)
+check(shadowBtn._fullDialog._dragging == false, "全屏 Dialog 不可拖动")
+shadowBtn._fullDialog:close()
+check(shadowBtn._fullDialog:isDestroyed(), "全屏 Dialog 关闭后销毁")
+
 -- Toast：自动关闭、自动销毁、可绘制
 shadowBtn._toast = At.Toast({ text = "测试 Toast", level = "success", duration = 0.05, animate = false })
 shadowBtn._toast:draw()
@@ -1551,6 +1582,7 @@ for _, name in ipairs({
 	"At.ScrollView",
 	"At.Console",
 	"At.Toast",
+	"At.Dialog",
 	"At.ProgressBar",
 	"At.LoadingBar",
 }) do

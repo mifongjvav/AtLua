@@ -8,7 +8,7 @@
 
 - `At/` 是库本体（命名空间 `At`）。核心是**组件式**用法：组件创建即登记到注册表，事件由 `At.update / At.mousepressed / At.mousereleased / At.textinput / At.keypressed` 统一分发。
 - **布局**：`At.Panel` 提供 CSS 子集式排版（column/row、gap、padding、margin、百分比、auto、grow、align、justify），子组件不需要手写坐标。
-- **组件**：`At.Button`、`At.Label`、`At.TextInput`、`At.Switch`、`At.Checkbox`、`At.RadioGroup`、`At.Slider`、`At.Dial`、`At.ProgressBar`、`At.LoadingBar`、`At.ScrollView`、`At.Console`、`At.Toast`，全部继承 `At.Component` 基类。
+- **组件**：`At.Button`、`At.Label`、`At.TextInput`、`At.Switch`、`At.Checkbox`、`At.RadioGroup`、`At.Slider`、`At.Dial`、`At.ProgressBar`、`At.LoadingBar`、`At.ScrollView`、`At.Console`、`At.Toast`、`At.Dialog`，全部继承 `At.Component` 基类。
 - **日志**：`At.log` 提供五级日志、可配置格式与条目缓冲；`At.Console` 显示这些日志。
 - **阴影**：`At.shadow` 默认 GLSL SDF 单次绘制，保留旧式多层矩形（`legacy`），可全局切换。
 - 仍保留**立即模式**函数 `At.button(...)`（只画不记状态，无涟漪），仅供旧代码使用。
@@ -99,7 +99,7 @@ At/
   components/       # 具体组件
     Panel.lua Label.lua Button.lua TextInput.lua Switch.lua Checkbox.lua
     RadioGroup.lua Slider.lua Dial.lua ProgressBar.lua LoadingBar.lua ScrollView.lua
-    Console.lua Toast.lua
+    Console.lua Toast.lua Dialog.lua
   effects/          # 视觉效果
     Ripple.lua      #   涟漪发射器
     blur.lua        #   背景模糊：canvas 快照 + 可插拔算法
@@ -176,12 +176,13 @@ At.Panel{
 | `At.ScrollView`  | `content, w, h, scrollX, scrollY, scrollbar, wheelStep, drag, smooth, smoothSpeed, momentum, padding, edgeEffect, edgeGlowColor/Size, edgeRadius, overscrollMax, overscrollResistance` | `onScroll(value,maxScroll,self,axis)`                                          |
 | `At.Console`     | `w, h, visible, title, headerH, padding, levelColors, alpha, fontSize, animate, springStiffness/springDamping, openOffset`                                                             | 无（内部读 `At.log`）                                                          |
 | `At.Toast`       | `text, level, duration, margin, maxWidth/minWidth, fontSize, paddingX/Y, radius, background, borderColor, textColor, accentColor, shadow, animate, onClose`                            | `onClose(self)`                                                                |
+| `At.Dialog`      | `fullscreen, title, message, width, inset, actions, content, closeButton, dimAlpha, animate, onClose`                                                                                  | `onClose(self)`；action `onClick(dialog, button, mx, my)`                      |
 
 基类方法：`draw/update/mousepressed/mousereleased/measure/destroy`、`contains(px,py)`、`setRect/setPosition/setSize`、`setEnabled/setVisible`、`isHovered/isPressed/isFocused/isInteractive`、`focus/blur`、`declaredWidth/declaredHeight/invalidateSize`、`font()`。
 
 ### At 入口
 
-`At.update(dt)`、`At.mousepressed(...)`、`At.mousereleased(...)`、`At.textinput(t)`、`At.keypressed(k)`、`At.wheelmoved(dx,dy)`、`At.focus(c)`、`At.clearFocus()`、`At.getFocus()`、`At.add(c)`、`At.remove(c)`、`At.registry`、`At.layout`、`At.Component`、`At.motion`、`At.blur`（`setEnabled/isEnabled/setAlgorithm/registerAlgorithm/setStrength/getMSAA/getMaxMSAA/beginFrame/endFrame/drawBackdrop/stats/reset`）、`At.render`（`getMSAA/setMSAA/getMaxMSAA`）、`At.system`（`hasThemeApi/getThemeMode/getAccentColor/getAccentColors/reset`）、`At.notify`（`available/level/send/reset`）、`At.Toast`。
+`At.update(dt)`、`At.mousepressed(...)`、`At.mousereleased(...)`、`At.textinput(t)`、`At.keypressed(k)`、`At.wheelmoved(dx,dy)`、`At.focus(c)`、`At.clearFocus()`、`At.getFocus()`、`At.add(c)`、`At.remove(c)`、`At.registry`、`At.layout`、`At.Component`、`At.motion`、`At.blur`（`setEnabled/isEnabled/setAlgorithm/registerAlgorithm/setStrength/getMSAA/getMaxMSAA/beginFrame/endFrame/drawBackdrop/stats/reset`）、`At.render`（`getMSAA/setMSAA/getMaxMSAA`）、`At.system`（`hasThemeApi/getThemeMode/getAccentColor/getAccentColors/reset`）、`At.notify`（`available/level/send/reset`）、`At.Toast`、`At.Dialog`。
 
 `At.config`（`At/config.lua`）：`theme = {color, black, white}`、`render = {msaa}`、`shadow = {algorithm, color, alpha, spread, layers, offsetX, offsetY}`、`blur = {enabled, algorithm, strength}`、`log = {level, print, maxEntries, file, filePattern}`、`font = {size, main, emoji}`；`At.config.apply()` 把配置推给各模块（`At.lua` 启动时已自动调用一次）。
 
@@ -274,7 +275,8 @@ At.Panel{
 37. **LÖVE 11/12 兼容用能力检测，不按版本号分支**：`love.filesystem.openFile or newFile`（12 用 openFile，11 用 newFile）、`love.graphics.setStencilMode`（12）优先，缺少时回退 `love.graphics.stencil + setStencilTest`（11）。不要为了消警告直接删旧 API，也不要调用当前版本已弃用的函数；两套路径的模板都要复位/清 0，否则相邻模糊组件的圆角会互相污染。LÖVE 12 的模板需要窗口 `stencil` 开启，`conf.lua` 已设 `t.window.stencil = true`。测试要同时覆盖新旧分支，不能只跑一个版本。
 38. **Toast 是一次性组件，必须最后画并接 `At.update`**：`At.Toast` 自动登记，`At.update(dt)` 才能推进淡入、倒计时与淡出；到时间后自行 `destroy()`，不能假设变量在关闭后仍然可画。它默认 `interactive = false`，不挡下层点击；同一时刻只建议一个实例，顺序创建前先 `destroy()` 旧的。`love.draw` 中要在页面（以及 `At.Console`）之后调用 `toast:draw()`，否则会被盖住；文字换行和窄窗口宽度由 `measure` 按当前窗口重算。
 39. **系统通知是进程外交互，不能当成必需依赖**：`At.notify` 只在 Linux 上探测/调用 `notify-send`，没有桌面通知守护进程、没有 `notify-send` 或非 Linux 时返回 `false, reason`，不得报错或阻塞启动。`error`/`critical` 映射 `--urgency critical`；是否显示为重要通知由桌面决定。`send()` 通过 `os.execute` 调用外部命令，参数必须 shell quote；不要在每帧循环里发通知。
-40. **主题 token 在绘制时解析，不要在构造时缓存**：组件默认色是 `"@primary"` 这类字符串，`At.color` 的 `hexToRGBA/setColor/shade/mix` 内部调用 `color.resolve`；因此 `At.theme.set` 能热更新已有组件。若在 `new` 里用 `At.theme.get` 转成具体 hex 存起来，就只影响新组件。`color.lua` 对 `theme` 是**惰性 require**（只在遇到 `@` 时加载），用来避开 `theme -> color -> theme` 的加载环；不要改成顶层 `require("At.core.theme")`。`theme.set` 只接受三基色，`@danger/@warning/@success` 是固定语义色。
+40. **Dialog 是模态、一次性、必须最后绘制**：`fullscreen = true` 时铺满窗口（`inset` 边距）并压暗背景、禁止拖动；`false` 时浮动、可拖标题栏、不压暗。无论哪种模式都会拦截背景输入，因此 Dialog 必须在页面组件之后创建/最后 `draw()`，否则会被页面盖住或被页面组件抢事件。卡片内部组件会被提到注册表末尾以保证按钮/输入框优先收到事件；关闭动画结束后 `destroy()` 会连带销毁 `card` 与 `content`，不要再手动使用。没有自动超时关闭，`Esc` 也不自动关闭。
+41. **主题 token 在绘制时解析，不要在构造时缓存**：组件默认色是 `"@primary"` 这类字符串，`At.color` 的 `hexToRGBA/setColor/shade/mix` 内部调用 `color.resolve`；因此 `At.theme.set` 能热更新已有组件。若在 `new` 里用 `At.theme.get` 转成具体 hex 存起来，就只影响新组件。`color.lua` 对 `theme` 是**惰性 require**（只在遇到 `@` 时加载），用来避开 `theme -> color -> theme` 的加载环；不要改成顶层 `require("At.core.theme")`。`theme.set` 只接受三基色，`@danger/@warning/@success` 是固定语义色。
 
 ## 8. 改动检查清单
 
@@ -294,6 +296,7 @@ At.Panel{
 - [ ] 系统主题改动验证：`getThemeMode` 的 light/dark/unknown/unsupported、`getAccentColors` / `getAccentColor(refresh, "gtk"|"qt")` 的来源选择、env 覆盖与失败分支、演示白色主题切换。
 - [ ] Toast 改动验证：`At.update` 推进淡入/倒计时/淡出、到时间自动销毁、`close()`、`animate = false`、`setText` 重新测量、窗口变窄时换行、最后绘制。
 - [ ] 系统通知改动验证：`available()` 的 Linux/非 Linux/缺少 notify-send 分支、`level` 映射 critical、`send` 失败返回、参数 shell quote；测试里用 mock，不真的发通知。
+- [ ] Dialog 改动验证：全屏不可拖动且压暗、浮动可拖动且不压暗、背景输入被拦截、标题栏/关闭/actions、`content` 子组件可交互、关闭后自动销毁、窗口 resize 后位置被夹紧。
 - [ ] LÖVE 11/12 兼容改动验证：LÖVE 11 与 12 各启动一次，无 deprecated 警告；`setStencilMode`、`openFile`、旧 `stencil`/`newFile` 的回退路径都有测试或手动验证。
 - [ ] 有 LÖVE 时 `love .` 手动过一遍：悬停、按下、拖出/拖回、输入、开关动画、拖动滑动条、进度条过渡、滚轮平滑滚动、拖拽惯性、触顶/触底光效与滚动条端点反馈。
 - [ ] 涉及平滑滚动/惯性的断言必须模拟若干帧（`At.update(1/60)`），不能只改目标就断言位置。
