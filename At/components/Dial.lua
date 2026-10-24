@@ -55,7 +55,7 @@ local DEFAULTS = {
 	notchCount = 0, -- 0 = 不画刻度
 	notchColor = "@borderStrong",
 	notchWidth = 2,
-	notchLength = 6,
+	notchLength = 3,
 
 	alpha = 255,
 	showValue = false,

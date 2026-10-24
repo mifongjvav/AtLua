@@ -582,7 +582,7 @@ volume:draw()
 | `notchCount`      | 数字                     | `0`               | 刻度数量；`0` 关闭                                      |
 | `notchColor`      | hex / token              | `"@borderStrong"` | 刻度颜色                                                |
 | `notchWidth`      | 数字                     | `2`               | 刻度线宽                                                |
-| `notchLength`     | 数字                     | `6`               | 刻度长度                                                |
+| `notchLength`     | 数字                     | `3`               | 刻度长度                                                |
 | `alpha`           | 数字 0–255               | `255`             | 整体透明度                                              |
 | `showValue`       | 布尔                     | `false`           | 是否在旋钮中心显示数值                                  |
 | `valueColor`      | hex / token              | `nil`             | 数值颜色；缺省按 `knobColor` 自动取黑/白                |
