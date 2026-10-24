@@ -278,7 +278,7 @@ At.Panel{
 - [ ] 日志改动覆盖等级过滤、格式（字符串与函数）、缓冲裁剪；控制台改动覆盖显隐、拖动、滚动、开关动画。
 - [ ] 动画改动模拟多帧 `At.update(1/60)` 再断言（不能改完目标就断言最终值），并覆盖 `animate = false` 的立即落位。
 - [ ] 提交前跑过 `stylua .`，且 `stylua --check .` 通过。
-- [ ] 改了目录/资源后跑 `./pack.sh`，并 `unzip -Z1 AtLua.love` 抽查（不应出现 docs/、_.md、test__.lua；**应包含 LICENSE 与 LICENSES/**）。
+- [ ] 改了目录/资源后跑 `./pack.sh`，并 `unzip -Z1 AtLua.love` 抽查（不应出现 `docs/`、`*.md`、`test_*.lua`；**应包含 LICENSE 与 LICENSES/**）。
 - [ ] 新增/替换字体或其它第三方资源时，`LICENSES/` 与 `THIRD_PARTY_NOTICES.md` 已更新，且版权信息未被删除。
 - [ ] **改动已完成：`git add -A` 并 `git commit`**；工作区没有未提交的源码/文档改动，也没有 `*.love`、日志、截图等产物。
 
