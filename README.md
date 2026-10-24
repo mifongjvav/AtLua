@@ -27,9 +27,9 @@ function love.draw() card:draw() end
 - **布局引擎**（`At.Panel` / `At.layout`）：`column`/`row`、`gap`、`padding`/`margin`、
   数字/百分比/`auto` 尺寸、`grow` 瓜分剩余空间、`align`/`justify` 对齐，支持嵌套。
 - **组件**全部继承同一个基类，统一 `draw/update/mousepressed/mousereleased/measure/destroy` 协议：
-  `Panel`、`Label`、`Button`、`TextInput`、`Switch`、`Checkbox`、`RadioGroup`、`Slider`、`ScrollView`。
+  `Panel`、`Label`、`Button`、`TextInput`、`Switch`、`Checkbox`、`RadioGroup`、`Slider`、`Dial`、`ScrollView`。
 - **主题色系统**：三个基色（主题色 `#A7DCFF`、黑 `#3D3D3D`、白 `#FFFFFF`）派生整套语义色；组件默认颜色是 `@primary` / `@text` 这类 token，运行时 `At.theme.set{...}` 换色，已有组件立即生效。
-- **交互细节**：按钮涟漪与拖出/拖回语义、开关左右拖动、滑动条拖动与方向键微调、输入框软键盘与光标、
+- **交互细节**：按钮涟漪与拖出/拖回语义、开关左右拖动、滑动条拖动与方向键微调、圆形旋钮拖动与 wrapping、输入框软键盘与光标、
   唯一键盘焦点、点空白自动失焦。
 - **滚动视口**：横向/纵向都支持，内容超出宽或高时**自动出现对应滚动条**；平滑滚动、双向惯性、可拖滚动条、悬停变宽、支持嵌套、`scrollToVisible`。
 - **渲染细节**：坐标对齐整数像素、嵌套裁剪求交、1px 边框使用 rough 线型；默认 GLSL SDF 单次绘制阴影，可切回旧式多层阴影（legacy 按层数归一化）；`At/config.lua` 的 `render.msaa` 默认 4，圆角/圆形/边框与模糊路径都有抗锯齿。
@@ -119,6 +119,7 @@ end
 | `At.Checkbox`   | 多选框                                                               |
 | `At.RadioGroup` | 单选组（`value` 为 1 基下标）                                        |
 | `At.Slider`     | 滑动条：点击跳转、拖动、方向键微调、步长吸附                         |
+| `At.Dial`       | 圆形旋钮：点击/拖动、角度映射、wrapping、刻度与数值显示              |
 | `At.ScrollView` | 可滚动视口：横向/纵向自动滚动条、平滑滚动、惯性                      |
 | `At.Console`    | 浮动调试控制台：显示 `At.log` 日志、着色、可拖动                     |
 
@@ -186,7 +187,7 @@ At/
   core/         # 基础设施：registry、component、layout、clip、pixel、color、theme、
                 #   render、SDF、shadow、font、input、log
   components/   # 组件：Panel、Label、Button、TextInput、Switch、Checkbox、
-                #   RadioGroup、Slider、ScrollView、Console
+                #   RadioGroup、Slider、Dial、ScrollView、Console
   effects/      # 视觉效果：Ripple、blur
   assets/       # 字体资源：font.ttf、emoji.ttf
 AGENTS.md       # 给 AI 代理/协作者的约定与陷阱

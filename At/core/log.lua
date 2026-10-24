@@ -239,7 +239,10 @@ local function openFile()
 		f.handle = handle
 		f.viaLove = false
 		local okCwd, cwd = pcall(function()
-			return love and love.filesystem and love.filesystem.getWorkingDirectory and love.filesystem.getWorkingDirectory()
+			return love
+				and love.filesystem
+				and love.filesystem.getWorkingDirectory
+				and love.filesystem.getWorkingDirectory()
 		end)
 		f.absolute = okCwd and cwd and (cwd .. "/" .. name) or name
 		return true

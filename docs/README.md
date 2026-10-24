@@ -137,6 +137,7 @@ token 列表、默认派生色、`At.theme.get` / `At.theme.set` / `At.theme.res
 | `At.Checkbox`    | 多选框，点击整行切换                                            | [components.md#at-checkbox](components.md#at-checkbox)       |
 | `At.RadioGroup`  | 单选组，`value` 是 1 基下标                                     | [components.md#at-radiogroup](components.md#at-radiogroup)   |
 | `At.Slider`      | 滑动条，支持步进、拖动与方向键                                  | [components.md#at-slider](components.md#at-slider)           |
+| `At.Dial`        | 圆形旋钮（QDial 风格），支持拖动、角度与 wrapping               | [components.md#at-dial](components.md#at-dial)               |
 | `At.ProgressBar` | 确定性进度条，填充宽度弹簧过渡                                  | [components.md#at-progressbar](components.md#at-progressbar) |
 | `At.LoadingBar`  | 不确定性进度条，高光循环滑动                                    | [components.md#at-loadingbar](components.md#at-loadingbar)   |
 | `At.ScrollView`  | 可滚动视口：横纵自动滚动条、平滑滚动、惯性、触顶触底光效        | [components.md#at-scrollview](components.md#at-scrollview)   |

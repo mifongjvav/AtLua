@@ -823,6 +823,90 @@ check(slStep.value == 6, "按 step 吸附: " .. tostring(slStep.value))
 slStep:setValue(100)
 check(slStep.value == 9, "clamp 到能取到的最大值: " .. tostring(slStep.value))
 
+-- ---------- Dial ----------
+At.registry.clear()
+
+local dialValue
+local dial = At.Dial({
+	x = 0,
+	y = 0,
+	w = 200,
+	h = 200,
+	min = 0,
+	max = 100,
+	step = 0,
+	value = 0,
+	notchCount = 9,
+	onChange = function(value)
+		dialValue = value
+	end,
+})
+
+-- 顶部是 50%，左下起点是 0%，右下终点是 100%
+At.mousepressed(100, 5, 1)
+At.mousereleased(100, 5, 1)
+check(approx(dial.value, 50) and approx(dialValue, 50), "Dial 点击顶部映射到 50%")
+At.mousepressed(50, 150, 1)
+At.mousereleased(50, 150, 1)
+check(approx(dial.value, 0), "Dial 点击起点映射到 min")
+At.mousepressed(150, 150, 1)
+At.mousereleased(150, 150, 1)
+check(approx(dial.value, 100), "Dial 点击终点映射到 max")
+
+-- 按住拖动：从顶部拖到右侧
+At.mousepressed(100, 5, 1)
+mouseDown = true
+mouseX, mouseY = 195, 100
+dial:update(1 / 60)
+check(math.abs(dial.value - 83.333333) < 0.01, "Dial 拖动跟随鼠标: " .. tostring(dial.value))
+mouseDown = false
+dial:update(1 / 60)
+check(dial._dragging == false, "Dial 松开后停止拖动")
+At.mousereleased(195, 100, 1)
+
+dial:setValue(120)
+check(dial.value == 100, "Dial 非 wrapping 夹到 max")
+dial:setValue(-10)
+check(dial.value == 0, "Dial 非 wrapping 夹到 min")
+At.keypressed("right")
+check(approx(dial.value, 5), "Dial 方向键微调")
+
+dial:draw()
+check(draws.circle > 0, "Dial 绘制了圆环/旋钮")
+
+-- wrapping：完整 360°，越过 max 从 min 继续
+local wrapped = At.Dial({
+	x = 0,
+	y = 0,
+	w = 200,
+	h = 200,
+	min = 0,
+	max = 359,
+	step = 1,
+	value = 0,
+	wrapping = true,
+})
+local function pointAt(degrees)
+	return 100 + math.cos(math.rad(degrees)) * 80, 100 + math.sin(math.rad(degrees)) * 80
+end
+local wx, wy = pointAt(136)
+At.mousepressed(wx, wy, 1)
+At.mousereleased(wx, wy, 1)
+check(wrapped.value == 1, "wrapping 起点顺时针一格: " .. tostring(wrapped.value))
+local bx, by = pointAt(134)
+At.mousepressed(bx, by, 1)
+At.mousereleased(bx, by, 1)
+check(wrapped.value == 358, "wrapping 起点逆时针一格: " .. tostring(wrapped.value))
+wrapped:setValue(360)
+check(wrapped.value == 1, "wrapping setValue 越界取模")
+wrapped:setValue(-1)
+check(wrapped.value == 358, "wrapping setValue 下界取模")
+check(wrapped:isWrapping() == true, "Dial isWrapping")
+wrapped:setWrapping(false)
+wrapped:setValue(360)
+check(wrapped.value == 359, "关闭 wrapping 后夹到 max")
+wrapped:draw()
+
 -- ---------- Panel 的穿透与排版 ----------
 At.registry.clear()
 
@@ -1271,15 +1355,20 @@ local submit = findComponent(function(c)
 end)
 check(submit ~= nil, "演示里有提交按钮")
 
-mouseX, mouseY = submit.x + 10, submit.y + 10
-love.update(1 / 60)
-love.mousepressed(mouseX, mouseY, 1)
-love.mousereleased(mouseX, mouseY, 1)
+-- 这里直接走按钮自己的按下/松开：演示卡片现在比视口高，提交按钮不一定在可视区，
+-- 点击事件由 ScrollView 的测试覆盖，这里只验证演示的 onClick 接线。
+submit:mousepressed(submit.x + 10, submit.y + 10, 1)
+submit:mousereleased(submit.x + 10, submit.y + 10, 1)
 
 local statusShown = findComponent(function(c)
 	return c.text ~= nil and type(c.text) == "string" and c.text:find("已提交", 1, true) ~= nil
 end)
 check(statusShown ~= nil, "提交按钮更新了状态标签")
+
+local demoDial = findComponent(function(c)
+	return c.getRatio ~= nil and c.setWrapping ~= nil
+end)
+check(demoDial ~= nil, "演示里有 Dial")
 
 local demoConsole = findComponent(function(c)
 	return c.levelColors ~= nil
@@ -1336,6 +1425,7 @@ for _, name in ipairs({
 	"At.Checkbox",
 	"At.RadioGroup",
 	"At.Slider",
+	"At.Dial",
 	"At.ScrollView",
 	"At.Console",
 	"At.ProgressBar",
@@ -1352,6 +1442,9 @@ check(fileContains("docs/logging.md", "setLevel"), "docs/logging.md 缺少 setLe
 check(fileContains("docs/logging.md", "setFormat"), "docs/logging.md 缺少 setFormat")
 check(fileContains("docs/blur.md", "setAlgorithm"), "docs/blur.md 缺少 setAlgorithm")
 check(fileContains("docs/blur.md", "beginFrame"), "docs/blur.md 缺少 beginFrame")
+check(fileContains("docs/README.md", "At.Dial"), "docs/README.md 缺少 Dial 说明")
+check(fileContains("AGENTS.md", "At.Dial"), "AGENTS.md 缺少 Dial 说明")
+check(fileContains("docs/components.md", "wrapping"), "docs/components.md 缺少 Dial wrapping 说明")
 check(fileContains("docs/README.md", "At.blur"), "docs/README.md 缺少模糊说明")
 check(fileContains("At/config.lua", "blur"), "At/config.lua 缺少 blur 配置")
 check(fileContains("At/config.lua", "theme"), "At/config.lua 缺少 theme 配置")

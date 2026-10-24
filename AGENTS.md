@@ -8,7 +8,7 @@
 
 - `At/` 是库本体（命名空间 `At`）。核心是**组件式**用法：组件创建即登记到注册表，事件由 `At.update / At.mousepressed / At.mousereleased / At.textinput / At.keypressed` 统一分发。
 - **布局**：`At.Panel` 提供 CSS 子集式排版（column/row、gap、padding、margin、百分比、auto、grow、align、justify），子组件不需要手写坐标。
-- **组件**：`At.Button`、`At.Label`、`At.TextInput`、`At.Switch`、`At.Checkbox`、`At.RadioGroup`、`At.Slider`、`At.ProgressBar`、`At.LoadingBar`、`At.ScrollView`、`At.Console`，全部继承 `At.Component` 基类。
+- **组件**：`At.Button`、`At.Label`、`At.TextInput`、`At.Switch`、`At.Checkbox`、`At.RadioGroup`、`At.Slider`、`At.Dial`、`At.ProgressBar`、`At.LoadingBar`、`At.ScrollView`、`At.Console`，全部继承 `At.Component` 基类。
 - **日志**：`At.log` 提供五级日志、可配置格式与条目缓冲；`At.Console` 显示这些日志。
 - **阴影**：`At.shadow` 默认 GLSL SDF 单次绘制，保留旧式多层矩形（`legacy`），可全局切换。
 - 仍保留**立即模式**函数 `At.button(...)`（只画不记状态，无涟漪），仅供旧代码使用。
@@ -94,7 +94,7 @@ At/
     log.lua         #   日志：等级、格式、缓冲、stdout、文件
   components/       # 具体组件
     Panel.lua Label.lua Button.lua TextInput.lua Switch.lua Checkbox.lua
-    RadioGroup.lua Slider.lua ProgressBar.lua LoadingBar.lua ScrollView.lua
+    RadioGroup.lua Slider.lua Dial.lua ProgressBar.lua LoadingBar.lua ScrollView.lua
     Console.lua
   effects/          # 视觉效果
     Ripple.lua      #   涟漪发射器
@@ -166,6 +166,7 @@ At.Panel{
 | `At.Checkbox`    | `text, checked, size, gap, checkColor`                                                                                                                                                 | `onChange(checked,self)`                                                       |
 | `At.RadioGroup`  | `options, value(1 基), direction, gap, size, selectedColor`                                                                                                                            | `onChange(index,label,self)`                                                   |
 | `At.Slider`      | `min,max,step,value, showValue, trackColor, fillColor, thumbColor`                                                                                                                     | `onChange(value,self)`                                                         |
+| `At.Dial`        | `min,max,step,pageStep,value,wrapping,startAngle,endAngle,notchCount,showValue`；`getValue/setValue/getRatio/setWrapping/isWrapping`                                                   | `onChange(value,self)`                                                         |
 | `At.ProgressBar` | `value(0..1), w, h, radius, trackColor, fillColor, animate, springStiffness/springDamping`                                                                                             | `onChange(value,self)`                                                         |
 | `At.LoadingBar`  | `w, h, radius, trackColor, fillColor, speed, segmentRatio, minSegment, running`                                                                                                        | 无                                                                             |
 | `At.ScrollView`  | `content, w, h, scrollX, scrollY, scrollbar, wheelStep, drag, smooth, smoothSpeed, momentum, padding, edgeEffect, edgeGlowColor/Size, edgeRadius, overscrollMax, overscrollResistance` | `onScroll(value,maxScroll,self,axis)`                                          |
@@ -215,7 +216,7 @@ At.Panel{
 - **坐标一律对齐整数像素**：绘制前用 `At.pixel.xy/round`；布局已经对齐过一次，但滚动位移、动画插值、居中计算仍可能产生小数。
 - **动画统一用 `At.motion.spring`**（需要缓动再用 `easeIn/Out/InOut`），不要自己写 `value = value + (target - value) * k` 的指数逼近；每个组件在 `_tick(dt)` 或 `update(dt)` 里推进自己的弹簧，并给 `animate = false` 留立即落位的分支。
 - 焦点只通过 `self:focus()/self:blur()` 或 `registry.setFocus` 改，不要自建 `isFocused` 字段。
-- 命名沿用现状，不要"统一"：大写开头是 `At`、`SDF`、`Ripple`、`Button`、`Label`、`Panel`、`TextInput`、`Switch`、`Checkbox`、`RadioGroup`、`Slider`、`Component`；小写是 `color`、`shadow`、`input`、`font`、`layout`、`registry`。
+- 命名沿用现状，不要"统一"：大写开头是 `At`、`SDF`、`Ripple`、`Button`、`Label`、`Panel`、`TextInput`、`Switch`、`Checkbox`、`RadioGroup`、`Slider`、`Dial`、`Component`；小写是 `color`、`shadow`、`input`、`font`、`layout`、`registry`。
 - 颜色对外接受 `hex`（或 `"@primary"` 这类主题 token）+ 0–255 `alpha`，不要引入 0–1 风格的第二套接口。
 - 新增模块**不要**创建全局变量；已有全局（`SDF`、`color`、`shadow`、`mainFont`、`emoji`、`removeLastUTF8Char`）是遗留兼容面，可以读取，别扩散。
 - 不引入第三方库、shader 文件或构建工具。内联 GLSL 字符串是允许的（`blur.lua`、`shadow.lua` 已用），不要新增 `.glsl` 文件或外部 shader 依赖。
@@ -261,7 +262,8 @@ At.Panel{
 32. **抗锯齿靠 MSAA，不靠小数坐标**：窗口 MSAA 在 `At/config.lua` 的 `render.msaa` 里配置（默认 4，0 = 关闭）。`conf.lua` 在建窗前 `require("At.config")` 并设 `t.window.msaa`，所以启动时 `config.apply()` 发现值一致、不会 `setMode` 重建窗口（否则会黑闪）；运行中改 msaa 才会重建。具体由 `At.config.apply()` → `At.render.setMSAA()` 应用；组件坐标仍必须对齐整数像素，不要为了让边缘平滑把矩形/文字位置改成小数。`At.render.setMSAA` 会重建窗口后缓冲，`config.apply` 随后调用 `At.blur.reset()`；`At.blur` 的 scene canvas 读取 `At.render.getMSAA()` 并用 `{ msaa = n }` 创建，否则整帧先画进非 MSAA canvas，窗口设置会被白费；创建失败要退回无 MSAA 画布。MSAA 会增加显存/带宽开销，低端设备可降到 2 或 0。
 33. **阴影默认 GLSL，legacy 只是兼容路径**：`config.shadow.algorithm` 默认 `"glsl"`，一次 SDF draw；不传 `shadowArgs` 时用 `config.shadow`（默认 `@primaryDark`、spread 3、offset 1/2、alpha 0.3）；`"legacy"` 仍按 `layers+1` 次矩形叠加，`layers` 在 GLSL 下被忽略。`shadowArgs` 的颜色 alpha 是 **0–1**，不要按组件的 0–255 传。shader/白纹理是惰性缓存的，窗口重建或换上下文后 `At.shadow.reset()` 重新编译；shader 不可用会自动回退 legacy。`At.config.apply()` 在 MSAA 重建后同时 reset blur 与 shadow。
 34. **TextInput 光标是 UTF-8 字符下标，不是字节位置**：`_caret` 取 `0..input.length(text)`，插入/删除用 `input.sub` 按字符切，不要用 `string.sub` 按字节切（中文/emoji 会被切坏）。点击定位用当前字体 `getWidth(前缀)` 找最近边界；密码模式按掩码宽度算。文本超宽时 `_scrollX` 负责水平滚动，`_ensureCaretVisible` 必须在光标变化、输入、绘制前调用；失焦要归零。竖直/可见性仍由外层 `ScrollView` 管。
-35. **主题 token 在绘制时解析，不要在构造时缓存**：组件默认色是 `"@primary"` 这类字符串，`At.color` 的 `hexToRGBA/setColor/shade/mix` 内部调用 `color.resolve`；因此 `At.theme.set` 能热更新已有组件。若在 `new` 里用 `At.theme.get` 转成具体 hex 存起来，就只影响新组件。`color.lua` 对 `theme` 是**惰性 require**（只在遇到 `@` 时加载），用来避开 `theme -> color -> theme` 的加载环；不要改成顶层 `require("At.core.theme")`。`theme.set` 只接受三基色，`@danger/@warning/@success` 是固定语义色。
+35. **Dial 的 wrapping 与非 wrapping 角度范围不同**：`wrapping = true` 是完整 360°，`endAngle` 不参与映射；非 wrapping 默认 270°（`startAngle = 135`、`endAngle = 405`），底部缺口点击会吸附最近端点。`setValue` 在 wrapping 下对越界值按 `(max - min)` 取模（`min = 0, max = 359` 时 `360 -> 1`、`-1 -> 358`），范围内的值（包括 `max`）保持；非 wrapping 夹紧。拖动更新在 `_tick` 里轮询，必须调用 `At.update(dt)`。`math.atan2` 在 Lua 5.5 不存在，文件顶部用 `math.atan2 or math.atan(y, x)` 兼容，不要在 `_setFromPoint` 里直接调用 `math.atan2`。
+36. **主题 token 在绘制时解析，不要在构造时缓存**：组件默认色是 `"@primary"` 这类字符串，`At.color` 的 `hexToRGBA/setColor/shade/mix` 内部调用 `color.resolve`；因此 `At.theme.set` 能热更新已有组件。若在 `new` 里用 `At.theme.get` 转成具体 hex 存起来，就只影响新组件。`color.lua` 对 `theme` 是**惰性 require**（只在遇到 `@` 时加载），用来避开 `theme -> color -> theme` 的加载环；不要改成顶层 `require("At.core.theme")`。`theme.set` 只接受三基色，`@danger/@warning/@success` 是固定语义色。
 
 ## 8. 改动检查清单
 
@@ -277,6 +279,7 @@ At.Panel{
 - [ ] 主题改动验证：`At.theme.set` 后已有组件变色、`reset` 可恢复、非法颜色报错、`At.config.apply()` 能重新推入配置。
 - [ ] 阴影改动验证：`glsl` 每次只 draw 一次、`legacy` 仍按 layers+1 次绘制、shader 不可用时自动回退、`config.shadow.algorithm` 可切换与复位。
 - [ ] 输入框改动验证：点击定位、拖动选择光标、中间插入/删除、方向键/Home/End、UTF-8 与密码模式、长文本水平滚动。
+- [ ] Dial 改动验证：非 wrapping 的端点/中点点击与缺口吸附、拖动、方向键、wrapping 越界取模、刻度与数值显示。
 - [ ] 有 LÖVE 时 `love .` 手动过一遍：悬停、按下、拖出/拖回、输入、开关动画、拖动滑动条、进度条过渡、滚轮平滑滚动、拖拽惯性、触顶/触底光效与滚动条端点反馈。
 - [ ] 涉及平滑滚动/惯性的断言必须模拟若干帧（`At.update(1/60)`），不能只改目标就断言位置。
 - [ ] 日志改动覆盖等级过滤、格式（字符串与函数）、缓冲裁剪；控制台改动覆盖显隐、拖动、滚动、开关动画。

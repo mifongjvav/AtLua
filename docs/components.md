@@ -555,6 +555,87 @@ volume:focus()          -- 之后左右方向键可微调
 volume:draw()
 ```
 
+## At.Dial
+
+圆形旋钮（QDial 风格）：点击圆盘跳转，按住拖动连续调整；`wrapping = true` 时使用完整 360°，越过最大值会从最小值继续。
+
+### 属性
+
+| 属性              | 类型                     | 默认值            | 说明                                                    |
+| ----------------- | ------------------------ | ----------------- | ------------------------------------------------------- |
+| `x` / `y`         | 数字                     | `0`               | 左上角坐标                                              |
+| `w` / `h`         | 数字 / 百分比 / `"auto"` | `120` / `120`     | 尺寸；非正方形时按短边画圆环                            |
+| `min` / `max`     | 数字                     | `0` / `100`       | 取值范围                                                |
+| `step`            | 数字                     | `1`               | 步进；`0` 表示连续取值                                  |
+| `pageStep`        | 数字                     | `10`              | `PageUp` / `PageDown` 的步长                            |
+| `value`           | 数字                     | `0`               | 当前值；构造时会先吸附到 `step`                         |
+| `wrapping`        | 布尔                     | `false`           | `true` 时用完整 360° 圆环，值可越过 `max` / `min` 绕回  |
+| `startAngle`      | 数字（度）               | `135`             | 起点角度；`0°` 在右侧，顺时针为正                       |
+| `endAngle`        | 数字（度）               | `405`             | 非 wrapping 时的终点角度；wrapping 时**不参与**角度映射 |
+| `trackWidth`      | 数字                     | `8`               | 圆环线宽                                                |
+| `trackColor`      | hex / token              | `"@track"`        | 轨道颜色                                                |
+| `fillColor`       | hex / token              | `"@primary"`      | 已填充圆弧颜色                                          |
+| `knobColor`       | hex / token              | `"@knob"`         | 旋钮颜色                                                |
+| `knobBorderColor` | hex / token              | `"@borderStrong"` | 旋钮描边                                                |
+| `pointerColor`    | hex / token              | `"@primary"`      | 指针与中心点颜色                                        |
+| `focusColor`      | hex / token              | `"@primary"`      | 聚焦外圈颜色                                            |
+| `notchCount`      | 数字                     | `0`               | 刻度数量；`0` 关闭                                      |
+| `notchColor`      | hex / token              | `"@borderStrong"` | 刻度颜色                                                |
+| `notchWidth`      | 数字                     | `2`               | 刻度线宽                                                |
+| `notchLength`     | 数字                     | `6`               | 刻度长度                                                |
+| `alpha`           | 数字 0–255               | `255`             | 整体透明度                                              |
+| `showValue`       | 布尔                     | `false`           | 是否在旋钮中心显示数值                                  |
+| `valueColor`      | hex / token              | `nil`             | 数值颜色；缺省按 `knobColor` 自动取黑/白                |
+| `fontSize`        | 数字                     | `nil`             | 数值字号；缺省沿用当前字体                              |
+| `format`          | 函数                     | `nil`             | `function(value) -> string`，覆盖默认格式化             |
+| `onChange`        | 函数                     | `nil`             | 值变化回调                                              |
+
+### 方法
+
+| 方法                        | 说明                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `:getValue()`               | 返回当前值                                                                                       |
+| `:setValue(value, silent?)` | 吸附到 `step`；wrapping 时越界按范围取模，否则夹到 `[min, max]`                                  |
+| `:getRatio()`               | 返回当前值在范围中的比例 `0..1`                                                                  |
+| `:setWrapping(enabled)`     | 开关 wrapping，返回自身                                                                          |
+| `:isWrapping()`             | 是否处于 wrapping 模式                                                                           |
+| `:keypressed(key)`          | `left` / `down` 减一步，`right` / `up` 加一步，`PageUp` / `PageDown` 翻页，`Home` / `End` 到端点 |
+
+### 回调
+
+| 回调       | 参数            | 时机                                                 |
+| ---------- | --------------- | ---------------------------------------------------- |
+| `onChange` | `(value, self)` | 点击、拖动、方向键或非 silent 的 `setValue` 改变值时 |
+
+注意：
+
+- **两种角度模式**：`wrapping = false` 时默认画 270° 圆弧（`startAngle = 135`、`endAngle = 405`），底部留缺口；`wrapping = true` 时画完整 360°，`endAngle` 被忽略，`0` 与 `max` 在 `startAngle` 处相接。
+- **wrapping 的取模**：`min = 0`、`max = 359` 时，`setValue(360)` 得到 `1`，`setValue(-1)` 得到 `358`；范围内的值（包括 `max`）不会被绕回。
+- **点击缺口**：非 wrapping 时点击底部缺口会吸附到更近的端点；wrapping 时没有缺口。
+- **拖动依赖 `At.update(dt)`**：和 `Slider` 一样，`_tick` 里轮询鼠标，不调用 `At.update(dt)` 拖出圆盘后不会继续跟随。
+- **刻度和数值**：`notchCount > 0` 时在圆环外侧画刻度；`showValue = true` 时数值画在旋钮中心，`valueColor = nil` 会自动根据旋钮颜色选黑/白。
+- 方向键需要先点击旋钮获得焦点；`step = 0` 时每次方向键移动 `(max - min) / 20`，`pageStep` 仍用于翻页。
+
+### 示例
+
+```lua
+local At = require("At.At")
+
+local angle = At.Dial{
+    x = 40, y = 40, w = 140, h = 140,
+    min = 0, max = 359, step = 1, value = 45,
+    wrapping = true,
+    notchCount = 12,
+    showValue = true,
+    format = function(value) return string.format("%d°", value) end,
+    onChange = function(value, self) print("角度", value) end,
+}
+
+angle:setValue(360)    -- wrapping：绕回 1
+angle:focus()          -- 之后方向键可微调
+angle:draw()
+```
+
 ## At.ProgressBar
 
 确定性进度条：`value` 是 `0`–`1` 的比例，填充宽度用弹簧平滑过渡。

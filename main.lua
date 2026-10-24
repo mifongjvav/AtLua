@@ -7,11 +7,13 @@ local state = {
 	ripples = true,
 	quality = 2,
 	volume = 60,
+	angle = 45,
 	nickname = "",
 }
 
 local card, viewport, statusLabel, volumeLabel, stateLabel
 local volumeProgress
+local angleLabel, angleDial, angleSwitch
 local submitBtn, nameInput, logConsole
 
 local function setStatus(text)
@@ -168,6 +170,63 @@ for _, preset in ipairs({
 	}))
 end
 card:add(themeRow)
+
+-- QDial 风格的圆形旋钮：wrapping 时用完整 360°，越过 359° 从 0° 继续
+angleLabel = At.Label({ text = "角度：45°", fontSize = 14, color = "@textMuted" })
+angleDial = At.Dial({
+	w = 100,
+	h = 100,
+	min = 0,
+	max = 359,
+	step = 1,
+	value = state.angle,
+	wrapping = true,
+	notchCount = 12,
+	trackWidth = 7,
+	showValue = true,
+	format = function(value)
+		return string.format("%d°", value)
+	end,
+	onChange = function(value)
+		state.angle = value
+		angleLabel:setText("角度：" .. value .. "°")
+		At.log.debug("旋钮角度: %d", value)
+		setStatus("角度：" .. value .. "°")
+	end,
+})
+angleSwitch = At.Switch({
+	value = true,
+	onChange = function(value)
+		angleDial:setWrapping(value)
+		At.log.info("旋钮 wrapping: %s", value and "开启" or "关闭")
+		setStatus(value and "旋钮可绕回" or "旋钮已限制在端点")
+	end,
+})
+card:add(At.Panel({
+	direction = "row",
+	align = "center",
+	gap = 16,
+	children = {
+		angleDial,
+		At.Panel({
+			direction = "column",
+			gap = 6,
+			children = {
+				At.Label({ text = "旋转滑动条（QDial 风格）", fontSize = 15 }),
+				angleLabel,
+				At.Panel({
+					direction = "row",
+					align = "center",
+					gap = 8,
+					children = {
+						At.Label({ text = "wrapping", fontSize = 13, color = "@textFaint" }),
+						angleSwitch,
+					},
+				}),
+			},
+		}),
+	},
+}))
 
 volumeLabel = At.Label({ text = "音量：" .. state.volume, fontSize = 15, color = "@textMuted" })
 card:add(volumeLabel)
