@@ -1190,7 +1190,13 @@ shadowBtn._dialog = At.Dialog({
 	actions = { { text = "OK" } },
 })
 shadowBtn._dialog:draw()
+shadowBtn._oldDialogW = shadowBtn._dialog.card.w
 check(shadowBtn._dialog.fullscreen == false and shadowBtn._dialog:isOpen(), "Dialog 默认浮动且打开")
+check(
+	shadowBtn._dialog.closeButton.x + shadowBtn._dialog.closeButton.w
+		<= shadowBtn._dialog.card.x + shadowBtn._dialog.card.w,
+	"Dialog 关闭按钮在卡片内"
+)
 shadowBtn._dx = shadowBtn._dialog.card.x + 12
 shadowBtn._dy = shadowBtn._dialog.card.y + 12
 mouseX, mouseY = shadowBtn._dx, shadowBtn._dy
@@ -1208,6 +1214,7 @@ check(shadowBtn._dialog:isDestroyed(), "Dialog 关闭后销毁")
 
 shadowBtn._fullDialog = At.Dialog({ title = "F", fullscreen = true, animate = false })
 shadowBtn._fullDialog:draw()
+check(shadowBtn._fullDialog.card.w > shadowBtn._oldDialogW, "全屏 Dialog 明显大于浮动 Dialog")
 shadowBtn._fullDialog:_press(0, 0)
 check(shadowBtn._fullDialog._dragging == false, "全屏 Dialog 不可拖动")
 shadowBtn._fullDialog:close()

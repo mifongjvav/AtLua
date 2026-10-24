@@ -1,5 +1,6 @@
--- Dialog：一次性模态对话框。fullscreen 时铺满窗口（留 inset）并压暗背景，
--- 不可拖动；非 fullscreen 时是浮动窗口，可拖标题栏，不压暗背景。
+-- Dialog：一次性模态对话框。fullscreen 时接近铺满窗口（留 inset）并压暗背景，
+-- 开启 At.blur 时卡片毛玻璃化，不可拖动；非 fullscreen 时是浮动窗口，
+-- 可拖标题栏，不压暗背景。
 --
 --   local dialog = At.Dialog{
 --       title = "确认操作",
@@ -22,6 +23,7 @@ local color = require("At.core.color")
 local Panel = require("At.components.Panel")
 local Button = require("At.components.Button")
 local Label = require("At.components.Label")
+local blur = require("At.effects.blur")
 
 local Dialog = {}
 local proto = setmetatable({}, { __index = Component })
@@ -32,7 +34,8 @@ local DEFAULTS = {
 	title = "对话框",
 	message = "",
 	width = 380,
-	inset = 24,
+	inset = 12,
+	fullscreenAlpha = 235, -- 全屏且 At.blur 开启时的毛玻璃不透明度
 	padding = 20,
 	gap = 12,
 	radius = 14,
@@ -88,6 +91,7 @@ function Dialog.new(opts)
 		direction = "column",
 		gap = self.gap,
 		padding = self.padding,
+		align = "stretch",
 		background = self.background,
 		borderColor = self.borderColor,
 		borderWidth = 1,
@@ -96,9 +100,10 @@ function Dialog.new(opts)
 		autoRegister = false,
 	})
 
-	local closeButton
 	if self.closeButton ~= false then
-		closeButton = Button({
+		-- 关闭按钮不参与 header 的布局：header 里的 wrap Label 在 row 中会把
+		-- 可用宽度全部吃掉，导致按钮被推到卡片外；这里固定在卡片右上角。
+		self.closeButton = Button({
 			w = 30,
 			h = 30,
 			text = "×",
@@ -112,27 +117,22 @@ function Dialog.new(opts)
 	local header = Panel({
 		direction = "row",
 		align = "center",
-		gap = 8,
-		w = "100%",
+		padding = { right = self.closeButton and 38 or 0 },
 		autoRegister = false,
 	})
 	header:add(Label({
 		text = tostring(self.title or ""),
 		fontSize = 18,
 		color = self.titleColor,
-		grow = 1,
 		wrap = true,
 	}))
-	if closeButton then
-		header:add(closeButton)
-	end
+	self.header = header
 	self.card:add(header)
 
 	self.messageLabel = Label({
 		text = tostring(self.message or ""),
 		fontSize = 15,
 		color = self.textColor,
-		w = "100%",
 		wrap = true,
 	})
 	if self.message ~= nil and tostring(self.message) ~= "" then
@@ -155,7 +155,6 @@ function Dialog.new(opts)
 			direction = "row",
 			justify = "end",
 			gap = 8,
-			w = "100%",
 			autoRegister = false,
 		})
 		for i = 1, #actions do
@@ -182,6 +181,9 @@ function Dialog.new(opts)
 	-- 确保卡片内部组件（尤其是用户传入的 content）排在 Dialog 之后。
 	for i = 1, #self.card.children do
 		lift(self.card.children[i])
+	end
+	if self.closeButton then
+		lift(self.closeButton)
 	end
 
 	return self
@@ -215,6 +217,10 @@ function proto:_finish()
 end
 
 function proto:destroy()
+	if self.closeButton then
+		self.closeButton:destroy()
+		self.closeButton = nil
+	end
 	if self.card then
 		self.card:destroy()
 		self.card = nil
@@ -240,13 +246,13 @@ function proto:_layout()
 		local inset = math.max(0, self.inset or 0)
 		local w = math.max(1, sw - inset * 2)
 		local h = math.max(1, sh - inset * 2)
+		self.card.alpha = (blur.isEnabled() and self.fullscreenAlpha) or 255
 		self.card:setRect(inset, inset, w, h)
 		return
 	end
 
-	local w = math.min(self.width or 380, math.max(120, sw - 40))
-	self.card.w = w
-	self.card.h = "auto"
+	local w = math.min(self.width or 380, math.max(120, sw - 80))
+	self.card:setSize(w, "auto")
 	local _, measuredH = self.card:measure(w, 0)
 	local h = math.min(measuredH or 120, math.max(1, sh - 40))
 
@@ -259,6 +265,7 @@ function proto:_layout()
 		y = math.max(0, (sh - h) / 2)
 	end
 	self._cardX, self._cardY = x, y
+	self.card.alpha = 255
 	self.card:setRect(x, y, w, h)
 end
 
@@ -336,6 +343,15 @@ function proto:_draw()
 	end
 
 	self.card:draw()
+	if self.closeButton then
+		local pad = self.padding or 20
+		local headerH = self.header and self.header.h or 30
+		self.closeButton:setPosition(
+			self.card.x + self.card.w - pad - self.closeButton.w,
+			self.card.y + pad + math.max(0, (headerH - self.closeButton.h) / 2)
+		)
+		self.closeButton:draw()
+	end
 end
 
 setmetatable(Dialog, {

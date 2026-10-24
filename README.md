@@ -36,7 +36,7 @@ function love.draw() card:draw() end
 - **渲染细节**：坐标对齐整数像素、嵌套裁剪求交、1px 边框使用 rough 线型；默认 GLSL SDF 单次绘制阴影，可切回旧式多层阴影（legacy 按层数归一化）；`At/config.lua` 的 `render.msaa` 默认 4，圆角/圆形/边框与模糊路径都有抗锯齿。
 - **背景模糊（毛玻璃）**：`At.blur` 抓取组件背后的画面并按算法模糊，半透明组件（控制台、半透明卡片/输入框/按钮）自动生效；内置 gaussian / downscale / none，可注册自定义算法。
 - **Toast、Dialog 与系统通知**：`At.Toast` 是窗口下方居中、自动关闭的一次性通知条；
-  `At.Dialog` 支持全屏（压暗背景、不可拖动）和浮动（可拖动、不压暗）两种模态对话框；
+  `At.Dialog` 支持全屏（压暗背景、可毛玻璃、不可拖动）和浮动（可拖动、不压暗）两种模态对话框；
   `At.notify` 在 Linux 通过 `notify-send` 发送系统通知，支持 `critical` 等重要级别。
 - **日志与控制台**：`At.log` 提供 debug/info/warn/error/fatal 五级、可配置格式、条目缓冲，
   默认同时输出到终端 / logcat；`At.Console` 是半透明浮动面板，按等级着色、可拖动、可滚动、
