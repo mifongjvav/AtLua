@@ -27,10 +27,33 @@ local volumeProgress
 local angleLabel, angleDial, angleSwitch
 local themeStateLabel
 local submitBtn, nameInput, logConsole
+local toast
 
 local function setStatus(text)
 	if statusLabel then
 		statusLabel:setText(text)
+	end
+end
+
+-- Toast 是一次性组件：关闭后从 registry 移除；这里同一时刻只保留一个。
+local function showToast(text, level)
+	if toast and not toast:isDestroyed() then
+		toast:destroy()
+	end
+	toast = At.Toast({ text = text, level = level or "info", duration = 3 })
+end
+
+local function sendSystemNotification(level, title, body)
+	local ok, reason = At.notify.available()
+	if not ok then
+		showToast("系统通知不可用：" .. tostring(reason), "warning")
+		return
+	end
+	local sent, err = At.notify.send({ title = title, body = body, level = level, timeout = 5 })
+	if sent then
+		showToast("系统通知已发送", "success")
+	else
+		showToast("系统通知失败：" .. tostring(err), "error")
 	end
 end
 
@@ -178,9 +201,11 @@ nameInput = At.TextInput({
 		if text == "" then
 			At.log.warn("提交被拒绝：昵称为空")
 			setStatus("请先输入昵称")
+			showToast("请先输入昵称", "warning")
 		else
 			At.log.info("提交昵称: %s", text)
 			setStatus("已提交：" .. text)
+			showToast("已提交：" .. text, "success")
 		end
 	end,
 })
@@ -416,6 +441,7 @@ local resetBtn = At.Button({
 		volumeLabel:setText("音量：60")
 		At.log.info("设置已重置")
 		setStatus("已重置")
+		showToast("设置已重置", "info")
 	end,
 })
 
@@ -442,6 +468,41 @@ card:add(At.Checkbox({
 		At.log.info("记住昵称: %s", checked and "是" or "否")
 		setStatus(checked and "下次会记住昵称" or "不再记住昵称")
 	end,
+}))
+
+-- Toast / 系统通知：系统通知依赖桌面环境的 notify-send
+card:add(At.Panel({
+	direction = "row",
+	gap = 10,
+	children = {
+		At.Button({
+			w = 100,
+			text = "Toast",
+			color = "@surfaceStrong",
+			onClick = function()
+				showToast("这是一个 Toast 通知", "info")
+				setStatus("Toast 通知")
+			end,
+		}),
+		At.Button({
+			w = 120,
+			text = "系统通知",
+			color = "@surfaceStrong",
+			onClick = function()
+				sendSystemNotification("info", "At 组件演示", "这是一条普通系统通知")
+				setStatus("系统通知")
+			end,
+		}),
+		At.Button({
+			w = 100,
+			text = "重要通知",
+			color = "@surfaceStrong",
+			onClick = function()
+				sendSystemNotification("error", "重要通知", "这是一条 important / critical 系统通知")
+				setStatus("重要系统通知")
+			end,
+		}),
+	},
 }))
 
 statusLabel = At.Label({ text = "试试点击、拖动、输入", fontSize = 15, color = "@primary" })
@@ -528,7 +589,10 @@ end
 function love.draw()
 	At.blur.beginFrame() -- 启用模糊时把画面收进内部 canvas
 	viewport:draw()
-	logConsole:draw() -- 控制台最后画，浮在最上层
+	logConsole:draw() -- 控制台先画
+	if toast and not toast:isDestroyed() then
+		toast:draw() -- Toast 在窗口最上层
+	end
 	At.blur.endFrame()
 end
 

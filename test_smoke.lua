@@ -1181,6 +1181,62 @@ check(
 	"多选框选中底色与自动勾色"
 )
 shadowBtn._check:destroy()
+
+-- Toast：自动关闭、自动销毁、可绘制
+shadowBtn._toast = At.Toast({ text = "测试 Toast", level = "success", duration = 0.05, animate = false })
+shadowBtn._toast:draw()
+check(#shadowBtn._toast._lines >= 1, "Toast 能测量文本")
+At.update(0.1)
+check(shadowBtn._toast:isDestroyed(), "Toast 到时间自动销毁")
+
+-- 系统通知：mock notify-send，避免测试时真的弹通知
+shadowBtn._oldLoveSystem = love.system
+shadowBtn._oldPopen = io.popen
+shadowBtn._oldExecute = os.execute
+love.system = {
+	getOS = function()
+		return "Linux"
+	end,
+}
+io.popen = function()
+	return {
+		read = function()
+			return "/usr/bin/notify-send\n"
+		end,
+		close = function() end,
+	}
+end
+os.execute = function(command)
+	shadowBtn._notifyCommand = command
+	return 0
+end
+At.notify.reset()
+shadowBtn._notifyOk, shadowBtn._notifyReason = At.notify.available()
+check(shadowBtn._notifyOk and shadowBtn._notifyReason == "notify-send", "notify-send 可用性探测")
+shadowBtn._urgency, shadowBtn._icon = At.notify.level("error")
+check(shadowBtn._urgency == "critical" and shadowBtn._icon == "dialog-error", "重要通知映射 critical")
+shadowBtn._notifySent, shadowBtn._notifySendReason = At.notify.send({
+	title = "T",
+	body = "B",
+	level = "error",
+	timeout = 2,
+	transient = true,
+})
+check(shadowBtn._notifySent and shadowBtn._notifySendReason == "notify-send", "notify.send 成功")
+check(
+	shadowBtn._notifyCommand:find("notify-send", 1, true)
+		and shadowBtn._notifyCommand:find("critical", 1, true)
+		and shadowBtn._notifyCommand:find("dialog-error", 1, true)
+		and shadowBtn._notifyCommand:find("'T'", 1, true)
+		and shadowBtn._notifyCommand:find("'B'", 1, true),
+	"notify.send 命令包含标题/正文/urgency"
+)
+At.notify.reset()
+io.popen = shadowBtn._oldPopen
+os.execute = shadowBtn._oldExecute
+love.system = shadowBtn._oldLoveSystem
+At.notify.reset()
+
 shadowBtn:destroy()
 At.config.shadow.spread = 2
 At.config.apply()
@@ -1494,6 +1550,7 @@ for _, name in ipairs({
 	"At.Dial",
 	"At.ScrollView",
 	"At.Console",
+	"At.Toast",
 	"At.ProgressBar",
 	"At.LoadingBar",
 }) do

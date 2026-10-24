@@ -18,6 +18,7 @@ At.render = require("At.core.render")
 At.Component = require("At.core.component")
 At.log = require("At.core.log")
 At.system = require("At.core.system")
+At.notify = require("At.core.notify")
 At.blur = require("At.effects.blur")
 
 -- 组件
@@ -34,6 +35,7 @@ At.ProgressBar = require("At.components.ProgressBar")
 At.LoadingBar = require("At.components.LoadingBar")
 At.ScrollView = require("At.components.ScrollView")
 At.Console = require("At.components.Console")
+At.Toast = require("At.components.Toast")
 
 -- ---------- 组件生命周期 ----------
 -- 组件创建时自动登记，调用方只需把这几个入口接到 love 回调上。

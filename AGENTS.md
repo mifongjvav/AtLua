@@ -8,14 +8,14 @@
 
 - `At/` 是库本体（命名空间 `At`）。核心是**组件式**用法：组件创建即登记到注册表，事件由 `At.update / At.mousepressed / At.mousereleased / At.textinput / At.keypressed` 统一分发。
 - **布局**：`At.Panel` 提供 CSS 子集式排版（column/row、gap、padding、margin、百分比、auto、grow、align、justify），子组件不需要手写坐标。
-- **组件**：`At.Button`、`At.Label`、`At.TextInput`、`At.Switch`、`At.Checkbox`、`At.RadioGroup`、`At.Slider`、`At.Dial`、`At.ProgressBar`、`At.LoadingBar`、`At.ScrollView`、`At.Console`，全部继承 `At.Component` 基类。
+- **组件**：`At.Button`、`At.Label`、`At.TextInput`、`At.Switch`、`At.Checkbox`、`At.RadioGroup`、`At.Slider`、`At.Dial`、`At.ProgressBar`、`At.LoadingBar`、`At.ScrollView`、`At.Console`、`At.Toast`，全部继承 `At.Component` 基类。
 - **日志**：`At.log` 提供五级日志、可配置格式与条目缓冲；`At.Console` 显示这些日志。
 - **阴影**：`At.shadow` 默认 GLSL SDF 单次绘制，保留旧式多层矩形（`legacy`），可全局切换。
 - 仍保留**立即模式**函数 `At.button(...)`（只画不记状态，无涟漪），仅供旧代码使用。
 - `main.lua` 是演示：一张卡片里排了全部组件。
 - `test_smoke.lua` 用假 `love` 环境做逻辑回归，**不需要 LÖVE 也能跑**。
 
-使用文档在 `docs/`（`README.md` / `layout.md` / `components.md` / `theme.md` / `shadow.md` / `logging.md` / `blur.md`），
+使用文档在 `docs/`（`README.md` / `layout.md` / `components.md` / `theme.md` / `shadow.md` / `logging.md` / `blur.md` / `notifications.md`），
 对外口径以文档为准。默认配置集中在 `At/config.lua`（theme / render / shadow / blur / log / font）。
 
 ## 2. 环境与常用命令
@@ -74,6 +74,7 @@ docs/               # 使用文档，不参与打包
   shadow.md         #   GLSL / 旧式阴影的切换、参数与性能
   logging.md        #   日志等级、输出格式、文件、控制台
   blur.md           #   背景模糊：启用、算法、性能
+  notifications.md  #   系统通知（notify-send）与 Toast 配合
 AtLua.love          # 构建产物（约 12 MB，已打进字体），不要手改、不要当源码
 At/
   At.lua            # 门面：聚合模块 + 生命周期入口 + 旧式 At.button
@@ -93,11 +94,12 @@ At/
     font.lua        #   字体装配与缓存（资源路径来自 config.font）
     input.lua       #   旧的全局文本输入 + UTF-8 工具
     system.lua      #   系统明暗 / 桌面主题色探测（LÖVE 12+，best-effort）
+    notify.lua      #   系统通知：Linux notify-send（最佳努力）
     log.lua         #   日志：等级、格式、缓冲、stdout、文件
   components/       # 具体组件
     Panel.lua Label.lua Button.lua TextInput.lua Switch.lua Checkbox.lua
     RadioGroup.lua Slider.lua Dial.lua ProgressBar.lua LoadingBar.lua ScrollView.lua
-    Console.lua
+    Console.lua Toast.lua
   effects/          # 视觉效果
     Ripple.lua      #   涟漪发射器
     blur.lua        #   背景模糊：canvas 快照 + 可插拔算法
@@ -173,12 +175,13 @@ At.Panel{
 | `At.LoadingBar`  | `w, h, radius, trackColor, fillColor, speed, segmentRatio, minSegment, running`                                                                                                        | 无                                                                             |
 | `At.ScrollView`  | `content, w, h, scrollX, scrollY, scrollbar, wheelStep, drag, smooth, smoothSpeed, momentum, padding, edgeEffect, edgeGlowColor/Size, edgeRadius, overscrollMax, overscrollResistance` | `onScroll(value,maxScroll,self,axis)`                                          |
 | `At.Console`     | `w, h, visible, title, headerH, padding, levelColors, alpha, fontSize, animate, springStiffness/springDamping, openOffset`                                                             | 无（内部读 `At.log`）                                                          |
+| `At.Toast`       | `text, level, duration, margin, maxWidth/minWidth, fontSize, paddingX/Y, radius, background, borderColor, textColor, accentColor, shadow, animate, onClose`                            | `onClose(self)`                                                                |
 
 基类方法：`draw/update/mousepressed/mousereleased/measure/destroy`、`contains(px,py)`、`setRect/setPosition/setSize`、`setEnabled/setVisible`、`isHovered/isPressed/isFocused/isInteractive`、`focus/blur`、`declaredWidth/declaredHeight/invalidateSize`、`font()`。
 
 ### At 入口
 
-`At.update(dt)`、`At.mousepressed(...)`、`At.mousereleased(...)`、`At.textinput(t)`、`At.keypressed(k)`、`At.wheelmoved(dx,dy)`、`At.focus(c)`、`At.clearFocus()`、`At.getFocus()`、`At.add(c)`、`At.remove(c)`、`At.registry`、`At.layout`、`At.Component`、`At.motion`、`At.blur`（`setEnabled/isEnabled/setAlgorithm/registerAlgorithm/setStrength/getMSAA/getMaxMSAA/beginFrame/endFrame/drawBackdrop/stats/reset`）、`At.render`（`getMSAA/setMSAA/getMaxMSAA`）、`At.system`（`hasThemeApi/getThemeMode/getAccentColor/getAccentColors/reset`）。
+`At.update(dt)`、`At.mousepressed(...)`、`At.mousereleased(...)`、`At.textinput(t)`、`At.keypressed(k)`、`At.wheelmoved(dx,dy)`、`At.focus(c)`、`At.clearFocus()`、`At.getFocus()`、`At.add(c)`、`At.remove(c)`、`At.registry`、`At.layout`、`At.Component`、`At.motion`、`At.blur`（`setEnabled/isEnabled/setAlgorithm/registerAlgorithm/setStrength/getMSAA/getMaxMSAA/beginFrame/endFrame/drawBackdrop/stats/reset`）、`At.render`（`getMSAA/setMSAA/getMaxMSAA`）、`At.system`（`hasThemeApi/getThemeMode/getAccentColor/getAccentColors/reset`）、`At.notify`（`available/level/send/reset`）、`At.Toast`。
 
 `At.config`（`At/config.lua`）：`theme = {color, black, white}`、`render = {msaa}`、`shadow = {algorithm, color, alpha, spread, layers, offsetX, offsetY}`、`blur = {enabled, algorithm, strength}`、`log = {level, print, maxEntries, file, filePattern}`、`font = {size, main, emoji}`；`At.config.apply()` 把配置推给各模块（`At.lua` 启动时已自动调用一次）。
 
@@ -200,6 +203,7 @@ At.Panel{
 - `shadow(x, y, w, h, corner, color, spread, layers, offsetX, offsetY)`：`color[4]` 是整体最大不透明度；`layers` 只对 legacy 生效，GLSL 下忽略。`shadow.inner(x, y, w, h, corner, color, alpha, size, offsetX, offsetY)` 画形状内部阴影；`alpha` 是 0–1，没有 shader 时跳过。`At.shadow.setAlgorithm/getAlgorithm/reset` 控制算法与缓存。
 - `motion.spring{value, target, stiffness, damping, velocity}` → `Spring`（`:setTarget/:snap/:update/:isSettled`，`.value/.target/.velocity`）；`motion.damp(current, target, speed, dt)`；`motion.easeIn/easeOut/easeInOut(t)`（`0..1`）。弹簧用固定子步（1/240s）积分，掉帧不发散；`update` 的 `dt <= 0` 直接返回。
 - `system.hasThemeApi()`、`getThemeMode()`、`getAccentColor(refresh?, source?)`、`getAccentColors(refresh?)`、`reset()`：LÖVE 12+ 系统明暗与桌面主题色探测；`source` 可指定 `gtk` / `qt` / `windows` / `macos` / `env`，不支持的平台返回 `nil`，不报错。
+- `notify.available()`、`notify.level(level)`、`notify.send(opts)`、`notify.reset()`：Linux `notify-send` 系统通知；`opts` 支持 `title/body/level/urgency/icon/timeout/appName/category/transient`，不可用或失败返回 `false, reason`。
 - `log.debug/info/warn/error/fatal(...)`（写日志，被过滤时返回 nil）、`setLevel/getLevel/setFormat/setMaxEntries/setPrint/getPrint/setFile/setFilePattern/getFileName/getFilePath/closeFile/isFileEnabled/clear/count/getEntries/formatEntry`。默认格式 `[时间] - [等级/函数名]: 内容`，过滤发生在写入时，默认同时 `print` 到 stdout（Android 即 logcat）。
 
 ## 6. 代码约定
@@ -268,7 +272,9 @@ At.Panel{
 35. **Dial 的 wrapping 与非 wrapping 角度范围不同**：`wrapping = true` 是完整 360°，`endAngle` 不参与映射；非 wrapping 默认 270°（`startAngle = 135`、`endAngle = 405`），底部缺口点击会吸附最近端点。`setValue` 在 wrapping 下对越界值按 `(max - min)` 取模（`min = 0, max = 359` 时 `360 -> 1`、`-1 -> 358`），范围内的值（包括 `max`）保持；非 wrapping 夹紧。拖动更新在 `_tick` 里轮询，必须调用 `At.update(dt)`。`math.atan2` 在 Lua 5.5 不存在，文件顶部用 `math.atan2 or math.atan(y, x)` 兼容，不要在 `_setFromPoint` 里直接调用 `math.atan2`。
 36. **系统主题/主题色是 best-effort，不能当成必需依赖**：系统明暗只有 LÖVE 12+ 的 `love.window.getSystemTheme`；主题色没有 LÖVE 原生 API，`At.system` 才去读 GNOME `gsettings`、qt6ct/qt5ct 调色板、KDE `kdeglobals`、Windows DWM、macOS `defaults`，并支持 `AT_ACCENT_COLOR` 覆盖。`getAccentColors()` 会同时取 GTK/Qt；`getAccentColor(refresh, "gtk"|"qt")` 可显式选来源，指定来源时忽略 env 覆盖。外部命令只在第一次探测时执行并缓存，失败返回 `nil` + 原因，不能让它报错或阻塞启动；Android/iOS 不做探测。示例默认跟随系统明暗（不支持则深色），白色主题是把 `black`/`white` 槽位对调，切换时同时更新 `At.config.theme` 与 `At.theme`。
 37. **LÖVE 11/12 兼容用能力检测，不按版本号分支**：`love.filesystem.openFile or newFile`（12 用 openFile，11 用 newFile）、`love.graphics.setStencilMode`（12）优先，缺少时回退 `love.graphics.stencil + setStencilTest`（11）。不要为了消警告直接删旧 API，也不要调用当前版本已弃用的函数；两套路径的模板都要复位/清 0，否则相邻模糊组件的圆角会互相污染。LÖVE 12 的模板需要窗口 `stencil` 开启，`conf.lua` 已设 `t.window.stencil = true`。测试要同时覆盖新旧分支，不能只跑一个版本。
-38. **主题 token 在绘制时解析，不要在构造时缓存**：组件默认色是 `"@primary"` 这类字符串，`At.color` 的 `hexToRGBA/setColor/shade/mix` 内部调用 `color.resolve`；因此 `At.theme.set` 能热更新已有组件。若在 `new` 里用 `At.theme.get` 转成具体 hex 存起来，就只影响新组件。`color.lua` 对 `theme` 是**惰性 require**（只在遇到 `@` 时加载），用来避开 `theme -> color -> theme` 的加载环；不要改成顶层 `require("At.core.theme")`。`theme.set` 只接受三基色，`@danger/@warning/@success` 是固定语义色。
+38. **Toast 是一次性组件，必须最后画并接 `At.update`**：`At.Toast` 自动登记，`At.update(dt)` 才能推进淡入、倒计时与淡出；到时间后自行 `destroy()`，不能假设变量在关闭后仍然可画。它默认 `interactive = false`，不挡下层点击；同一时刻只建议一个实例，顺序创建前先 `destroy()` 旧的。`love.draw` 中要在页面（以及 `At.Console`）之后调用 `toast:draw()`，否则会被盖住；文字换行和窄窗口宽度由 `measure` 按当前窗口重算。
+39. **系统通知是进程外交互，不能当成必需依赖**：`At.notify` 只在 Linux 上探测/调用 `notify-send`，没有桌面通知守护进程、没有 `notify-send` 或非 Linux 时返回 `false, reason`，不得报错或阻塞启动。`error`/`critical` 映射 `--urgency critical`；是否显示为重要通知由桌面决定。`send()` 通过 `os.execute` 调用外部命令，参数必须 shell quote；不要在每帧循环里发通知。
+40. **主题 token 在绘制时解析，不要在构造时缓存**：组件默认色是 `"@primary"` 这类字符串，`At.color` 的 `hexToRGBA/setColor/shade/mix` 内部调用 `color.resolve`；因此 `At.theme.set` 能热更新已有组件。若在 `new` 里用 `At.theme.get` 转成具体 hex 存起来，就只影响新组件。`color.lua` 对 `theme` 是**惰性 require**（只在遇到 `@` 时加载），用来避开 `theme -> color -> theme` 的加载环；不要改成顶层 `require("At.core.theme")`。`theme.set` 只接受三基色，`@danger/@warning/@success` 是固定语义色。
 
 ## 8. 改动检查清单
 
@@ -286,6 +292,8 @@ At.Panel{
 - [ ] 输入框改动验证：点击定位、拖动选择光标、中间插入/删除、方向键/Home/End、UTF-8 与密码模式、长文本水平滚动。
 - [ ] Dial 改动验证：非 wrapping 的端点/中点点击与缺口吸附、拖动、方向键、wrapping 越界取模、刻度与数值显示。
 - [ ] 系统主题改动验证：`getThemeMode` 的 light/dark/unknown/unsupported、`getAccentColors` / `getAccentColor(refresh, "gtk"|"qt")` 的来源选择、env 覆盖与失败分支、演示白色主题切换。
+- [ ] Toast 改动验证：`At.update` 推进淡入/倒计时/淡出、到时间自动销毁、`close()`、`animate = false`、`setText` 重新测量、窗口变窄时换行、最后绘制。
+- [ ] 系统通知改动验证：`available()` 的 Linux/非 Linux/缺少 notify-send 分支、`level` 映射 critical、`send` 失败返回、参数 shell quote；测试里用 mock，不真的发通知。
 - [ ] LÖVE 11/12 兼容改动验证：LÖVE 11 与 12 各启动一次，无 deprecated 警告；`setStencilMode`、`openFile`、旧 `stencil`/`newFile` 的回退路径都有测试或手动验证。
 - [ ] 有 LÖVE 时 `love .` 手动过一遍：悬停、按下、拖出/拖回、输入、开关动画、拖动滑动条、进度条过渡、滚轮平滑滚动、拖拽惯性、触顶/触底光效与滚动条端点反馈。
 - [ ] 涉及平滑滚动/惯性的断言必须模拟若干帧（`At.update(1/60)`），不能只改目标就断言位置。
@@ -316,16 +324,17 @@ At.Panel{
 
 ### 目录与职责
 
-| 文件                  | 写什么                                           | 不写什么             |
-| --------------------- | ------------------------------------------------ | -------------------- |
-| `docs/README.md`      | 快速开始、事件模型、组件一览、常见问题           | 内部实现、逐属性细节 |
-| `docs/layout.md`      | CSS 子集对照、尺寸规则、排版时机、限制、示例     | 组件属性表           |
-| `docs/components.md`  | 每个组件的属性表、方法、回调、示例               | 布局算法细节         |
-| `docs/theme.md`       | 主题三基色、token 表、运行时换色、浅色主题、限制 | 组件逐属性细节       |
-| `docs/shadow.md`      | GLSL / 旧式阴影的切换、参数、性能与限制          | 组件属性表           |
-| `docs/logging.md`     | 日志等级、格式、缓冲、与控制台配合               | 组件属性表           |
-| `docs/blur.md`        | 背景模糊的启用、算法、性能与限制                 | 组件属性表           |
-| `AGENTS.md`（本文件） | 代理约束、约定、陷阱、改哪里                     | 使用教程正文         |
+| 文件                    | 写什么                                           | 不写什么             |
+| ----------------------- | ------------------------------------------------ | -------------------- |
+| `docs/README.md`        | 快速开始、事件模型、组件一览、常见问题           | 内部实现、逐属性细节 |
+| `docs/layout.md`        | CSS 子集对照、尺寸规则、排版时机、限制、示例     | 组件属性表           |
+| `docs/components.md`    | 每个组件的属性表、方法、回调、示例               | 布局算法细节         |
+| `docs/theme.md`         | 主题三基色、token 表、运行时换色、浅色主题、限制 | 组件逐属性细节       |
+| `docs/shadow.md`        | GLSL / 旧式阴影的切换、参数、性能与限制          | 组件属性表           |
+| `docs/logging.md`       | 日志等级、格式、缓冲、与控制台配合               | 组件属性表           |
+| `docs/blur.md`          | 背景模糊的启用、算法、性能与限制                 | 组件属性表           |
+| `docs/notifications.md` | 系统通知、notify-send 依赖、Toast 配合           | 组件属性表           |
+| `AGENTS.md`（本文件）   | 代理约束、约定、陷阱、改哪里                     | 使用教程正文         |
 
 ### 什么时候必须更新文档
 

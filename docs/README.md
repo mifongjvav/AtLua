@@ -147,6 +147,7 @@ token 列表、默认派生色、`At.theme.get` / `At.theme.set` / `At.theme.res
 | `At.LoadingBar`  | 不确定性进度条，高光循环滑动                                    | [components.md#at-loadingbar](components.md#at-loadingbar)   |
 | `At.ScrollView`  | 可滚动视口：横纵自动滚动条、平滑滚动、惯性、触顶触底光效        | [components.md#at-scrollview](components.md#at-scrollview)   |
 | `At.Console`     | 浮动调试控制台：显示 `At.log` 日志、着色、可拖动                | [components.md#at-console](components.md#at-console)         |
+| `At.Toast`       | 窗口下方居中、自动关闭的一次性 Toast 通知                       | [components.md#at-toast](components.md#at-toast)             |
 
 ### 动画
 
@@ -168,7 +169,9 @@ function love.update(dt) s:update(dt) end   -- 之后读 s.value（0..1，可能
 `At.motion` 还提供 `damp(current, target, speed, dt)`、`easeIn/easeOut/easeInOut(t)`；弹簧内部按固定子步积分，掉帧也不会发散。
 
 布局规则见 [layout.md](layout.md)，每个组件的完整属性/方法/回调见 [components.md](components.md)，
-主题色与 token 见 [theme.md](theme.md)，日志与浮动控制台见 [logging.md](logging.md)，阴影算法见 [shadow.md](shadow.md)，背景模糊（毛玻璃）见 [blur.md](blur.md)。
+主题色与 token 见 [theme.md](theme.md)，日志与浮动控制台见 [logging.md](logging.md)，阴影算法见 [shadow.md](shadow.md)，
+背景模糊（毛玻璃）见 [blur.md](blur.md)，Toast 与系统通知见 [components.md#at-toast](components.md#at-toast)
+和 [notifications.md](notifications.md)。
 
 ## 事件模型
 

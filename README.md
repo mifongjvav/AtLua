@@ -35,6 +35,8 @@ function love.draw() card:draw() end
 - **滚动视口**：横向/纵向都支持，内容超出宽或高时**自动出现对应滚动条**；平滑滚动、双向惯性、可拖滚动条、悬停变宽、支持嵌套、`scrollToVisible`。
 - **渲染细节**：坐标对齐整数像素、嵌套裁剪求交、1px 边框使用 rough 线型；默认 GLSL SDF 单次绘制阴影，可切回旧式多层阴影（legacy 按层数归一化）；`At/config.lua` 的 `render.msaa` 默认 4，圆角/圆形/边框与模糊路径都有抗锯齿。
 - **背景模糊（毛玻璃）**：`At.blur` 抓取组件背后的画面并按算法模糊，半透明组件（控制台、半透明卡片/输入框/按钮）自动生效；内置 gaussian / downscale / none，可注册自定义算法。
+- **Toast 与系统通知**：`At.Toast` 是窗口下方居中、自动关闭的一次性通知条；
+  `At.notify` 在 Linux 通过 `notify-send` 发送系统通知，支持 `critical` 等重要级别。
 - **日志与控制台**：`At.log` 提供 debug/info/warn/error/fatal 五级、可配置格式、条目缓冲，
   默认同时输出到终端 / logcat；`At.Console` 是半透明浮动面板，按等级着色、可拖动、可滚动、
   可显示/隐藏（隐藏时留一个 `LOG` 标签，移动端也能点开）。
@@ -123,6 +125,7 @@ end
 | `At.Dial`       | 圆形旋钮：点击/拖动、角度映射、wrapping、刻度与数值显示              |
 | `At.ScrollView` | 可滚动视口：横向/纵向自动滚动条、平滑滚动、惯性                      |
 | `At.Console`    | 浮动调试控制台：显示 `At.log` 日志、着色、可拖动                     |
+| `At.Toast`      | 窗口下方居中、自动关闭的一次性 Toast 通知                            |
 
 ## 布局速查（CSS 子集）
 
@@ -147,6 +150,7 @@ end
 - [docs/shadow.md](docs/shadow.md) — GLSL / 旧式阴影的切换、参数与性能
 - [docs/logging.md](docs/logging.md) — 日志等级、输出格式、控制台配合
 - [docs/blur.md](docs/blur.md) — 背景模糊的启用方式、算法与性能说明
+- [docs/notifications.md](docs/notifications.md) — Linux notify-send 系统通知与 Toast 配合
 
 ## 测试
 
@@ -180,15 +184,15 @@ main.lua        # 演示程序
 conf.lua        # 创建窗口前读取 At/config.lua（MSAA）
 pack.sh         # 打包脚本
 test_smoke.lua  # 无头测试
-docs/           # 使用文档（README / layout / components / theme / shadow / logging / blur）
+docs/           # 使用文档（README / layout / components / theme / shadow / logging / blur / notifications）
 LICENSES/       # 第三方许可全文（随包分发）
 At/
   At.lua        # 门面：require 一次拿到全部模块
   config.lua    # 集中配置：theme / blur / log / font
   core/         # 基础设施：registry、component、layout、clip、pixel、color、theme、
-                #   render、SDF、shadow、font、input、system、log
+                #   render、SDF、shadow、font、input、system、notify、log
   components/   # 组件：Panel、Label、Button、TextInput、Switch、Checkbox、
-                #   RadioGroup、Slider、Dial、ScrollView、Console
+                #   RadioGroup、Slider、Dial、ScrollView、Console、Toast
   effects/      # 视觉效果：Ripple、blur
   assets/       # 字体资源：font.ttf、emoji.ttf
 AGENTS.md       # 给 AI 代理/协作者的约定与陷阱

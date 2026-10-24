@@ -955,3 +955,85 @@ function love.keypressed(key)
     end
 end
 ```
+
+## At.Toast
+
+一次性通知条，默认贴在窗口下方居中，淡入/上滑出现，倒计时结束后淡出并自动销毁。
+
+### 属性
+
+| 属性                                | 类型        | 默认值             | 说明                                        |
+| ----------------------------------- | ----------- | ------------------ | ------------------------------------------- |
+| `text`                              | 字符串      | `""`               | 通知正文；可换行，最大宽度受窗口限制        |
+| `level`                             | 字符串      | `"info"`           | `info` / `success` / `warning` / `error`    |
+| `duration`                          | 数字        | `3`                | 显示秒数（含淡入）；到时间自动关闭          |
+| `margin`                            | 数字        | `24`               | 距窗口底部的距离                            |
+| `maxWidth` / `minWidth`             | 数字        | `420` / `160`      | 最大 / 最小宽度；窄窗口会自动收窄并换行     |
+| `fontSize`                          | 数字        | `15`               | 文字字号                                    |
+| `lineHeight`                        | 数字        | `1.25`             | 行高倍数                                    |
+| `paddingX` / `paddingY`             | 数字        | `16` / `12`        | 内边距                                      |
+| `radius`                            | 数字        | `12`               | 圆角                                        |
+| `background`                        | hex / token | `"@surfaceStrong"` | 背景色                                      |
+| `borderColor`                       | hex / token | `"@borderStrong"`  | 边框色                                      |
+| `textColor`                         | hex / token | `"@text"`          | 文字颜色                                    |
+| `accentColor`                       | hex / token | `nil`              | 左侧圆点颜色；`nil` 按 `level` 取           |
+| `shadow` / `shadowArgs`             | 布尔 / 表   | `true` / `nil`     | 是否画阴影；`shadowArgs` 格式同 `At.shadow` |
+| `alpha`                             | 数字 0–255  | `255`              | 整体不透明度                                |
+| `animate`                           | 布尔        | `true`             | 是否使用弹簧进出动画；`false` 立即显示/关闭 |
+| `springStiffness` / `springDamping` | 数字        | `360` / `28`       | 进出动画的弹簧参数                          |
+| `interactive`                       | 布尔        | `false`            | 默认不消费鼠标，避免挡住下层按钮            |
+| `onClose`                           | 函数        | `nil`              | 淡出结束、组件销毁前调用：`onClose(self)`   |
+
+`level` 对应的强调色：
+
+```lua
+info     -> "@primary"
+success  -> "@success"
+warning  -> "@warning"
+error    -> "@danger"
+```
+
+### 方法
+
+| 方法             | 说明                                                    |
+| ---------------- | ------------------------------------------------------- |
+| `:setText(t)`    | 改文字并按新文字重新测量                                |
+| `:close()`       | 开始淡出；动画结束后销毁                                |
+| `:isOpen()`      | 是否仍在显示/尚未开始关闭                               |
+| `:draw()`        | 绘制；**必须在 `love.draw` 最后调用**，否则会被页面盖住 |
+| `:isDestroyed()` | 是否已被自动销毁（继承自 `Component`）                  |
+
+### 生命周期
+
+- 创建后自动登记；需要每帧调用 `At.update(dt)` 才会推进淡入、倒计时和淡出。
+- 到达 `duration` 后自动 `close()`，淡出结束会从 registry 移除；调用方不需要手动 `destroy()`。
+- 同一时刻只建议显示一个 Toast；需要连续提示时先 `destroy()` 旧实例再创建新的。
+- `Toast` 不拦截鼠标，放在它下面的按钮仍然可以点击。
+
+### 示例
+
+```lua
+local At = require("At.At")
+
+local toast
+
+function love.load()
+    At.font.init(16)
+end
+
+function love.update(dt)
+    At.update(dt)
+end
+
+function love.draw()
+    -- 页面内容
+    toast = toast or At.Toast{
+        text = "昵称已保存",
+        level = "success",
+        duration = 3,
+    }
+    toast:draw() -- 最后画，浮在页面之上
+end
+```
+
+需要窗口失焦后仍然可见的通知，使用 [系统通知](notifications.md) 的 `At.notify`。
