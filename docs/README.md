@@ -125,6 +125,10 @@ At.Panel{ background = "@surface", borderColor = "@border" }
 token 列表、默认派生色、`At.theme.get` / `At.theme.set` / `At.theme.reset` 与浅色主题做法
 见 [theme.md](theme.md)。显式传 `"#RRGGBB"` 的组件不跟随主题。
 
+系统主题（LÖVE 12+）：`At.system.getThemeMode()` 读取系统明暗，`At.system.getAccentColor()`
+尽力读取 GNOME/GTK、KDE/Qt、Windows、macOS 的主题色；不支持时返回 `nil`，可以用
+`AT_ACCENT_COLOR="#RRGGBB"` 覆盖。示例默认跟随系统明暗，也可以手动切白色主题或系统主题色。
+
 ## 组件一览
 
 | 组件             | 一句话作用                                                      | 文档                                                         |

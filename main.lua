@@ -3,17 +3,26 @@ local At = require("At.At")
 -- 演示：一张卡片里的表单，由 ScrollView + Panel 排版。
 -- 窗口再小也能滚动看全；开关可以点，也可以左右拖动。
 
+-- 默认跟随系统明暗（LÖVE 12+ 且桌面支持时）；不支持则退回深色。
+local initialSystemMode = At.system.getThemeMode()
+local initialAppearance = (initialSystemMode == "light" or initialSystemMode == "dark") and "system" or "dark"
+local lastSystemMode = initialSystemMode
+
 local state = {
 	ripples = true,
 	quality = 2,
 	volume = 60,
 	angle = 45,
 	nickname = "",
+	appearance = initialAppearance, -- system / dark / light
+	themeColor = "A7DCFF",
+	themeSource = "默认",
 }
 
 local card, viewport, statusLabel, volumeLabel, stateLabel
 local volumeProgress
 local angleLabel, angleDial, angleSwitch
+local themeStateLabel
 local submitBtn, nameInput, logConsole
 
 local function setStatus(text)
@@ -27,6 +36,56 @@ local function syncBackground()
 	local r, g, b = At.color.hexToRGBA("@background")
 	love.graphics.setBackgroundColor(r, g, b)
 end
+
+local function resolvedAppearance()
+	if state.appearance == "light" or state.appearance == "dark" then
+		return state.appearance, "manual"
+	end
+	local mode, reason = At.system.getThemeMode()
+	if mode == "light" or mode == "dark" then
+		return mode, "system"
+	end
+	return "dark", reason or "unsupported"
+end
+
+local function themeStateText()
+	local mode, reason = resolvedAppearance()
+	local label = mode == "light" and "白色" or "深色"
+	if state.appearance ~= "system" then
+		return "外观：" .. label
+	end
+	if reason == "system" then
+		return string.format("外观：系统（%s）", label)
+	elseif reason == "unsupported" then
+		return "外观：LÖVE/桌面不支持系统主题，使用深色"
+	elseif reason == "unknown" then
+		return "外观：系统主题未知，使用深色"
+	end
+	return "外观：系统主题读取失败，使用深色"
+end
+
+-- 同时更新主题 token 与 At/config 的 theme 段，避免 love.load 里的 apply() 把它冲掉
+local function applyTheme()
+	local mode, reason = resolvedAppearance()
+	local light = mode == "light"
+	local black = light and "FFFFFF" or "3D3D3D"
+	local white = light and "3D3D3D" or "FFFFFF"
+
+	At.config.theme.color = state.themeColor
+	At.config.theme.black = black
+	At.config.theme.white = white
+	At.theme.set({ color = state.themeColor, black = black, white = white })
+	syncBackground()
+
+	if state.appearance == "system" and reason == "system" then
+		lastSystemMode = mode
+	end
+	if themeStateLabel then
+		themeStateLabel:setText(themeStateText() .. " · 主题色：" .. state.themeSource)
+	end
+end
+
+applyTheme()
 
 local function refreshState()
 	if not stateLabel then
@@ -148,6 +207,39 @@ card:add(At.RadioGroup({
 }))
 
 -- 主题色切换：At.theme 改的是全局 token，下面所有默认配色会立即跟着变
+local APPEARANCE_MODES = { "system", "dark", "light" }
+local appearanceIndex = state.appearance == "system" and 1 or (state.appearance == "light" and 3 or 2)
+local appearanceGroup = At.RadioGroup({
+	options = { "系统", "深色", "白色" },
+	value = appearanceIndex,
+	direction = "row",
+	gap = 16,
+	onChange = function(index, label)
+		state.appearance = APPEARANCE_MODES[index]
+		applyTheme()
+		local mode, reason = resolvedAppearance()
+		if state.appearance == "system" and reason ~= "system" then
+			setStatus("系统主题不可用，已使用" .. (mode == "light" and "白色" or "深色") .. "主题")
+		else
+			setStatus("外观：" .. label)
+		end
+		At.log.info("外观切换为 %s", label)
+	end,
+})
+card:add(At.Panel({
+	direction = "row",
+	align = "center",
+	gap = 12,
+	children = {
+		At.Label({ text = "外观", fontSize = 13, color = "@textMuted" }),
+		appearanceGroup,
+	},
+}))
+
+themeStateLabel = At.Label({ text = "", fontSize = 12, color = "@textFaint", w = "100%", wrap = true })
+themeStateLabel:setText(themeStateText() .. " · 主题色：" .. state.themeSource)
+card:add(themeStateLabel)
+
 local themeRow = At.Panel({ direction = "row", align = "center", gap = 8 })
 themeRow:add(At.Label({ text = "主题色", fontSize = 13, color = "@textMuted" }))
 for _, preset in ipairs({
@@ -162,13 +254,34 @@ for _, preset in ipairs({
 		text = preset.label,
 		color = preset.color,
 		onClick = function()
-			At.theme.set({ color = preset.color })
-			syncBackground()
+			state.themeColor = preset.color
+			state.themeSource = preset.label
+			applyTheme()
 			At.log.info("主题色切换为 %s", preset.color)
 			setStatus("主题色：" .. preset.label)
 		end,
 	}))
 end
+themeRow:add(At.Button({
+	w = 82,
+	h = 30,
+	radius = 8,
+	text = "系统色",
+	color = "@surfaceStrong",
+	onClick = function()
+		local accent, source = At.system.getAccentColor(true)
+		if accent then
+			state.themeColor = accent
+			state.themeSource = "系统（" .. tostring(source) .. "）"
+			applyTheme()
+			At.log.info("系统主题色: %s (%s)", accent, tostring(source))
+			setStatus("系统主题色：" .. tostring(source))
+		else
+			At.log.warn("系统主题色不可用: %s", tostring(source))
+			setStatus("未检测到 Qt/GTK 系统主题色（" .. tostring(source) .. "）")
+		end
+	end,
+}))
 card:add(themeRow)
 
 -- QDial 风格的圆形旋钮：wrapping 时用完整 360°，越过 359° 从 0° 继续
@@ -363,6 +476,15 @@ function love.load()
 end
 
 function love.update(dt)
+	if state.appearance == "system" then
+		local mode = At.system.getThemeMode()
+		if (mode == "light" or mode == "dark") and mode ~= lastSystemMode then
+			lastSystemMode = mode
+			applyTheme()
+			setStatus("系统外观已切换为" .. (mode == "light" and "白色" or "深色"))
+			At.log.info("系统外观切换为 %s", mode)
+		end
+	end
 	At.update(dt)
 end
 

@@ -49,8 +49,8 @@ sh /path/to/pack.sh  # 从外部调用；项目在 /sdcard 等无执行位的位
 - `luac` / `lua` 可用（系统 `lua` 是 5.5，**只用于 `luac -p` 与 `test_smoke.lua`，不能拿来跑游戏**）。
 - LÖVE 11.5 可用；LÖVE 12 在 `~/love`，用 `LD_LIBRARY_PATH=~/love/prefix/lib ~/love/prefix/bin/love ~/AtLua/` 启动。LÖVE 11 在本机可用 `SDL_VIDEODRIVER=offscreen` 无头运行，LÖVE 12 用正常显示上下文。
 - `python3`、`unzip` 可用（`pack.sh` 靠 `python3` 的 `zipfile` 打包，不需要 `zip`）。
-- `/bin/bash`、`/usr/bin/env` **不存在**（Termux 环境），所以脚本一律写 `#!/bin/sh` 或由调用方显式 `bash xxx.sh`。
-- 外部存储 `/sdcard`、`/storage/*` **默认不可访问**，需先 `termux-setup-storage`；项目位于内部存储 `~/AtLua`。项目放在 SD 卡上时无法 `./pack.sh`（无执行位），要用 `sh /storage/<UUID>/AtLua/pack.sh`。
+- `/bin/bash`、`/usr/bin/env` 可用；脚本仍写 `#!/bin/sh`，以兼容 Termux 等没有 bash 的环境。
+- 项目位于 `~/AtLua`；如果放到 Android 的 `/sdcard`，先 `termux-setup-storage`，且没有执行位时用 `sh /path/to/pack.sh`。
 - git 仓库已初始化，主分支 `main`；**每次完成改动都必须本地 `git commit`**，不要长期把修改留在工作区。默认**不要 push**，只有用户明确要求时才 push。
 
 没有测试框架、没有 CI；格式化用 `stylua`（配置见 `stylua.toml`）。验收 = `luac -p` 全通过 + `lua test_smoke.lua` 打印 `SMOKE OK` + 有 LÖVE 时手动跑一次 + （改了资源/目录时）成功打包。
@@ -92,6 +92,7 @@ At/
     shadow.lua      #   阴影：GLSL SDF（默认）/ 旧式多层矩形 / none
     font.lua        #   字体装配与缓存（资源路径来自 config.font）
     input.lua       #   旧的全局文本输入 + UTF-8 工具
+    system.lua      #   系统明暗 / 桌面主题色探测（LÖVE 12+，best-effort）
     log.lua         #   日志：等级、格式、缓冲、stdout、文件
   components/       # 具体组件
     Panel.lua Label.lua Button.lua TextInput.lua Switch.lua Checkbox.lua
@@ -177,7 +178,7 @@ At.Panel{
 
 ### At 入口
 
-`At.update(dt)`、`At.mousepressed(...)`、`At.mousereleased(...)`、`At.textinput(t)`、`At.keypressed(k)`、`At.wheelmoved(dx,dy)`、`At.focus(c)`、`At.clearFocus()`、`At.getFocus()`、`At.add(c)`、`At.remove(c)`、`At.registry`、`At.layout`、`At.Component`、`At.motion`、`At.blur`（`setEnabled/isEnabled/setAlgorithm/registerAlgorithm/setStrength/getMSAA/getMaxMSAA/beginFrame/endFrame/drawBackdrop/stats/reset`）、`At.render`（`getMSAA/setMSAA/getMaxMSAA`）。
+`At.update(dt)`、`At.mousepressed(...)`、`At.mousereleased(...)`、`At.textinput(t)`、`At.keypressed(k)`、`At.wheelmoved(dx,dy)`、`At.focus(c)`、`At.clearFocus()`、`At.getFocus()`、`At.add(c)`、`At.remove(c)`、`At.registry`、`At.layout`、`At.Component`、`At.motion`、`At.blur`（`setEnabled/isEnabled/setAlgorithm/registerAlgorithm/setStrength/getMSAA/getMaxMSAA/beginFrame/endFrame/drawBackdrop/stats/reset`）、`At.render`（`getMSAA/setMSAA/getMaxMSAA`）、`At.system`（`hasThemeApi/getThemeMode/getAccentColor/reset`）。
 
 `At.config`（`At/config.lua`）：`theme = {color, black, white}`、`render = {msaa}`、`shadow = {algorithm, color, alpha, spread, layers, offsetX, offsetY}`、`blur = {enabled, algorithm, strength}`、`log = {level, print, maxEntries, file, filePattern}`、`font = {size, main, emoji}`；`At.config.apply()` 把配置推给各模块（`At.lua` 启动时已自动调用一次）。
 
@@ -198,6 +199,7 @@ At.Panel{
 - `font.get(size)` 缓存字体；`font.init(size)` 设置全局 `mainFont`/`emoji`，并以**主字体**为当前字体。主字体优先、emoji 只作 fallback：反过来（emoji 当主字体）会让数字、空格、`#`/`*` 用上 keycap 的长宽字，排版明显变宽。
 - `shadow(x, y, w, h, corner, color, spread, layers, offsetX, offsetY)`：`color[4]` 是整体最大不透明度；`layers` 只对 legacy 生效，GLSL 下忽略。`At.shadow.setAlgorithm/getAlgorithm/reset` 控制算法与缓存。
 - `motion.spring{value, target, stiffness, damping, velocity}` → `Spring`（`:setTarget/:snap/:update/:isSettled`，`.value/.target/.velocity`）；`motion.damp(current, target, speed, dt)`；`motion.easeIn/easeOut/easeInOut(t)`（`0..1`）。弹簧用固定子步（1/240s）积分，掉帧不发散；`update` 的 `dt <= 0` 直接返回。
+- `system.hasThemeApi()`、`getThemeMode()`、`getAccentColor(refresh?)`、`reset()`：LÖVE 12+ 系统明暗与桌面主题色探测；不支持的平台返回 `nil`，不报错。
 - `log.debug/info/warn/error/fatal(...)`（写日志，被过滤时返回 nil）、`setLevel/getLevel/setFormat/setMaxEntries/setPrint/getPrint/setFile/setFilePattern/getFileName/getFilePath/closeFile/isFileEnabled/clear/count/getEntries/formatEntry`。默认格式 `[时间] - [等级/函数名]: 内容`，过滤发生在写入时，默认同时 `print` 到 stdout（Android 即 logcat）。
 
 ## 6. 代码约定
@@ -217,7 +219,7 @@ At.Panel{
 - **坐标一律对齐整数像素**：绘制前用 `At.pixel.xy/round`；布局已经对齐过一次，但滚动位移、动画插值、居中计算仍可能产生小数。
 - **动画统一用 `At.motion.spring`**（需要缓动再用 `easeIn/Out/InOut`），不要自己写 `value = value + (target - value) * k` 的指数逼近；每个组件在 `_tick(dt)` 或 `update(dt)` 里推进自己的弹簧，并给 `animate = false` 留立即落位的分支。
 - 焦点只通过 `self:focus()/self:blur()` 或 `registry.setFocus` 改，不要自建 `isFocused` 字段。
-- 命名沿用现状，不要"统一"：大写开头是 `At`、`SDF`、`Ripple`、`Button`、`Label`、`Panel`、`TextInput`、`Switch`、`Checkbox`、`RadioGroup`、`Slider`、`Dial`、`Component`；小写是 `color`、`shadow`、`input`、`font`、`layout`、`registry`。
+- 命名沿用现状，不要"统一"：大写开头是 `At`、`SDF`、`Ripple`、`Button`、`Label`、`Panel`、`TextInput`、`Switch`、`Checkbox`、`RadioGroup`、`Slider`、`Dial`、`Component`；小写是 `color`、`shadow`、`input`、`font`、`layout`、`registry`、`system`。
 - 颜色对外接受 `hex`（或 `"@primary"` 这类主题 token）+ 0–255 `alpha`，不要引入 0–1 风格的第二套接口。
 - 新增模块**不要**创建全局变量；已有全局（`SDF`、`color`、`shadow`、`mainFont`、`emoji`、`removeLastUTF8Char`）是遗留兼容面，可以读取，别扩散。
 - 不引入第三方库、shader 文件或构建工具。内联 GLSL 字符串是允许的（`blur.lua`、`shadow.lua` 已用），不要新增 `.glsl` 文件或外部 shader 依赖。
@@ -264,8 +266,9 @@ At.Panel{
 33. **阴影默认 GLSL，legacy 只是兼容路径**：`config.shadow.algorithm` 默认 `"glsl"`，一次 SDF draw；不传 `shadowArgs` 时用 `config.shadow`（默认 `@primaryDark`、spread 3、offset 1/2、alpha 0.3）；`"legacy"` 仍按 `layers+1` 次矩形叠加，`layers` 在 GLSL 下被忽略。`shadowArgs` 的颜色 alpha 是 **0–1**，不要按组件的 0–255 传。shader/白纹理是惰性缓存的，窗口重建或换上下文后 `At.shadow.reset()` 重新编译；shader 不可用会自动回退 legacy。`At.config.apply()` 在 MSAA 重建后同时 reset blur 与 shadow。
 34. **TextInput 光标是 UTF-8 字符下标，不是字节位置**：`_caret` 取 `0..input.length(text)`，插入/删除用 `input.sub` 按字符切，不要用 `string.sub` 按字节切（中文/emoji 会被切坏）。点击定位用当前字体 `getWidth(前缀)` 找最近边界；密码模式按掩码宽度算。文本超宽时 `_scrollX` 负责水平滚动，`_ensureCaretVisible` 必须在光标变化、输入、绘制前调用；失焦要归零。竖直/可见性仍由外层 `ScrollView` 管。
 35. **Dial 的 wrapping 与非 wrapping 角度范围不同**：`wrapping = true` 是完整 360°，`endAngle` 不参与映射；非 wrapping 默认 270°（`startAngle = 135`、`endAngle = 405`），底部缺口点击会吸附最近端点。`setValue` 在 wrapping 下对越界值按 `(max - min)` 取模（`min = 0, max = 359` 时 `360 -> 1`、`-1 -> 358`），范围内的值（包括 `max`）保持；非 wrapping 夹紧。拖动更新在 `_tick` 里轮询，必须调用 `At.update(dt)`。`math.atan2` 在 Lua 5.5 不存在，文件顶部用 `math.atan2 or math.atan(y, x)` 兼容，不要在 `_setFromPoint` 里直接调用 `math.atan2`。
-36. **LÖVE 11/12 兼容用能力检测，不按版本号分支**：`love.filesystem.openFile or newFile`（12 用 openFile，11 用 newFile）、`love.graphics.setStencilMode`（12）优先，缺少时回退 `love.graphics.stencil + setStencilTest`（11）。不要为了消警告直接删旧 API，也不要调用当前版本已弃用的函数；两套路径的模板都要复位/清 0，否则相邻模糊组件的圆角会互相污染。LÖVE 12 的模板需要窗口 `stencil` 开启，`conf.lua` 已设 `t.window.stencil = true`。测试要同时覆盖新旧分支，不能只跑一个版本。
-37. **主题 token 在绘制时解析，不要在构造时缓存**：组件默认色是 `"@primary"` 这类字符串，`At.color` 的 `hexToRGBA/setColor/shade/mix` 内部调用 `color.resolve`；因此 `At.theme.set` 能热更新已有组件。若在 `new` 里用 `At.theme.get` 转成具体 hex 存起来，就只影响新组件。`color.lua` 对 `theme` 是**惰性 require**（只在遇到 `@` 时加载），用来避开 `theme -> color -> theme` 的加载环；不要改成顶层 `require("At.core.theme")`。`theme.set` 只接受三基色，`@danger/@warning/@success` 是固定语义色。
+36. **系统主题/主题色是 best-effort，不能当成必需依赖**：系统明暗只有 LÖVE 12+ 的 `love.window.getSystemTheme`；主题色没有 LÖVE 原生 API，`At.system` 才去读 GNOME `gsettings`、KDE `kdeglobals`、Windows DWM、macOS `defaults`，并支持 `AT_ACCENT_COLOR` 覆盖。外部命令只在第一次探测时执行并缓存，失败返回 `nil` + 原因，不能让它报错或阻塞启动；Android/iOS 不做探测。示例默认跟随系统明暗（不支持则深色），白色主题是把 `black`/`white` 槽位对调，切换时同时更新 `At.config.theme` 与 `At.theme`。
+37. **LÖVE 11/12 兼容用能力检测，不按版本号分支**：`love.filesystem.openFile or newFile`（12 用 openFile，11 用 newFile）、`love.graphics.setStencilMode`（12）优先，缺少时回退 `love.graphics.stencil + setStencilTest`（11）。不要为了消警告直接删旧 API，也不要调用当前版本已弃用的函数；两套路径的模板都要复位/清 0，否则相邻模糊组件的圆角会互相污染。LÖVE 12 的模板需要窗口 `stencil` 开启，`conf.lua` 已设 `t.window.stencil = true`。测试要同时覆盖新旧分支，不能只跑一个版本。
+38. **主题 token 在绘制时解析，不要在构造时缓存**：组件默认色是 `"@primary"` 这类字符串，`At.color` 的 `hexToRGBA/setColor/shade/mix` 内部调用 `color.resolve`；因此 `At.theme.set` 能热更新已有组件。若在 `new` 里用 `At.theme.get` 转成具体 hex 存起来，就只影响新组件。`color.lua` 对 `theme` 是**惰性 require**（只在遇到 `@` 时加载），用来避开 `theme -> color -> theme` 的加载环；不要改成顶层 `require("At.core.theme")`。`theme.set` 只接受三基色，`@danger/@warning/@success` 是固定语义色。
 
 ## 8. 改动检查清单
 
@@ -282,6 +285,7 @@ At.Panel{
 - [ ] 阴影改动验证：`glsl` 每次只 draw 一次、`legacy` 仍按 layers+1 次绘制、shader 不可用时自动回退、`config.shadow.algorithm` 可切换与复位。
 - [ ] 输入框改动验证：点击定位、拖动选择光标、中间插入/删除、方向键/Home/End、UTF-8 与密码模式、长文本水平滚动。
 - [ ] Dial 改动验证：非 wrapping 的端点/中点点击与缺口吸附、拖动、方向键、wrapping 越界取模、刻度与数值显示。
+- [ ] 系统主题改动验证：`getThemeMode` 的 light/dark/unknown/unsupported、`getAccentColor` 的 env 覆盖与失败分支、演示白色主题切换。
 - [ ] LÖVE 11/12 兼容改动验证：LÖVE 11 与 12 各启动一次，无 deprecated 警告；`setStencilMode`、`openFile`、旧 `stencil`/`newFile` 的回退路径都有测试或手动验证。
 - [ ] 有 LÖVE 时 `love .` 手动过一遍：悬停、按下、拖出/拖回、输入、开关动画、拖动滑动条、进度条过渡、滚轮平滑滚动、拖拽惯性、触顶/触底光效与滚动条端点反馈。
 - [ ] 涉及平滑滚动/惯性的断言必须模拟若干帧（`At.update(1/60)`），不能只改目标就断言位置。

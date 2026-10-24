@@ -269,6 +269,41 @@ check(not pcall(function()
 end), "非法主题色会报错")
 At.theme.reset()
 
+-- ---------- 系统主题 / 主题色 ----------
+check(At.system.hasThemeApi() == false, "测试环境默认没有 getSystemTheme")
+themeBtn._oldGetSystemTheme = love.window.getSystemTheme
+love.window.getSystemTheme = function()
+	return "light"
+end
+check(At.system.hasThemeApi() == true, "有 getSystemTheme 时系统主题可用")
+themeBtn._mode, themeBtn._reason = At.system.getThemeMode()
+check(themeBtn._mode == "light" and themeBtn._reason == "system", "读取系统浅色主题")
+love.window.getSystemTheme = function()
+	return "dark"
+end
+themeBtn._mode = At.system.getThemeMode()
+check(themeBtn._mode == "dark", "读取系统深色主题")
+love.window.getSystemTheme = function()
+	return "unknown"
+end
+themeBtn._mode, themeBtn._reason = At.system.getThemeMode()
+check(themeBtn._mode == nil and themeBtn._reason == "unknown", "系统主题未知时返回原因")
+love.window.getSystemTheme = themeBtn._oldGetSystemTheme
+
+-- 显式环境变量覆盖系统主题色（LÖVE 11 也能用于手动调试）
+themeBtn._oldGetenv = os.getenv
+os.getenv = function(name)
+	if name == "AT_ACCENT_COLOR" then
+		return "#123456"
+	end
+	return themeBtn._oldGetenv(name)
+end
+At.system.reset()
+themeBtn._accent, themeBtn._accentSource = At.system.getAccentColor(true)
+check(themeBtn._accent == "#123456" and themeBtn._accentSource == "env", "AT_ACCENT_COLOR 覆盖系统主题色")
+os.getenv = themeBtn._oldGetenv
+At.system.reset()
+
 -- ---------- 渲染 / MSAA ----------
 check(At.render.getMSAA() == 4, "窗口默认 MSAA 为 4")
 check(At.render.getMaxMSAA() == 8, "设备最大 MSAA 为 8")
@@ -1370,6 +1405,16 @@ local demoDial = findComponent(function(c)
 end)
 check(demoDial ~= nil, "演示里有 Dial")
 
+-- 演示的外观单选：白色主题会交换 black/white 槽位
+demoDial = findComponent(function(c)
+	return c.options ~= nil and c.options[1] == "系统" and c.options[3] == "白色"
+end)
+check(demoDial ~= nil, "演示里有系统/深色/白色外观选择")
+demoDial:setValue(3)
+check(At.theme.get("@background") == "#FFFFFF", "演示可切换到白色主题")
+demoDial:setValue(2)
+check(At.theme.get("@background") == "#3D3D3D", "演示可切回深色主题")
+
 local demoConsole = findComponent(function(c)
 	return c.levelColors ~= nil
 end)
@@ -1451,6 +1496,9 @@ check(fileContains("At/config.lua", "theme"), "At/config.lua 缺少 theme 配置
 check(fileContains("docs/theme.md", "A7DCFF"), "docs/theme.md 缺少默认主题色")
 check(fileContains("docs/theme.md", "@primary"), "docs/theme.md 缺少 token 说明")
 check(fileContains("docs/theme.md", "At.theme.set"), "docs/theme.md 缺少运行时切换说明")
+check(fileContains("docs/theme.md", "At.system"), "docs/theme.md 缺少系统主题说明")
+check(fileContains("docs/README.md", "At.system"), "docs/README.md 缺少系统主题说明")
+check(fileContains("AGENTS.md", "At.system"), "AGENTS.md 缺少系统主题说明")
 check(fileContains("At/config.lua", "msaa"), "At/config.lua 缺少 msaa 配置")
 check(fileContains("conf.lua", "render.msaa"), "conf.lua 没有从 At/config 读取 msaa")
 check(fileContains("conf.lua", "stencil"), "conf.lua 没有开启 stencil")

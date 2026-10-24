@@ -17,6 +17,7 @@ At.motion = require("At.core.motion")
 At.render = require("At.core.render")
 At.Component = require("At.core.component")
 At.log = require("At.core.log")
+At.system = require("At.core.system")
 At.blur = require("At.effects.blur")
 
 -- 组件

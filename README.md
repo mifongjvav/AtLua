@@ -28,6 +28,7 @@ function love.draw() card:draw() end
   数字/百分比/`auto` 尺寸、`grow` 瓜分剩余空间、`align`/`justify` 对齐，支持嵌套。
 - **组件**全部继承同一个基类，统一 `draw/update/mousepressed/mousereleased/measure/destroy` 协议：
   `Panel`、`Label`、`Button`、`TextInput`、`Switch`、`Checkbox`、`RadioGroup`、`Slider`、`Dial`、`ScrollView`。
+- **系统主题**：LÖVE 12+ 默认跟随系统明暗；`At.system.getAccentColor()` 尽力读取 Qt/GTK 等桌面主题色，示例可切换白色主题与系统主题色。
 - **主题色系统**：三个基色（主题色 `#A7DCFF`、黑 `#3D3D3D`、白 `#FFFFFF`）派生整套语义色；组件默认颜色是 `@primary` / `@text` 这类 token，运行时 `At.theme.set{...}` 换色，已有组件立即生效。
 - **交互细节**：按钮涟漪与拖出/拖回语义、开关左右拖动、滑动条拖动与方向键微调、圆形旋钮拖动与 wrapping、输入框软键盘与光标、
   唯一键盘焦点、点空白自动失焦。
@@ -185,7 +186,7 @@ At/
   At.lua        # 门面：require 一次拿到全部模块
   config.lua    # 集中配置：theme / blur / log / font
   core/         # 基础设施：registry、component、layout、clip、pixel、color、theme、
-                #   render、SDF、shadow、font、input、log
+                #   render、SDF、shadow、font、input、system、log
   components/   # 组件：Panel、Label、Button、TextInput、Switch、Checkbox、
                 #   RadioGroup、Slider、Dial、ScrollView、Console
   effects/      # 视觉效果：Ripple、blur

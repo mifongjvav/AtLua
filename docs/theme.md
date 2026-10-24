@@ -116,6 +116,47 @@ At.theme.set({ black = "FFFFFF", white = "3D3D3D" })
 
 这时 `@background` 变成白色、`@text` 变成深灰，`@surface` 等表面色也会自动翻转。
 
+## 系统主题与系统主题色
+
+[`At.system`](../At/core/system.lua) 提供系统明暗与桌面主题色的**尽力探测**：
+
+```lua
+local mode, reason = At.system.getThemeMode()
+-- mode: "light" / "dark" / nil
+-- reason: "system" / "unsupported" / "unknown" / "error"
+
+local accent, source = At.system.getAccentColor()
+-- accent: "#RRGGBB" / nil
+-- source: "GNOME/GTK" / "KDE/Qt" / "Windows" / "macOS" / "env" / nil
+```
+
+- **系统明暗**：只有 LÖVE 12+ 的 `love.window.getSystemTheme` 能提供；LÖVE 11 返回
+  `nil, "unsupported"`。桌面返回 `light` / `dark`，无法判断时返回 `nil, "unknown"`。
+- **系统主题色**：LÖVE 没有原生 API，`At.system` 在桌面平台按 best-effort 读取：
+  - GNOME/GTK：`gsettings get org.gnome.desktop.interface accent-color`（如 `blue` / `pink`）
+  - KDE/Qt：`kreadconfig6/5` 或 `~/.config/kdeglobals` 的 `[Colors:View] Highlight`
+  - Windows：DWM `ColorizationColor`
+  - macOS：`defaults read -g AppleAccentColor`
+  - `AT_ACCENT_COLOR`（或 `AT_THEME_COLOR`）环境变量优先级最高，格式 `#RRGGBB`
+- 结果会缓存；系统主题色改变后调用 `At.system.reset()` 再取一次。探测失败只返回
+  `nil` + 原因，不会报错或阻塞启动；Android/iOS 和没有 `io.popen` 的环境不做探测。
+- `getAccentColor(refresh)` 传 `true` 可强制重新探测。
+
+示例里“外观”默认选“系统”（LÖVE 12+ 且系统给出明暗时跟随），也可以手动切“白色”/“深色”；
+“主题色”里的“系统色”按钮会尝试使用 Qt/GTK 等桌面主题色，失败时保留当前主题色并给出提示。
+
+```lua
+local mode = At.system.getThemeMode()
+if mode == "light" then
+    At.theme.set({ black = "FFFFFF", white = "3D3D3D" })
+end
+
+local accent = At.system.getAccentColor()
+if accent then
+    At.theme.set({ color = accent })
+end
+```
+
 ## 限制
 
 - 主题只负责颜色，不改变圆角、阴影、字号或布局。
