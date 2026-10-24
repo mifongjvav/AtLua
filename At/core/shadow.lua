@@ -10,6 +10,7 @@
 --   字符串形式默认 alpha 0.4）。spread 在 GLSL 下是尺寸基准（实际模糊半径 = spread*2），layers 只对 legacy 生效。
 --
 -- GLSL 失败（shader 编译失败、没有可用的 1x1 纹理）时自动退回 legacy。
+-- 内阴影 shadow.inner 复用 1x1 纹理，但需要单独的 shader；失败时直接不画。
 -- GLSL 以组件边缘为中心向内外对称模糊，并用 1/255 抖动打散 8 位 alpha 的色带。
 
 shadow = {}
@@ -53,9 +54,39 @@ vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc) {
 }
 ]]
 
+local INNER_SHADER = [[
+extern vec2 shadowSize;
+extern vec2 rectSize;
+extern vec2 rectCenter;
+extern float rectRadius;
+extern float innerSize;
+extern vec2 innerOffset;
+extern vec4 shadowColor;
+
+float sdRoundRect(vec2 p, vec2 halfSize, float r) {
+    vec2 q = abs(p) - halfSize + vec2(r);
+    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+}
+
+vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc) {
+    vec2 p = uv * shadowSize;
+    vec2 base = p - rectCenter;
+    float d0 = sdRoundRect(base, rectSize * 0.5, rectRadius);
+    float d1 = sdRoundRect(base + innerOffset, rectSize * 0.5, rectRadius);
+    float inside = 1.0 - smoothstep(0.0, 1.0, d0);
+    float t = clamp(-d1 / max(innerSize, 0.001), 0.0, 1.0);
+    float a = (1.0 - t) * inside;
+    float noise = fract(52.9829189 * fract(dot(floor(sc), vec2(0.06711056, 0.00583715))));
+    a = clamp(a + (noise - 0.5) / 255.0, 0.0, 1.0);
+    return vec4(shadowColor.rgb, shadowColor.a * a);
+}
+]]
+
 local shader
+local innerShader
 local whiteTexture
 local shaderTried = false
+local innerTried = false
 
 local function makeWhiteTexture()
 	-- 优先 ImageData → Image，避免依赖 canvas 状态
@@ -118,6 +149,33 @@ local function getResources()
 
 	shader, whiteTexture = compiled, texture
 	return shader, whiteTexture
+end
+
+local function getInnerResources()
+	if innerShader and whiteTexture then
+		return innerShader, whiteTexture
+	end
+	if innerTried then
+		return nil
+	end
+	if not whiteTexture then
+		whiteTexture = makeWhiteTexture()
+	end
+	if not whiteTexture then
+		innerTried = true
+		return nil
+	end
+	if not (love and love.graphics and love.graphics.newShader) then
+		innerTried = true
+		return nil
+	end
+	local ok, compiled = pcall(love.graphics.newShader, INNER_SHADER)
+	innerTried = true
+	if not ok or not compiled then
+		return nil
+	end
+	innerShader = compiled
+	return innerShader, whiteTexture
 end
 
 -- ---------- 旧实现：多层缩放矩形 ----------
@@ -204,6 +262,37 @@ local function drawGLSL(x, y, w, h, corner, color, spread, offsetX, offsetY, sha
 	love.graphics.pop()
 end
 
+local function drawInner(x, y, w, h, corner, color, size, offsetX, offsetY, shaderObject, texture)
+	local innerSize = math.max(1, tonumber(size) or 3)
+	local ox = tonumber(offsetX) or 0
+	local oy = tonumber(offsetY) or 0
+	local radius = math.min(tonumber(corner) or 0, math.min(w, h) / 2)
+
+	shaderObject:send("shadowSize", { w, h })
+	shaderObject:send("rectSize", { w, h })
+	shaderObject:send("rectCenter", { w / 2, h / 2 })
+	shaderObject:send("rectRadius", radius)
+	shaderObject:send("innerSize", innerSize)
+	shaderObject:send("innerOffset", { ox, oy })
+	shaderObject:send("shadowColor", { color[1], color[2], color[3], color[4] })
+
+	love.graphics.push("all")
+	love.graphics.setShader(shaderObject)
+	love.graphics.setBlendMode("alpha")
+	love.graphics.setColor(1, 1, 1, 1)
+	love.graphics.draw(texture, x, y, 0, w, h)
+	love.graphics.pop()
+end
+
+local function innerColor(value, alpha)
+	alpha = tonumber(alpha) or 0.18
+	if type(value) == "table" then
+		return { value[1] or 0, value[2] or 0, value[3] or 0, alpha }
+	end
+	local r, g, b = colorlib.hexToRGBA(value or defaults.color)
+	return { r, g, b, alpha }
+end
+
 -- ---------- 对外 API ----------
 
 function shadow.setAlgorithm(name)
@@ -244,6 +333,21 @@ function shadow.defaults()
 	return copy
 end
 
+-- 内阴影：只画在矩形/圆角形状内部，适合单选圆圈、复选方框这类凹陷控件
+--   At.shadow.inner(x, y, w, h, corner, color, alpha 0..1, size, offsetX, offsetY)
+-- color 支持 hex / 主题 token；size 是向内衰减的像素距离。
+function shadow.inner(x, y, w, h, corner, innerColorValue, alpha, size, offsetX, offsetY)
+	if w <= 0 or h <= 0 or algorithm == "none" then
+		return
+	end
+	local shaderObject, texture = getInnerResources()
+	if not shaderObject or not texture then
+		return
+	end
+	drawInner(x, y, w, h, corner, innerColor(innerColorValue, alpha), size, offsetX, offsetY, shaderObject, texture)
+	return true
+end
+
 -- 丢掉 shader 与白纹理；窗口重建、换图形上下文后调用
 function shadow.reset()
 	pcall(function()
@@ -251,8 +355,9 @@ function shadow.reset()
 			whiteTexture:release()
 		end
 	end)
-	shader, whiteTexture = nil, nil
+	shader, innerShader, whiteTexture = nil, nil, nil
 	shaderTried = false
+	innerTried = false
 	return shadow
 end
 

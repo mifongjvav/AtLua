@@ -1166,6 +1166,17 @@ check(shadowBtn.shadowArgs == nil, "默认阴影参数来自 config.shadow")
 check(shadowDefaults.color == "@primaryDark", "默认阴影用深色主题色")
 check(shadowDefaults.alpha == 0.4, "默认阴影 alpha 为 0.4")
 check(shadowDefaults.spread == 3 and shadowDefaults.offsetX == 1 and shadowDefaults.offsetY == 2, "默认阴影更小")
+shadowBtn._innerOk = pcall(At.shadow.inner, 0, 0, 20, 20, 10, "#000000", 0.2, 3, 0, 0)
+check(shadowBtn._innerOk, "内阴影 API 可用")
+shadowBtn._radio = At.RadioGroup({ options = { "A" }, value = 1 })
+check(shadowBtn._radio.innerShadow == true and shadowBtn._radio.innerShadowSize == 3, "单选框默认开启内阴影")
+shadowBtn._radio:destroy()
+shadowBtn._check = At.Checkbox({ text = "A" })
+check(
+	shadowBtn._check.innerShadow == true and shadowBtn._check.innerShadowColor == "@primaryDark",
+	"多选框默认开启内阴影"
+)
+shadowBtn._check:destroy()
 shadowBtn:destroy()
 At.config.shadow.spread = 2
 At.config.apply()

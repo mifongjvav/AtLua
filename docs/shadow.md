@@ -74,14 +74,38 @@ legacy 切到 glsl 时，阴影观感会变化（通常更干净、更省绘制�
 
 | 成员                                                                            | 说明                                             |
 | ------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `At.shadow.shadow(x, y, w, h, corner, color, spread, layers, offsetX, offsetY)` | 绘制阴影；组件内部调用，也可自己用               |
+| `At.shadow.shadow(x, y, w, h, corner, color, spread, layers, offsetX, offsetY)` | 绘制外阴影；组件内部调用，也可自己用             |
+| `At.shadow.inner(x, y, w, h, corner, color, alpha, size, offsetX, offsetY)`     | 绘制内阴影；`alpha` 0–1，只画在形状内部          |
 | `At.shadow.setAlgorithm(name)`                                                  | `"glsl"` / `"legacy"` / `"none"`；非法值报错     |
 | `At.shadow.getAlgorithm()`                                                      | 当前配置的算法                                   |
 | `At.shadow.reset()`                                                             | 丢弃缓存的 shader / 1×1 白纹理；窗口重建后可调用 |
 
+## 内阴影
+
+`At.shadow.inner` 给单选圆圈、复选方框这类控件加凹陷感：
+
+```lua
+At.shadow.inner(
+    x, y, w, h,   -- 组件矩形
+    radius,       -- 圆角；圆形传 w/2
+    "@primaryDark",
+    0.16,         -- alpha 0..1
+    3,            -- 向内衰减的像素距离
+    0, 0          -- 可选偏移
+)
+```
+
+- `color` 接受 hex / 主题 token；`alpha` 是 0–1，不是组件的 0–255。
+- 只画在圆角矩形内部，shader 输出在形状外的 alpha 为 0。
+- 需要 GLSL；没有 shader 时直接跳过，不影响控件交互。
+- `At.RadioGroup` / `At.Checkbox` 默认开启，可通过 `innerShadow = false` 关闭，并可用
+  `innerShadowColor` / `innerShadowAlpha` / `innerShadowSize` / `innerShadowOffsetX` /
+  `innerShadowOffsetY` 调整。
+
 ## GLSL 实现说明
 
-- 阴影形状用圆角矩形 SDF：`signed distance - spread`，再用 `smoothstep(0, blur, d)` 得到柔和边缘。
+- 外阴影用圆角矩形 SDF，围绕边缘内外对称模糊，再用 smootherstep 得到柔和边缘。
+- 内阴影用同一 SDF 的负距离：贴边处 alpha 最大，向内 `size` 像素衰减到 0。
 - 绘制范围按 `spread + 偏移` 自动外扩，不会裁掉偏移方向上的阴影。
 - shader 是内联字符串，不需要额外的 `.glsl` 文件；只有第一次绘制时编译并缓存。
 - 如果设备没有 `love.graphics.newShader`、shader 编译失败，或拿不到 1×1 白纹理，会**自动回退 legacy**，不会让组件画不出来。
@@ -91,9 +115,9 @@ legacy 切到 glsl 时，阴影观感会变化（通常更干净、更省绘制�
 
 - GLSL 阴影每个组件一次 `draw`，比 legacy 的 `layers + 1` 次矩形绘制便宜很多，适合列表、卡片较多的界面。
 - legacy 保留用于兼容旧观感或 shader 不可用的环境；层数越多越柔和，也越耗绘制调用。
-- 阴影是绘制在组件下方的，可能超出组件矩形；父级 `ScrollView` 的 scissor 仍会裁剪它。
+- 外阴影绘制在组件下方，可能超出组件矩形；父级 `ScrollView` 的 scissor 仍会裁剪它。内阴影绘制在填充之上、边框之下，不会超出控件。
 - `shadowArgs` 的颜色 alpha 是 **0–1**（这是阴影表的历史约定），不要按组件的 0–255 alpha 传。
-- `At.config.shadow.algorithm = "none"` 是全局关闭；如果只想关某个组件，用该组件的 `shadow = false`。
+- `At.config.shadow.algorithm = "none"` 会同时跳过外阴影和组件内阴影；如果只想关某个组件，用该组件的 `shadow = false`。
 
 ## 示例
 

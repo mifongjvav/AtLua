@@ -9,6 +9,7 @@ local Component = require("At.core.component")
 local color = require("At.core.color")
 local pixel = require("At.core.pixel")
 local motion = require("At.core.motion")
+local shadow = require("At.core.shadow")
 
 local RadioGroup = {}
 local proto = setmetatable({}, { __index = Component })
@@ -27,6 +28,12 @@ local DEFAULTS = {
 	borderColor = "@borderStrong",
 	selectedColor = "@primary",
 	textColor = "@text",
+	innerShadow = true,
+	innerShadowColor = "@primaryDark",
+	innerShadowAlpha = 0.16,
+	innerShadowSize = 3,
+	innerShadowOffsetX = 0,
+	innerShadowOffsetY = 0,
 	alpha = 255,
 	fontSize = nil,
 
@@ -186,6 +193,21 @@ function proto:_draw()
 
 		color.setColor(self.color, self.alpha)
 		love.graphics.circle("fill", cx, cy, radius)
+
+		if self.innerShadow ~= false then
+			shadow.inner(
+				cx - radius,
+				cy - radius,
+				radius * 2,
+				radius * 2,
+				radius,
+				self.innerShadowColor,
+				(self.innerShadowAlpha or 0.16) * (self.alpha or 255) / 255,
+				self.innerShadowSize,
+				self.innerShadowOffsetX,
+				self.innerShadowOffsetY
+			)
+		end
 
 		color.setColor(selected and self.selectedColor or self.borderColor, self.alpha)
 		love.graphics.setLineWidth(selected and 2 or 1)

@@ -7,6 +7,7 @@ local Component = require("At.core.component")
 local color = require("At.core.color")
 local pixel = require("At.core.pixel")
 local motion = require("At.core.motion")
+local shadow = require("At.core.shadow")
 
 local Checkbox = {}
 local proto = setmetatable({}, { __index = Component })
@@ -24,6 +25,12 @@ local DEFAULTS = {
 	borderColor = "@borderStrong",
 	checkColor = "@primary",
 	textColor = "@text",
+	innerShadow = true,
+	innerShadowColor = "@primaryDark",
+	innerShadowAlpha = 0.16,
+	innerShadowSize = 3,
+	innerShadowOffsetX = 0,
+	innerShadowOffsetY = 0,
 	alpha = 255,
 	fontSize = nil,
 
@@ -114,6 +121,21 @@ function proto:_draw()
 
 	color.setColor(self.color, self.alpha)
 	love.graphics.rectangle("fill", x, boxY, box, box, self.radius)
+
+	if self.innerShadow ~= false then
+		shadow.inner(
+			x,
+			boxY,
+			box,
+			box,
+			self.radius,
+			self.innerShadowColor,
+			(self.innerShadowAlpha or 0.16) * (self.alpha or 255) / 255,
+			self.innerShadowSize,
+			self.innerShadowOffsetX,
+			self.innerShadowOffsetY
+		)
+	end
 
 	color.setColor(self.borderColor, self.alpha)
 	love.graphics.setLineWidth(1)
