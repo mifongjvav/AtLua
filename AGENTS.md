@@ -47,7 +47,7 @@ sh /path/to/pack.sh  # 从外部调用；项目在 /sdcard 等无执行位的位
 - `love`、`zip` 未安装；`python3`、`unzip` 可用（`pack.sh` 靠 `python3` 的 `zipfile` 打包，不需要 `zip`）。
 - `/bin/bash`、`/usr/bin/env` **不存在**（Termux 环境），所以脚本一律写 `#!/bin/sh` 或由调用方显式 `bash xxx.sh`。
 - 外部存储 `/sdcard`、`/storage/*` **默认不可访问**，需先 `termux-setup-storage`；项目位于内部存储 `~/AtLua`。项目放在 SD 卡上时无法 `./pack.sh`（无执行位），要用 `sh /storage/<UUID>/AtLua/pack.sh`。
-- git 仓库已初始化并提交到 `main`；代理只在本地 `git commit`，**不要 push**（由用户自己推）。
+- git 仓库已初始化，主分支 `main`；**每次完成改动都必须本地 `git commit`**，不要长期把修改留在工作区。默认**不要 push**，只有用户明确要求时才 push。
 
 没有测试框架、没有 CI；格式化用 `stylua`（配置见 `stylua.toml`）。验收 = `luac -p` 全通过 + `lua test_smoke.lua` 打印 `SMOKE OK` + 有 LÖVE 时手动跑一次 + （改了资源/目录时）成功打包。
 
@@ -153,20 +153,20 @@ At.Panel{
 
 ### 组件（全部继承 `At.Component`）
 
-| 组件 | 关键属性 | 回调 |
-| --- | --- | --- |
-| `At.Panel` | 见上表 | 无（不接收事件） |
-| `At.Label` | `text, color, fontSize, align, wrap, lineHeight` | 无 |
-| `At.Button` | `text, color, alpha, hoverColor, pressedColor, shadow, shadowArgs, ripple, paddingX/paddingY` | `onPress(self,mx,my)` / `onRelease(self,mx,my,inside)` / `onClick(self,mx,my)` |
-| `At.TextInput` | `text, placeholder, password, maxLength, borderColor, focusBorderColor, caretColor`；`getCaret/setCaret` | `onChange(text,self)` / `onSubmit(text,self)` |
-| `At.Switch` | `value, color, onColor, knobColor, animate, springStiffness/springDamping` | `onChange(value,self)` |
-| `At.Checkbox` | `text, checked, size, gap, checkColor` | `onChange(checked,self)` |
-| `At.RadioGroup` | `options, value(1 基), direction, gap, size, selectedColor` | `onChange(index,label,self)` |
-| `At.Slider` | `min,max,step,value, showValue, trackColor, fillColor, thumbColor` | `onChange(value,self)` |
-| `At.ProgressBar` | `value(0..1), w, h, radius, trackColor, fillColor, animate, springStiffness/springDamping` | `onChange(value,self)` |
-| `At.LoadingBar` | `w, h, radius, trackColor, fillColor, speed, segmentRatio, minSegment, running` | 无 |
-| `At.ScrollView` | `content, w, h, scrollX, scrollY, scrollbar, wheelStep, drag, smooth, smoothSpeed, momentum, padding, edgeEffect, edgeGlowColor/Size, edgeRadius, overscrollMax, overscrollResistance` | `onScroll(value,maxScroll,self,axis)` |
-| `At.Console` | `w, h, visible, title, headerH, padding, levelColors, alpha, fontSize, animate, springStiffness/springDamping, openOffset` | 无（内部读 `At.log`） |
+| 组件             | 关键属性                                                                                                                                                                               | 回调                                                                           |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `At.Panel`       | 见上表                                                                                                                                                                                 | 无（不接收事件）                                                               |
+| `At.Label`       | `text, color, fontSize, align, wrap, lineHeight`                                                                                                                                       | 无                                                                             |
+| `At.Button`      | `text, color, alpha, hoverColor, pressedColor, shadow, shadowArgs, ripple, paddingX/paddingY`                                                                                          | `onPress(self,mx,my)` / `onRelease(self,mx,my,inside)` / `onClick(self,mx,my)` |
+| `At.TextInput`   | `text, placeholder, password, maxLength, borderColor, focusBorderColor, caretColor`；`getCaret/setCaret`                                                                               | `onChange(text,self)` / `onSubmit(text,self)`                                  |
+| `At.Switch`      | `value, color, onColor, knobColor, animate, springStiffness/springDamping`                                                                                                             | `onChange(value,self)`                                                         |
+| `At.Checkbox`    | `text, checked, size, gap, checkColor`                                                                                                                                                 | `onChange(checked,self)`                                                       |
+| `At.RadioGroup`  | `options, value(1 基), direction, gap, size, selectedColor`                                                                                                                            | `onChange(index,label,self)`                                                   |
+| `At.Slider`      | `min,max,step,value, showValue, trackColor, fillColor, thumbColor`                                                                                                                     | `onChange(value,self)`                                                         |
+| `At.ProgressBar` | `value(0..1), w, h, radius, trackColor, fillColor, animate, springStiffness/springDamping`                                                                                             | `onChange(value,self)`                                                         |
+| `At.LoadingBar`  | `w, h, radius, trackColor, fillColor, speed, segmentRatio, minSegment, running`                                                                                                        | 无                                                                             |
+| `At.ScrollView`  | `content, w, h, scrollX, scrollY, scrollbar, wheelStep, drag, smooth, smoothSpeed, momentum, padding, edgeEffect, edgeGlowColor/Size, edgeRadius, overscrollMax, overscrollResistance` | `onScroll(value,maxScroll,self,axis)`                                          |
+| `At.Console`     | `w, h, visible, title, headerH, padding, levelColors, alpha, fontSize, animate, springStiffness/springDamping, openOffset`                                                             | 无（内部读 `At.log`）                                                          |
 
 基类方法：`draw/update/mousepressed/mousereleased/measure/destroy`、`contains(px,py)`、`setRect/setPosition/setSize`、`setEnabled/setVisible`、`isHovered/isPressed/isFocused/isInteractive`、`focus/blur`、`declaredWidth/declaredHeight/invalidateSize`、`font()`。
 
@@ -219,6 +219,7 @@ At.Panel{
 - **第三方资源必须登记许可证**：许可证全文放 `LICENSES/`（`.txt`，会随包分发），总览写入 `THIRD_PARTY_NOTICES.md`；不得删除资源内部的版权/许可元数据（例如字体 `name` 表）。
 - **不要从 `pack.sh` 排除 `LICENSE` 与 `LICENSES/`**：OFL 要求随字体一起分发版权声明和许可全文。
 - 改对外 API / 新组件 / 布局语义 → **同步写文档（第 10 节）** 并在 `test_smoke.lua` 补断言。
+- **完成改动必须提交**：验证通过后立即 `git add -A` + `git commit`；不要把改完的代码/文档留在工作区。提交前确认没有把 `*.love`、日志、截图、缓存等产物加进去；只有用户明确要求时才 `git push`。
 
 ## 7. 已知限制与陷阱
 
@@ -277,8 +278,9 @@ At.Panel{
 - [ ] 日志改动覆盖等级过滤、格式（字符串与函数）、缓冲裁剪；控制台改动覆盖显隐、拖动、滚动、开关动画。
 - [ ] 动画改动模拟多帧 `At.update(1/60)` 再断言（不能改完目标就断言最终值），并覆盖 `animate = false` 的立即落位。
 - [ ] 提交前跑过 `stylua .`，且 `stylua --check .` 通过。
-- [ ] 改了目录/资源后跑 `./pack.sh`，并 `unzip -Z1 AtLua.love` 抽查（不应出现 docs/、*.md、test_*.lua；**应包含 LICENSE 与 LICENSES/**）。
+- [ ] 改了目录/资源后跑 `./pack.sh`，并 `unzip -Z1 AtLua.love` 抽查（不应出现 docs/、_.md、test__.lua；**应包含 LICENSE 与 LICENSES/**）。
 - [ ] 新增/替换字体或其它第三方资源时，`LICENSES/` 与 `THIRD_PARTY_NOTICES.md` 已更新，且版权信息未被删除。
+- [ ] **改动已完成：`git add -A` 并 `git commit`**；工作区没有未提交的源码/文档改动，也没有 `*.love`、日志、截图等产物。
 
 ## 9. 不要做
 
@@ -290,6 +292,7 @@ At.Panel{
 - 不要在未手动运行的情况下声称 UI/视觉效果正常——测试只背书逻辑。
 - 不要把 `docs/` 的内容整段抄进本文件：这里写约束，文档写用法。
 - 不要把 `temp_package/`、新生成的 `.love`、系统缓存目录留在工作区。
+- 不要做完改动却不提交（工作区应保持干净）；也不要在用户没有明确要求时擅自 push。
 
 ## 10. 文档规范
 
@@ -297,16 +300,16 @@ At.Panel{
 
 ### 目录与职责
 
-| 文件 | 写什么 | 不写什么 |
-| --- | --- | --- |
-| `docs/README.md` | 快速开始、事件模型、组件一览、常见问题 | 内部实现、逐属性细节 |
-| `docs/layout.md` | CSS 子集对照、尺寸规则、排版时机、限制、示例 | 组件属性表 |
-| `docs/components.md` | 每个组件的属性表、方法、回调、示例 | 布局算法细节 |
-| `docs/theme.md` | 主题三基色、token 表、运行时换色、浅色主题、限制 | 组件逐属性细节 |
-| `docs/shadow.md` | GLSL / 旧式阴影的切换、参数、性能与限制 | 组件属性表 |
-| `docs/logging.md` | 日志等级、格式、缓冲、与控制台配合 | 组件属性表 |
-| `docs/blur.md` | 背景模糊的启用、算法、性能与限制 | 组件属性表 |
-| `AGENTS.md`（本文件） | 代理约束、约定、陷阱、改哪里 | 使用教程正文 |
+| 文件                  | 写什么                                           | 不写什么             |
+| --------------------- | ------------------------------------------------ | -------------------- |
+| `docs/README.md`      | 快速开始、事件模型、组件一览、常见问题           | 内部实现、逐属性细节 |
+| `docs/layout.md`      | CSS 子集对照、尺寸规则、排版时机、限制、示例     | 组件属性表           |
+| `docs/components.md`  | 每个组件的属性表、方法、回调、示例               | 布局算法细节         |
+| `docs/theme.md`       | 主题三基色、token 表、运行时换色、浅色主题、限制 | 组件逐属性细节       |
+| `docs/shadow.md`      | GLSL / 旧式阴影的切换、参数、性能与限制          | 组件属性表           |
+| `docs/logging.md`     | 日志等级、格式、缓冲、与控制台配合               | 组件属性表           |
+| `docs/blur.md`        | 背景模糊的启用、算法、性能与限制                 | 组件属性表           |
+| `AGENTS.md`（本文件） | 代理约束、约定、陷阱、改哪里                     | 使用教程正文         |
 
 ### 什么时候必须更新文档
 
