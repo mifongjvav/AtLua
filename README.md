@@ -42,7 +42,7 @@ function love.draw() card:draw() end
 
 ## 环境要求
 
-- [LÖVE](https://love2d.org/) **11.x**（LuaJIT / Lua 5.1 语义）
+- [LÖVE](https://love2d.org/) **11.x / 12.x**（LuaJIT / Lua 5.1 语义）
 - 无第三方 Lua 库、无 shader、无构建工具
 
 ## 快速开始

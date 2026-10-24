@@ -52,7 +52,8 @@ At.log.closeFile()            -- 同上；建议在 love.quit 里调用
 写入位置：
 
 - **LÖVE 项目**优先走 `love.filesystem`：桌面是存档目录（`love.filesystem.getSaveDirectory()`），
-  Android 是应用存档目录（`.../files/save/` 下）。
+  Android 是应用存档目录（`.../files/save/` 下）。LÖVE 12 使用 `love.filesystem.openFile`，LÖVE 11
+  只有 `newFile`，`At.log` 会按能力自动选择，避免触发废弃 API 警告。
 - 如果存档目录不可写（只读容器、受限环境）或文件名被 PhysFS 拒绝，会**自动退回 `io.open`**，
   写到当前工作目录；用 `At.log.getFilePath()` 查看实际落点。
 - **普通 Lua**（没有 `love.filesystem`）同样走 `io.open`，写到当前工作目录。

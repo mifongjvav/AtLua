@@ -20,10 +20,10 @@
 
 ## 2. 环境与常用命令
 
-目标运行时是 **LÖVE 11.x（Lua 5.1 / LuaJIT 语义）**。
+目标运行时是 **LÖVE 11.x / 12.x（Lua 5.1 / LuaJIT 语义）**。
 
 ```bash
-# 运行（需要 love 可执行文件；本机当前未安装）
+# 运行（LÖVE 11；LÖVE 12 用 ~/love/prefix/bin/love，见下方环境说明）
 love .
 
 # 逻辑回归测试（不需要 LÖVE；必须在项目根目录执行）
@@ -47,7 +47,8 @@ sh /path/to/pack.sh  # 从外部调用；项目在 /sdcard 等无执行位的位
 环境现状（截至本机实测，勿在文档里假设相反）：
 
 - `luac` / `lua` 可用（系统 `lua` 是 5.5，**只用于 `luac -p` 与 `test_smoke.lua`，不能拿来跑游戏**）。
-- `love`、`zip` 未安装；`python3`、`unzip` 可用（`pack.sh` 靠 `python3` 的 `zipfile` 打包，不需要 `zip`）。
+- LÖVE 11.5 可用；LÖVE 12 在 `~/love`，用 `LD_LIBRARY_PATH=~/love/prefix/lib ~/love/prefix/bin/love ~/AtLua/` 启动。LÖVE 11 在本机可用 `SDL_VIDEODRIVER=offscreen` 无头运行，LÖVE 12 用正常显示上下文。
+- `python3`、`unzip` 可用（`pack.sh` 靠 `python3` 的 `zipfile` 打包，不需要 `zip`）。
 - `/bin/bash`、`/usr/bin/env` **不存在**（Termux 环境），所以脚本一律写 `#!/bin/sh` 或由调用方显式 `bash xxx.sh`。
 - 外部存储 `/sdcard`、`/storage/*` **默认不可访问**，需先 `termux-setup-storage`；项目位于内部存储 `~/AtLua`。项目放在 SD 卡上时无法 `./pack.sh`（无执行位），要用 `sh /storage/<UUID>/AtLua/pack.sh`。
 - git 仓库已初始化，主分支 `main`；**每次完成改动都必须本地 `git commit`**，不要长期把修改留在工作区。默认**不要 push**，只有用户明确要求时才 push。
@@ -263,7 +264,8 @@ At.Panel{
 33. **阴影默认 GLSL，legacy 只是兼容路径**：`config.shadow.algorithm` 默认 `"glsl"`，一次 SDF draw；不传 `shadowArgs` 时用 `config.shadow`（默认 `@primaryDark`、spread 3、offset 1/2、alpha 0.3）；`"legacy"` 仍按 `layers+1` 次矩形叠加，`layers` 在 GLSL 下被忽略。`shadowArgs` 的颜色 alpha 是 **0–1**，不要按组件的 0–255 传。shader/白纹理是惰性缓存的，窗口重建或换上下文后 `At.shadow.reset()` 重新编译；shader 不可用会自动回退 legacy。`At.config.apply()` 在 MSAA 重建后同时 reset blur 与 shadow。
 34. **TextInput 光标是 UTF-8 字符下标，不是字节位置**：`_caret` 取 `0..input.length(text)`，插入/删除用 `input.sub` 按字符切，不要用 `string.sub` 按字节切（中文/emoji 会被切坏）。点击定位用当前字体 `getWidth(前缀)` 找最近边界；密码模式按掩码宽度算。文本超宽时 `_scrollX` 负责水平滚动，`_ensureCaretVisible` 必须在光标变化、输入、绘制前调用；失焦要归零。竖直/可见性仍由外层 `ScrollView` 管。
 35. **Dial 的 wrapping 与非 wrapping 角度范围不同**：`wrapping = true` 是完整 360°，`endAngle` 不参与映射；非 wrapping 默认 270°（`startAngle = 135`、`endAngle = 405`），底部缺口点击会吸附最近端点。`setValue` 在 wrapping 下对越界值按 `(max - min)` 取模（`min = 0, max = 359` 时 `360 -> 1`、`-1 -> 358`），范围内的值（包括 `max`）保持；非 wrapping 夹紧。拖动更新在 `_tick` 里轮询，必须调用 `At.update(dt)`。`math.atan2` 在 Lua 5.5 不存在，文件顶部用 `math.atan2 or math.atan(y, x)` 兼容，不要在 `_setFromPoint` 里直接调用 `math.atan2`。
-36. **主题 token 在绘制时解析，不要在构造时缓存**：组件默认色是 `"@primary"` 这类字符串，`At.color` 的 `hexToRGBA/setColor/shade/mix` 内部调用 `color.resolve`；因此 `At.theme.set` 能热更新已有组件。若在 `new` 里用 `At.theme.get` 转成具体 hex 存起来，就只影响新组件。`color.lua` 对 `theme` 是**惰性 require**（只在遇到 `@` 时加载），用来避开 `theme -> color -> theme` 的加载环；不要改成顶层 `require("At.core.theme")`。`theme.set` 只接受三基色，`@danger/@warning/@success` 是固定语义色。
+36. **LÖVE 11/12 兼容用能力检测，不按版本号分支**：`love.filesystem.openFile or newFile`（12 用 openFile，11 用 newFile）、`love.graphics.setStencilMode`（12）优先，缺少时回退 `love.graphics.stencil + setStencilTest`（11）。不要为了消警告直接删旧 API，也不要调用当前版本已弃用的函数；两套路径的模板都要复位/清 0，否则相邻模糊组件的圆角会互相污染。LÖVE 12 的模板需要窗口 `stencil` 开启，`conf.lua` 已设 `t.window.stencil = true`。测试要同时覆盖新旧分支，不能只跑一个版本。
+37. **主题 token 在绘制时解析，不要在构造时缓存**：组件默认色是 `"@primary"` 这类字符串，`At.color` 的 `hexToRGBA/setColor/shade/mix` 内部调用 `color.resolve`；因此 `At.theme.set` 能热更新已有组件。若在 `new` 里用 `At.theme.get` 转成具体 hex 存起来，就只影响新组件。`color.lua` 对 `theme` 是**惰性 require**（只在遇到 `@` 时加载），用来避开 `theme -> color -> theme` 的加载环；不要改成顶层 `require("At.core.theme")`。`theme.set` 只接受三基色，`@danger/@warning/@success` 是固定语义色。
 
 ## 8. 改动检查清单
 
@@ -280,6 +282,7 @@ At.Panel{
 - [ ] 阴影改动验证：`glsl` 每次只 draw 一次、`legacy` 仍按 layers+1 次绘制、shader 不可用时自动回退、`config.shadow.algorithm` 可切换与复位。
 - [ ] 输入框改动验证：点击定位、拖动选择光标、中间插入/删除、方向键/Home/End、UTF-8 与密码模式、长文本水平滚动。
 - [ ] Dial 改动验证：非 wrapping 的端点/中点点击与缺口吸附、拖动、方向键、wrapping 越界取模、刻度与数值显示。
+- [ ] LÖVE 11/12 兼容改动验证：LÖVE 11 与 12 各启动一次，无 deprecated 警告；`setStencilMode`、`openFile`、旧 `stencil`/`newFile` 的回退路径都有测试或手动验证。
 - [ ] 有 LÖVE 时 `love .` 手动过一遍：悬停、按下、拖出/拖回、输入、开关动画、拖动滑动条、进度条过渡、滚轮平滑滚动、拖拽惯性、触顶/触底光效与滚动条端点反馈。
 - [ ] 涉及平滑滚动/惯性的断言必须模拟若干帧（`At.update(1/60)`），不能只改目标就断言位置。
 - [ ] 日志改动覆盖等级过滤、格式（字符串与函数）、缓冲裁剪；控制台改动覆盖显隐、拖动、滚动、开关动画。

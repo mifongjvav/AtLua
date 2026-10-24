@@ -1453,6 +1453,8 @@ check(fileContains("docs/theme.md", "@primary"), "docs/theme.md 缺少 token 说
 check(fileContains("docs/theme.md", "At.theme.set"), "docs/theme.md 缺少运行时切换说明")
 check(fileContains("At/config.lua", "msaa"), "At/config.lua 缺少 msaa 配置")
 check(fileContains("conf.lua", "render.msaa"), "conf.lua 没有从 At/config 读取 msaa")
+check(fileContains("conf.lua", "stencil"), "conf.lua 没有开启 stencil")
+check(fileContains("docs/blur.md", "setStencilMode"), "docs/blur.md 缺少 LÖVE 12 模板说明")
 check(fileContains("At/config.lua", "shadow"), "At/config.lua 缺少 shadow 配置")
 check(fileContains("docs/shadow.md", "At.shadow.setAlgorithm"), "docs/shadow.md 缺少算法切换说明")
 check(fileContains("docs/shadow.md", "glsl"), "docs/shadow.md 缺少 glsl 说明")
@@ -1546,6 +1548,28 @@ blurConsole:draw()
 check(At.blur.stats().backdrops == beforeConsole + 1, "半透明控制台触发模糊")
 blurConsole:destroy()
 At.blur.endFrame()
+
+-- LÖVE 12 的 setStencilMode 路径（LÖVE 11 走上面的 stencil/setStencilTest 路径）
+canvasCalls = {}
+love.graphics.setStencilMode = function(mode)
+	canvasCalls[#canvasCalls + 1] = mode or "off"
+end
+At.blur.beginFrame()
+blurConsole = At.Panel({
+	x = 10,
+	y = 10,
+	w = 80,
+	h = 60,
+	background = "#202020",
+	alpha = 180,
+})
+blurConsole:draw()
+blurConsole:destroy()
+At.blur.endFrame()
+check(canvasCalls[1] == "draw", "LÖVE 12 模板写入模式: " .. tostring(canvasCalls[1]))
+check(canvasCalls[2] == "test", "LÖVE 12 模板测试模式: " .. tostring(canvasCalls[2]))
+check(canvasCalls[#canvasCalls] == "off", "LÖVE 12 模板状态复位")
+love.graphics.setStencilMode = nil
 
 At.blur.setAlgorithm("gaussian")
 At.blur.setEnabled(false)
@@ -1674,6 +1698,31 @@ local fallbackContent = fallbackHandle:read("*a")
 fallbackHandle:close()
 check(fallbackContent:find("fallback line", 1, true) ~= nil, "io fallback 写入成功")
 os.remove(fallbackName)
+
+-- LÖVE 12：优先使用 openFile；缺少 openFile 的 LÖVE 11 才用 newFile
+oldFilesystem = love.filesystem
+love.filesystem = {
+	opened = false,
+	openFile = function()
+		love.filesystem.opened = true
+		return {
+			write = function() end,
+			flush = function() end,
+			close = function() end,
+		}
+	end,
+	newFile = function()
+		error("LÖVE 12 应优先使用 openFile")
+	end,
+	getSaveDirectory = function()
+		return "/save"
+	end,
+}
+At.log.setFilePattern("test_openfile.log")
+check(At.log.setFile(true) == true, "openFile 可打开日志")
+check(love.filesystem.opened == true, "LÖVE 12 优先使用 openFile")
+At.log.closeFile()
+love.filesystem = oldFilesystem
 
 At.log.setFilePattern(nil)
 check(At.log.getFilePattern() == "%Y-%m-%d_%H-%M-%S.log", "默认文件名格式")

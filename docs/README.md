@@ -7,7 +7,7 @@ AtLua 是一个 LÖVE (Love2D) 的轻量 UI 组件库：纯 Lua、无第三方�
 在项目根目录执行：
 
 ```bash
-love .                # 运行演示程序（需要装了 LÖVE 11.x）
+love .                # 运行演示程序（需要装了 LÖVE 11.x / 12.x）
 lua test_smoke.lua    # 无头逻辑测试，不需要 LÖVE，成功时打印 SMOKE OK
 ./pack.sh             # 打包成 AtLua.love；./pack.sh MyGame 输出 MyGame.love
 ```

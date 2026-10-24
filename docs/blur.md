@@ -87,7 +87,8 @@ At.blur.getAlgorithms()                  -- 已注册的算法名
 - 每个触发模糊的组件，每帧要做**一次全画布拷贝**（snapshot）+ 若干次模糊 pass；组件多时开销明显，建议只给控制台、弹窗这类少数面板使用。
 - 内部 scene canvas 会跟随窗口的 MSAA（`love.window.getMode()` 里的 `msaa`）；`At/config.lua` 的 `render.msaa` 为 4 时模糊路径也保持抗锯齿。MSAA 会增加显存与带宽开销，低端设备可以改成 2 或 0。
 - 模糊区域按组件大小分配缓存画布，尺寸变化会重新创建（`At.blur.reset()` 可强制清理）。
-- 需要 LÖVE 11（canvas / shader / stencil）。不支持 canvas 时 `At.blur` 自动关闭并通过 `At.log.warn` 提示，组件退回普通半透明绘制。
+- 需要 LÖVE 11+（canvas / shader / stencil）。不支持 canvas 时 `At.blur` 自动关闭并通过 `At.log.warn` 提示，组件退回普通半透明绘制。
+- LÖVE 12 用 `love.graphics.setStencilMode` 写/测/复位模板，LÖVE 11 用 `love.graphics.stencil` + `setStencilTest`；代码按能力检测自动选择，不按版本号分支。模板不可用时退化为普通矩形绘制，不会因此关闭整个模糊功能。窗口需要在 `conf.lua` 里开启 `t.window.stencil = true`（LÖVE 11/12 默认也是开启的，仓库的 `conf.lua` 已显式声明）。
 - stencil 不可用时退化为矩形裁剪，圆角处会露出一点直角边缘。
 - `beginFrame` 会按 `love.graphics.getBackgroundColor()` 清空内部 canvas；如果你的场景本身是透明的，请自行在 `beginFrame` 后先画背景。
 - 模糊源是"当前帧、组件之前的内容"，不依赖上一帧，所以滚动/拖动时没有延迟。

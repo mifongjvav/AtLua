@@ -470,6 +470,50 @@ local function takeSnapshot()
 	return state.snapshot
 end
 
+-- LÖVE 12 用 setStencilMode；LÖVE 11 只有 stencil/setStencilTest。
+-- 两套都用 pcall，模板不可用时退化为普通矩形绘制，不能因为兼容层把整个模糊关掉。
+local function hasStencil()
+	return love.graphics.setStencilMode ~= nil or (love.graphics.stencil ~= nil and love.graphics.setStencilTest ~= nil)
+end
+
+local function beginStencil(x, y, w, h, radius)
+	if love.graphics.setStencilMode then
+		return pcall(function()
+			love.graphics.setStencilMode("draw", 1)
+			love.graphics.rectangle("fill", x, y, w, h, radius or 0)
+			love.graphics.setStencilMode("test", 1)
+		end)
+	end
+	if love.graphics.stencil and love.graphics.setStencilTest then
+		return pcall(function()
+			love.graphics.stencil(function()
+				love.graphics.rectangle("fill", x, y, w, h, radius or 0)
+			end, "replace", 1)
+			love.graphics.setStencilTest("greater", 0)
+		end)
+	end
+	return false
+end
+
+local function endStencil(x, y, w, h, radius)
+	if love.graphics.setStencilMode then
+		pcall(function()
+			love.graphics.setStencilMode("draw", 0)
+			love.graphics.rectangle("fill", x, y, w, h, radius or 0)
+		end)
+		pcall(love.graphics.setStencilMode)
+		return
+	end
+	if love.graphics.stencil and love.graphics.setStencilTest then
+		pcall(love.graphics.setStencilTest)
+		pcall(function()
+			love.graphics.stencil(function()
+				love.graphics.rectangle("fill", x, y, w, h, radius or 0)
+			end, "replace", 0)
+		end)
+	end
+end
+
 -- 在 (x, y, w, h, radius) 处绘制模糊后的背景；返回是否真的画了
 function blur.drawBackdrop(x, y, w, h, radius)
 	if not state.enabled or state.failed then
@@ -503,15 +547,11 @@ function blur.drawBackdrop(x, y, w, h, radius)
 	love.graphics.setColor(1, 1, 1, 1)
 	love.graphics.setShader()
 
-	-- 圆角裁剪：优先 stencil，失败则退化为矩形 scissor
-	local stencilOk = false
-	if love.graphics.stencil and love.graphics.setStencilTest then
-		stencilOk = pcall(function()
-			love.graphics.stencil(function()
-				love.graphics.rectangle("fill", x, y, w, h, radius or 0)
-			end, "replace", 1)
-			love.graphics.setStencilTest("greater", 0)
-		end)
+	-- 圆角裁剪：LÖVE 12 走 setStencilMode，LÖVE 11 走 stencil；
+	-- 模板不可用时退化为普通矩形绘制
+	local stencilAvailable = hasStencil()
+	if stencilAvailable then
+		beginStencil(x, y, w, h, radius)
 	end
 
 	local okDraw = pcall(function()
@@ -519,14 +559,8 @@ function blur.drawBackdrop(x, y, w, h, radius)
 		love.graphics.draw(texture, quad, x, y, 0, w / qw, h / qh)
 	end)
 
-	if stencilOk then
-		pcall(love.graphics.setStencilTest)
-		-- 复位本区域的模板值，避免多个模糊组件共用同一块遮罩
-		pcall(function()
-			love.graphics.stencil(function()
-				love.graphics.rectangle("fill", x, y, w, h, radius or 0)
-			end, "replace", 0)
-		end)
+	if stencilAvailable then
+		endStencil(x, y, w, h, radius)
 	end
 	love.graphics.pop()
 

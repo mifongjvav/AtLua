@@ -5,4 +5,7 @@ function love.conf(t)
 	if ok and type(config) == "table" and config.render and config.render.msaa ~= nil then
 		t.window.msaa = config.render.msaa
 	end
+
+	-- 背景模糊的圆角模板需要 stencil；LÖVE 11/12 默认也是 true，这里显式声明
+	t.window.stencil = true
 end

@@ -220,9 +220,12 @@ local function openFile()
 	f.absolute = name
 	ensureDirectory(name)
 
-	-- 优先写 LÖVE 存档目录（Android 上唯一稳定可写的位置）
-	if love and love.filesystem and love.filesystem.newFile then
-		local ok, file = pcall(love.filesystem.newFile, name, "a")
+	-- 优先写 LÖVE 存档目录（Android 上唯一稳定可写的位置）。
+	-- LÖVE 12 把 newFile 改名为 openFile；LÖVE 11 只有 newFile。
+	local filesystem = love and love.filesystem
+	local openFileFn = filesystem and (filesystem.openFile or filesystem.newFile)
+	if openFileFn then
+		local ok, file = pcall(openFileFn, name, "a")
 		if ok and file then
 			f.handle = file
 			f.viaLove = true
