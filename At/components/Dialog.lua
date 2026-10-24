@@ -1,6 +1,6 @@
--- Dialog：一次性模态对话框。fullscreen 时接近铺满窗口（留 inset）并压暗背景，
--- 开启 At.blur 时卡片毛玻璃化，不可拖动；非 fullscreen 时是浮动窗口，
--- 可拖标题栏，不压暗背景。
+-- Dialog：一次性模态对话框。两种模式使用相同大小的卡片：
+-- fullscreen 时整窗铺一层压暗/模糊背景，卡片不可拖动；
+-- 非 fullscreen 时是可拖标题栏的浮动窗口，不压暗背景。
 --
 --   local dialog = At.Dialog{
 --       title = "确认操作",
@@ -34,8 +34,6 @@ local DEFAULTS = {
 	title = "对话框",
 	message = "",
 	width = 380,
-	inset = 12,
-	fullscreenAlpha = 235, -- 全屏且 At.blur 开启时的毛玻璃不透明度
 	padding = 20,
 	gap = 12,
 	radius = 14,
@@ -242,22 +240,14 @@ function proto:_layout()
 	local sw, sh = love.graphics.getDimensions()
 	self.x, self.y, self.w, self.h = 0, 0, sw, sh
 
-	if self.fullscreen then
-		local inset = math.max(0, self.inset or 0)
-		local w = math.max(1, sw - inset * 2)
-		local h = math.max(1, sh - inset * 2)
-		self.card.alpha = (blur.isEnabled() and self.fullscreenAlpha) or 255
-		self.card:setRect(inset, inset, w, h)
-		return
-	end
-
+	-- 两种模式共用同一套卡片尺寸；fullscreen 只改变背景遮罩和是否可拖动。
 	local w = math.min(self.width or 380, math.max(120, sw - 80))
 	self.card:setSize(w, "auto")
 	local _, measuredH = self.card:measure(w, 0)
 	local h = math.min(measuredH or 120, math.max(1, sh - 40))
 
 	local x, y
-	if self._dragged and self._cardX and self._cardY then
+	if not self.fullscreen and self._dragged and self._cardX and self._cardY then
 		x = clamp(self._cardX, 0, math.max(0, sw - w))
 		y = clamp(self._cardY, 0, math.max(0, sh - h))
 	else
@@ -334,6 +324,10 @@ function proto:_draw()
 	end
 
 	if self.fullscreen then
+		-- 全屏模式只是铺满窗口的模态遮罩，卡片本身与浮动模式同尺寸。
+		if blur.isEnabled() then
+			blur.drawBackdrop(0, 0, self.w, self.h, 0)
+		end
 		color.setColor("000000", math.floor(255 * (self.dimAlpha or 0.55) * open))
 		love.graphics.rectangle("fill", 0, 0, self.w, self.h)
 	end

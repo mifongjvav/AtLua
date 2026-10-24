@@ -1214,7 +1214,7 @@ check(shadowBtn._dialog:isDestroyed(), "Dialog 关闭后销毁")
 
 shadowBtn._fullDialog = At.Dialog({ title = "F", fullscreen = true, animate = false })
 shadowBtn._fullDialog:draw()
-check(shadowBtn._fullDialog.card.w > shadowBtn._oldDialogW, "全屏 Dialog 明显大于浮动 Dialog")
+check(shadowBtn._fullDialog.card.w == shadowBtn._oldDialogW, "全屏与浮动 Dialog 卡片同尺寸")
 shadowBtn._fullDialog:_press(0, 0)
 check(shadowBtn._fullDialog._dragging == false, "全屏 Dialog 不可拖动")
 shadowBtn._fullDialog:close()
