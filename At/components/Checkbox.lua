@@ -114,6 +114,11 @@ function proto:_release(mx, my, inside)
 	return inside
 end
 
+local function isDarkBackground()
+	local r, g, b = color.hexToRGBA("@background")
+	return (0.299 * r + 0.587 * g + 0.114 * b) < 0.5
+end
+
 function proto:_draw()
 	local f = self:font()
 	local r = self:rect()
@@ -123,13 +128,18 @@ function proto:_draw()
 	local pop = self.animate == false and (self.checked and 1 or 0) or (self._pop and self._pop.value or 0)
 	local t = math.min(1, math.max(0, pop))
 	local selected = self.checked
+	-- 深色主题下把主题色压暗，保证浅色勾有足够对比度；浅色主题保持主题色原样
+	local selectedColor = self.selectedColor
+	if isDarkBackground() then
+		selectedColor = color.shade(selectedColor, -0.55)
+	end
 
 	color.setColor(self.color, self.alpha)
 	love.graphics.rectangle("fill", x, boxY, box, box, self.radius)
 
 	-- 选中时先铺一层主题色底；背景随勾的弹簧一起淡入/淡出
 	if selected or t > 0.01 then
-		color.setColor(self.selectedColor, math.floor((self.alpha or 255) * t))
+		color.setColor(selectedColor, math.floor((self.alpha or 255) * t))
 		love.graphics.rectangle("fill", x, boxY, box, box, self.radius)
 	end
 
@@ -148,14 +158,14 @@ function proto:_draw()
 		)
 	end
 
-	color.setColor(selected and self.selectedColor or self.borderColor, self.alpha)
+	color.setColor(selected and selectedColor or self.borderColor, self.alpha)
 	love.graphics.setLineWidth(1)
 	love.graphics.rectangle("line", x, boxY, box, box, self.radius)
 
 	-- 勾从中心缩放弹入：pop 0 = 不可见，1 = 完整大小
 	if selected or t > 0.01 then
 		-- 深色底配浅色勾、浅色底配深色勾；用户显式传 checkColor 时优先
-		local checkColor = self.checkColor or theme.foreground(self.selectedColor)
+		local checkColor = self.checkColor or theme.foreground(selectedColor)
 		local scale = 0.55 + 0.45 * t
 		local cx, cy = x + box / 2, boxY + box / 2
 		local function pt(fx, fy)
