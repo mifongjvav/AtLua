@@ -70,8 +70,10 @@ end
 local function applyTheme()
 	local mode, reason = resolvedAppearance()
 	local light = mode == "light"
-	local black = light and "FFFFFF" or "3D3D3D"
-	local white = light and "3D3D3D" or "FFFFFF"
+	-- 浅色主题不是简单把黑色槽位设成纯白：页面用柔和冷灰，卡片保持纯白；
+	-- 这样卡片/输入框/边框才有层次，也不会出现“整页一张白纸”的感觉。
+	local black = light and "EEF1F5" or "3D3D3D"
+	local white = light and "1F2329" or "FFFFFF"
 
 	At.config.theme.color = state.themeColor
 	At.config.theme.black = black
@@ -81,6 +83,17 @@ local function applyTheme()
 
 	if state.appearance == "system" and reason == "system" then
 		lastSystemMode = mode
+	end
+	if card then
+		card.background = light and "#FFFFFF" or "@surface"
+	end
+	if logConsole then
+		-- LOG 标签在浅色底部用主题色会太淡，切回正文色
+		logConsole.tabTextColor = light and "@text" or "@primary"
+	end
+	if nameInput then
+		-- 浅色输入框底比深色更亮，占位文字用 textMuted 才够清晰
+		nameInput.placeholderColor = light and "@textMuted" or "@textFaint"
 	end
 	if themeStateLabel then
 		themeStateLabel:setText(themeStateText() .. " · 主题色：" .. state.themeSource)
@@ -124,6 +137,7 @@ card = At.Panel({
 	borderColor = "@border",
 	shadow = false, -- 想要柔和阴影可改成 { { 0, 0, 0, 0.18 }, 6, 12, 0, 4 }
 })
+card.background = resolvedAppearance() == "light" and "#FFFFFF" or "@surface"
 
 card:add(At.Label({ text = "At 组件演示", fontSize = 22 }))
 card:add(At.Label({
@@ -168,6 +182,7 @@ nameInput = At.TextInput({
 	end,
 })
 
+nameInput.placeholderColor = resolvedAppearance() == "light" and "@textMuted" or "@textFaint"
 card:add(nameInput)
 
 card:add(At.Panel({
@@ -472,6 +487,7 @@ do
 		title = "At.log 控制台",
 		tab = true,
 	})
+	logConsole.tabTextColor = resolvedAppearance() == "light" and "@text" or "@primary"
 end
 
 function love.load()

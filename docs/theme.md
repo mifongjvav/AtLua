@@ -116,6 +116,10 @@ At.theme.set({ black = "FFFFFF", white = "3D3D3D" })
 
 这时 `@background` 变成白色、`@text` 变成深灰，`@surface` 等表面色也会自动翻转。
 
+示例里的“白色”外观用了更柔和的浅色调：`black = "#EEF1F5"`、`white = "#1F2329"`，
+卡片背景显式设为纯白，避免白卡片和白页面糊在一起；LOG 标签与输入框占位文字也会切到
+更清晰的正文色/`@textMuted`。
+
 ## 系统主题与系统主题色
 
 [`At.system`](../At/core/system.lua) 提供系统明暗与桌面主题色的**尽力探测**：
