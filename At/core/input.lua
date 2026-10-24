@@ -71,6 +71,17 @@ function input.length(str)
 	return #splitChars(str or "")
 end
 
+-- 按 UTF-8 码点取子串：first/last 都是 1 基字符下标，last 省略表示到末尾
+function input.sub(str, first, last)
+	local chars = splitChars(str or "")
+	first = math.max(1, math.floor(tonumber(first) or 1))
+	last = math.min(#chars, math.floor(tonumber(last) or #chars))
+	if last < first then
+		return ""
+	end
+	return table.concat(chars, "", first, last)
+end
+
 -- 删掉最后一个 UTF-8 字符
 function input.removeLast(str)
 	if not str or #str == 0 then

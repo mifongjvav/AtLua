@@ -11,7 +11,7 @@ local At = require("At.At")
 local card = At.Panel{
     x = 40, y = 40, w = 380, h = "auto",
     direction = "column", gap = 12, padding = 20,
-    background = "#242A34", radius = 16,
+    background = "@surface", radius = 16,
 }
 
 card:add(At.Label{ text = "设置", fontSize = 22 })
@@ -28,10 +28,11 @@ function love.draw() card:draw() end
   数字/百分比/`auto` 尺寸、`grow` 瓜分剩余空间、`align`/`justify` 对齐，支持嵌套。
 - **组件**全部继承同一个基类，统一 `draw/update/mousepressed/mousereleased/measure/destroy` 协议：
   `Panel`、`Label`、`Button`、`TextInput`、`Switch`、`Checkbox`、`RadioGroup`、`Slider`、`ScrollView`。
+- **主题色系统**：三个基色（主题色 `#A7DCFF`、黑 `#3D3D3D`、白 `#FFFFFF`）派生整套语义色；组件默认颜色是 `@primary` / `@text` 这类 token，运行时 `At.theme.set{...}` 换色，已有组件立即生效。
 - **交互细节**：按钮涟漪与拖出/拖回语义、开关左右拖动、滑动条拖动与方向键微调、输入框软键盘与光标、
   唯一键盘焦点、点空白自动失焦。
 - **滚动视口**：横向/纵向都支持，内容超出宽或高时**自动出现对应滚动条**；平滑滚动、双向惯性、可拖滚动条、悬停变宽、支持嵌套、`scrollToVisible`。
-- **渲染细节**：坐标对齐整数像素、嵌套裁剪求交、阴影按层数归一化、1px 边框使用 rough 线型。
+- **渲染细节**：坐标对齐整数像素、嵌套裁剪求交、1px 边框使用 rough 线型；默认 GLSL SDF 单次绘制阴影，可切回旧式多层阴影（legacy 按层数归一化）；`At/config.lua` 的 `render.msaa` 默认 4，圆角/圆形/边框与模糊路径都有抗锯齿。
 - **背景模糊（毛玻璃）**：`At.blur` 抓取组件背后的画面并按算法模糊，半透明组件（控制台、半透明卡片/输入框/按钮）自动生效；内置 gaussian / downscale / none，可注册自定义算法。
 - **日志与控制台**：`At.log` 提供 debug/info/warn/error/fatal 五级、可配置格式、条目缓冲，
   默认同时输出到终端 / logcat；`At.Console` 是半透明浮动面板，按等级着色、可拖动、可滚动、
@@ -86,7 +87,8 @@ At.log.info("玩家 %d 进入", 3)                 -- 支持 string.format
 At.log.setFormat("[%s] - [%s/%s]: %s")        -- 时间/等级/函数名/内容（默认格式）
 
 At.blur.setEnabled(true)                      -- 半透明组件自动毛玻璃
-At.log.setFile(true)                          -- 同时写入 "YYYY-MM-DD HH:MM:SS.log"
+At.theme.set({ color = "7FE0C4" })            -- 换主题色，已有组件立即更新
+At.log.setFile(true)                          -- 同时写入 "YYYY-MM-DD_HH-MM-SS.log"
 print("日志文件:", At.log.getFilePath())       -- Android 上在应用存档目录
 
 local console = At.Console{ x = 20, y = 20, w = 560, h = 240 }
@@ -101,7 +103,7 @@ end
 ```
 
 默认输出形如 `[15:04:05] - [INFO/love.load]: 演示启动`，并**同时打印到终端**（Android 上进入
-`adb logcat -s love`）；`At.log.setFile(true)` 还能按 `YYYY-MM-DD HH:MM:SS.log` 落盘（`love.quit` 里
+`adb logcat -s love`）；`At.log.setFile(true)` 还能按 `YYYY-MM-DD_HH-MM-SS.log` 落盘（`love.quit` 里
 `At.log.closeFile()` 收尾）。控制台可拖动标题栏移动、滚轮或拖动日志区滚动；隐藏时右上角有 `LOG` 标签
 可点开（移动端入口），标题栏 `C` 清空、`×` 关闭；桌面上也可用 `F1` / `F2`。
 
@@ -112,7 +114,7 @@ end
 | `At.Panel` | 布局容器 / 卡片，支持背景、描边、圆角、阴影 |
 | `At.Label` | 文字标签，支持换行与对齐 |
 | `At.Button` | 按钮：悬停/按下/禁用、涟漪、居中文字、回调 |
-| `At.TextInput` | 单行输入框：焦点、光标闪烁、密码、长度限制、回车提交 |
+| `At.TextInput` | 单行输入框：点击定位光标、方向键、中间编辑、密码、长度限制、回车提交 |
 | `At.Switch` | 开关：点击或左右拖动切换，带过渡动画 |
 | `At.Checkbox` | 多选框 |
 | `At.RadioGroup` | 单选组（`value` 为 1 基下标） |
@@ -139,6 +141,8 @@ end
 - [docs/README.md](docs/README.md) — 快速开始、事件模型、常见问题
 - [docs/layout.md](docs/layout.md) — 布局规则、尺寸与像素对齐、限制、示例
 - [docs/components.md](docs/components.md) — 每个组件的属性/方法/回调/示例
+- [docs/theme.md](docs/theme.md) — 主题色、token 表、运行时换色、浅色主题
+- [docs/shadow.md](docs/shadow.md) — GLSL / 旧式阴影的切换、参数与性能
 - [docs/logging.md](docs/logging.md) — 日志等级、输出格式、控制台配合
 - [docs/blur.md](docs/blur.md) — 背景模糊的启用方式、算法与性能说明
 
@@ -154,7 +158,7 @@ lua test_smoke.lua      # 通过时打印 SMOKE OK
 许可证文件与文档同步等断言。语法检查：
 
 ```bash
-for f in main.lua At/*.lua test_smoke.lua; do luac -p "$f"; done
+for f in conf.lua main.lua At/*.lua At/core/*.lua At/components/*.lua At/effects/*.lua test_smoke.lua; do luac -p "$f"; done
 ```
 
 ## 打包
@@ -171,15 +175,16 @@ for f in main.lua At/*.lua test_smoke.lua; do luac -p "$f"; done
 
 ```
 main.lua        # 演示程序
+conf.lua        # 创建窗口前读取 At/config.lua（MSAA）
 pack.sh         # 打包脚本
 test_smoke.lua  # 无头测试
-docs/           # 使用文档（README / layout / components / logging / blur）
+docs/           # 使用文档（README / layout / components / theme / shadow / logging / blur）
 LICENSES/       # 第三方许可全文（随包分发）
 At/
   At.lua        # 门面：require 一次拿到全部模块
-  config.lua    # 集中配置：blur / log / font
-  core/         # 基础设施：registry、component、layout、clip、pixel、color、
-                #   SDF、shadow、font、input、log
+  config.lua    # 集中配置：theme / blur / log / font
+  core/         # 基础设施：registry、component、layout、clip、pixel、color、theme、
+                #   render、SDF、shadow、font、input、log
   components/   # 组件：Panel、Label、Button、TextInput、Switch、Checkbox、
                 #   RadioGroup、Slider、ScrollView、Console
   effects/      # 视觉效果：Ripple、blur
@@ -190,6 +195,11 @@ AGENTS.md       # 给 AI 代理/协作者的约定与陷阱
 配置集中在 `At/config.lua`：
 
 ```lua
+At.config.theme.color = "7FE0C4"     -- 主题色（派生全部默认配色）
+At.config.render.msaa = 4            -- 抗锯齿采样数（0 关闭）
+At.config.shadow.algorithm = "glsl"  -- 阴影：glsl / legacy / none
+At.config.shadow.color = "@primaryDark"
+At.config.shadow.spread = 3
 At.config.blur.enabled = true        -- 毛玻璃
 At.config.log.level = "debug"        -- 日志等级
 At.config.font.size = 16             -- 默认字号
@@ -198,9 +208,9 @@ At.config.apply()                    -- 推给各模块（At.lua 启动时已调
 
 ## 已知限制
 
-- 文本输入光标固定在末尾，不支持选区、左右移动与中间插入。
+- 文本输入支持点击/拖动定位光标与方向键，但不支持选区、复制粘贴和撤销/重做。
 - 布局不支持换行（`flex-wrap`）、grid、绝对定位；百分比需要父容器宽度已知。
-- 阴影是多次绘制叠加的近似模糊，层数越多越柔和也越耗绘制调用。
+- `legacy` 阴影是多次绘制叠加的近似模糊，层数越多越柔和也越耗绘制调用；默认 `glsl` 是单次 SDF 绘制。
 - 无自动化渲染测试，圆角、阴影、字体观感需在真机确认。
 
 ## 许可证

@@ -3,6 +3,7 @@ local At = {}
 At.config = require("At.config")
 
 At.color = require("At.core.color")
+At.theme = require("At.core.theme")
 At.SDF = require("At.core.SDF")
 At.shadow = require("At.core.shadow")
 At.input = require("At.core.input")
@@ -13,6 +14,7 @@ At.layout = require("At.core.layout")
 At.clip = require("At.core.clip")
 At.pixel = require("At.core.pixel")
 At.motion = require("At.core.motion")
+At.render = require("At.core.render")
 At.Component = require("At.core.component")
 At.log = require("At.core.log")
 At.blur = require("At.effects.blur")
@@ -92,7 +94,7 @@ function At.button(x, y, w, h, res, hex, alpha, shadow, shadowArgs)
 		if shadowArgs then
 			At.shadow.shadow(x, y, w, h, res, unpack(shadowArgs))
 		else
-			At.shadow.shadow(x, y, w, h, res, { 0, 0, 0, 0.2 }, 5, 20, 2, 3)
+			At.shadow.shadow(x, y, w, h, res)
 		end
 	end
 	if hex then

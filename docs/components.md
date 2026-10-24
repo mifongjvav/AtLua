@@ -23,6 +23,10 @@
 
 `x` / `y` 默认都是 `0`；`enabled`、`visible` 默认 `true`；`autoRegister` 默认 `true`；`passthrough` 默认 `false`。颜色 alpha 一律是 **0–255**，坐标一律是**左上角 + 宽高**。
 
+颜色默认值写的是**主题 token**（`"@primary"`、`"@text"` 这类字符串），绘制时由 `At.theme` 解析，
+所以 `At.theme.set{...}` 换主题后已有组件会立即变色。所有颜色属性也接受普通 `"#RRGGBB"`；
+显式给 hex 的组件不跟随主题。token 列表与主题 API 见 [theme.md](theme.md)。
+
 **背景模糊**：`At.Panel`、`At.Console`、`At.ScrollView`、`At.TextInput`、`At.Button` 在背景 `alpha < 255`
 且 `At.blur` 启用时会自动在背后绘制模糊（毛玻璃），组件本身不需要额外参数。用法见 [blur.md](blur.md)。
 
@@ -49,13 +53,13 @@
 | `align` | 字符串 | `"start"` | 交叉轴对齐：`start` / `center` / `end` / `stretch` |
 | `justify` | 字符串 | `"start"` | 主轴分布：`start` / `center` / `end` / `space-between` |
 | `children` | 表 | `{}` | 子组件数组 |
-| `background` | hex 字符串 | `nil` | 背景色 |
-| `borderColor` | hex 字符串 | `nil` | 描边色 |
+| `background` | hex / token | `nil` | 背景色 |
+| `borderColor` | hex / token | `nil` | 描边色 |
 | `borderWidth` | 数字 | `1` | 描边线宽 |
 | `radius` | 数字 | `0` | 圆角半径 |
 | `alpha` | 数字 0–255 | `255` | 背景与描边的透明度 |
-| `shadow` | 布尔或表 | `false` | `true` 用默认阴影；传表等价于直接给 `shadowArgs`。阴影已按层数归一化，`shadowArgs` 里颜色的 alpha 就是整体最大不透明度 |
-| `shadowArgs` | 表 | `nil` | `{ 颜色RGBA表, radius, layers, offsetX, offsetY }`，缺省 `{ { 0, 0, 0, 0.2 }, 5, 20, 2, 3 }` |
+| `shadow` | 布尔或表 | `false` | `true` 用默认阴影；传表等价于直接给 `shadowArgs`。阴影算法由 `At.config.shadow.algorithm` 决定；`shadowArgs` 里颜色的 alpha（0–1）是整体最大不透明度 |
+| `shadowArgs` | 表 | `nil` | `{ 颜色, spread, layers, offsetX, offsetY }`；`nil` 时使用 `At.config.shadow` 的默认值（默认深色主题色、较小的 spread/偏移）。颜色可传 RGBA 表或 hex/token |
 | `autoRegister` | 布尔 | `false` | 容器不登记到 registry |
 | `passthrough` | 布尔 | `true` | 不消费鼠标事件 |
 
@@ -83,7 +87,7 @@ local At = require("At.At")
 local card = At.Panel{
     x = 40, y = 40, w = 360, h = "auto",
     gap = 12, padding = 16, radius = 14,
-    background = "#242A34",
+    background = "@surface",
     children = {
         At.Label{ text = "登录" },
         At.Button{ w = "100%", text = "确定" },
@@ -104,7 +108,7 @@ card:draw()
 | `x` / `y` | 数字 | `0` | 左上角坐标 |
 | `w` / `h` | 数字 / 百分比 / `"auto"` | `"auto"` | 尺寸；auto 时按文字测量 |
 | `text` | 字符串 | `""` | 显示的文字 |
-| `color` | hex 字符串 | `"#E8ECF2"` | 文字颜色 |
+| `color` | hex / token | `"@text"` | 文字颜色 |
 | `alpha` | 数字 0–255 | `255` | 透明度 |
 | `align` | 字符串 | `"left"` | 相对自身宽度：`left` / `center` / `right` |
 | `wrap` | 布尔 | `false` | 自动换行；为 `true` 时需要给定宽度 |
@@ -131,7 +135,7 @@ local hint = At.Label{
     x = 20, y = 20, w = 240,
     text = "这是一段会自动换行的说明文字。",
     wrap = true, lineHeight = 1.4,
-    color = "#A9B2C2",
+    color = "@textMuted",
 }
 
 hint:setText("改短一点")
@@ -149,15 +153,15 @@ hint:draw()
 | `x` / `y` | 数字 | `0` | 左上角坐标 |
 | `w` / `h` | 数字 / 百分比 / `"auto"` | `120` / `44` | 尺寸；auto 时按文字加内边距测量 |
 | `radius` | 数字 | `10` | 圆角半径 |
-| `color` | hex 字符串 | `"#9FB3D3"` | 常态底色 |
+| `color` | hex / token | `"@primary"` | 常态底色 |
 | `alpha` | 数字 0–255 | `255` | 透明度；禁用时按 `alpha * 0.45` 变淡 |
-| `hoverColor` | hex 字符串 | `nil` | 悬停底色；缺省由 `color.shade(color, 0.10)` 推导 |
-| `pressedColor` | hex 字符串 | `nil` | 按下底色；缺省由 `color.shade(color, -0.12)` 推导 |
-| `shadow` | 布尔或表 | `true` | `true` 用默认阴影；传表等价于直接给 `shadowArgs` |
-| `shadowArgs` | 表 | `nil` | `{ 颜色RGBA表, radius, layers, offsetX, offsetY }`，缺省 `{ { 0, 0, 0, 0.2 }, 5, 20, 2, 3 }` |
-| `ripple` | 布尔或表 | `true` | `true` / `false` / `{ color = "#FFFFFF", alpha = 255, enabled = true }` |
+| `hoverColor` | hex / token | `nil` | 悬停底色；缺省由 `color.shade(color, 0.10)` 推导 |
+| `pressedColor` | hex / token | `nil` | 按下底色；缺省由 `color.shade(color, -0.12)` 推导 |
+| `shadow` | 布尔或表 | `true` | `true` 用默认阴影；传表等价于直接给 `shadowArgs`；算法见 [shadow.md](shadow.md) |
+| `shadowArgs` | 表 | `nil` | `{ 颜色, spread, layers, offsetX, offsetY }`；`nil` 时使用 `At.config.shadow` 的默认值（默认深色主题色、较小的 spread/偏移）。颜色可传 RGBA 表或 hex/token |
+| `ripple` | 布尔或表 | `true` | `true` / `false` / `{ color = "@white", alpha = 255, enabled = true }` |
 | `text` | 字符串 | `nil` | 按钮文字；`nil` 或 `""` 时不画文字 |
-| `textColor` | hex 字符串 | `"#FFFFFF"` | 文字颜色 |
+| `textColor` | hex / token | `nil`（自动） | 文字颜色；缺省按底色对比度自动选 `@text` / `@onPrimary` |
 | `fontSize` | 数字 | `nil` | 缺省沿用当前字体 |
 | `paddingX` / `paddingY` | 数字 | `16` / `10` | 仅用于 auto 尺寸 |
 | `enabled` | 布尔 | `true` | 禁用后变淡且不响应事件 |
@@ -201,7 +205,7 @@ local At = require("At.At")
 
 local btn = At.Button{
     x = 60, y = 120, w = 180, h = 48, radius = 12,
-    color = "#9FB3D3", text = "确定", textColor = "#1F2430",
+    color = "@primary", text = "确定",
     onClick = function(self, mx, my)
         print("点击", self.text, mx, my)
     end,
@@ -213,7 +217,7 @@ btn:setEnabled(false)   -- 禁用后变淡且不再响应
 
 ## At.TextInput
 
-单行文本输入框：点击获取焦点，回车提交，Esc 失焦，光标固定在末尾。
+单行文本输入框：点击或拖动定位光标，支持中间插入/删除、方向键移动，回车提交，Esc 失焦。
 
 ### 属性
 
@@ -226,13 +230,13 @@ btn:setEnabled(false)   -- 禁用后变淡且不再响应
 | `placeholder` | 字符串 | `""` | 无文本时的提示文字 |
 | `fontSize` | 数字 | `16` | 字号 |
 | `paddingX` / `paddingY` | 数字 | `12` / `10` | 文字内边距 |
-| `color` | hex 字符串 | `"#2A2F3A"` | 底色 |
+| `color` | hex / token | `"@surfaceAlt"` | 底色 |
 | `alpha` | 数字 0–255 | `255` | 透明度 |
-| `borderColor` | hex 字符串 | `"#4A5160"` | 未聚焦描边色 |
-| `focusBorderColor` | hex 字符串 | `"#9FB3D3"` | 聚焦描边色 |
-| `textColor` | hex 字符串 | `"#E8ECF2"` | 文本颜色 |
-| `placeholderColor` | hex 字符串 | `"#7C8494"` | 提示文字颜色 |
-| `caretColor` | hex 字符串 | `"#9FB3D3"` | 光标颜色 |
+| `borderColor` | hex / token | `"@border"` | 未聚焦描边色 |
+| `focusBorderColor` | hex / token | `"@primary"` | 聚焦描边色 |
+| `textColor` | hex / token | `"@text"` | 文本颜色 |
+| `placeholderColor` | hex / token | `"@textFaint"` | 提示文字颜色 |
+| `caretColor` | hex / token | `"@primary"` | 光标颜色 |
 | `caretWidth` | 数字 | `2` | 光标宽度 |
 | `caretPeriod` | 数字 | `0.5` | 闪烁周期（秒），`0` 表示常亮 |
 | `maxLength` | 数字 | `0` | 最大字符数，`0` 表示不限；按 UTF-8 字符计 |
@@ -250,12 +254,14 @@ btn:setEnabled(false)   -- 禁用后变淡且不再响应
 | 方法 | 说明 |
 | --- | --- |
 | `:getText()` | 返回当前文本 |
-| `:setText(text, silent?)` | 设文本；`silent` 为真时不触发 `onChange` |
+| `:getCaret()` | 返回光标位置：`0` = 第一个字符前，`length()` = 末尾 |
+| `:setCaret(index)` | 设置光标位置（自动夹到 `0..length`），并让文本水平滚动到光标可见 |
+| `:setText(text, silent?)` | 设文本并把光标移到末尾；`silent` 为真时不触发 `onChange` |
 | `:clear()` | 清空文本（等价于 `setText("")`，会触发 `onChange`） |
 | `:length()` | 返回 UTF-8 字符数 |
 | `:focus()` / `:blur()` | 获取 / 放弃键盘焦点 |
 | `:textinput(t)` | 追加输入（由 `At.textinput` 转发） |
-| `:keypressed(key)` | 处理 `backspace` / `return` / `kpenter` / `escape` |
+| `:keypressed(key)` | 处理 `backspace` / `delete` / `left` / `right` / `home` / `end` / `return` / `kpenter` / `escape` |
 | `:measure()` | 按文本或 placeholder 返回自然尺寸 |
 
 ### 回调
@@ -269,9 +275,12 @@ btn:setEnabled(false)   -- 禁用后变淡且不再响应
 
 注意：
 
-- **光标固定在末尾**：不支持左右移动光标、选区或中间插入，输入永远追加到文本尾部。
-- 密码模式按**字符数**生成掩码（`"密码"` 显示为两个 `*`），不是按字节。
-- `backspace` 删除最后一个 UTF-8 字符；`maxLength` 也按字符数判断。
+- **光标可以点击定位**：点击文字之间的位置会吸附到最近的字符边界；按住拖动可以连续移动光标。
+- **中间编辑**：`textinput` 在光标处插入，`backspace` 删除光标前一个字符，`delete` 删除光标后一个字符；`left` / `right` / `home` / `end` 移动光标。光标位置是 UTF-8 **字符下标**（0 到字符数），不是字节下标。
+- **水平滚动**：文本比输入框宽时，光标移动/输入/点击会让文本水平滚动，保证光标始终在可视区内；失焦后回到开头。
+- 密码模式按**字符数**生成掩码（`"密码"` 显示为两个 `*`），不是按字节；光标同样按掩码字符定位。
+- `maxLength` 按字符数判断，插入多字符文本时也按总字符数计算。
+- 不支持选区、复制/粘贴菜单、撤销/重做；这些需要额外的编辑状态，不在当前实现范围内。
 - `escape` 失焦；点击空白或其他组件同样会失焦（由 registry 处理）。
 - 文字与光标绘制会与外层裁剪求交（放在 `ScrollView` 里也不会溢出视口），位置对齐到整数像素。
 - 只有焦点组件会收到 `At.textinput` / `At.keypressed`。
@@ -308,9 +317,9 @@ name:draw()
 | `w` / `h` | 数字 | `52` / `28` | 轨道尺寸 |
 | `radius` | 数字 | `nil` | 轨道圆角；缺省取 `min(w, h) / 2`（胶囊形） |
 | `value` | 布尔 | `false` | 当前状态 |
-| `color` | hex 字符串 | `"#4A5160"` | 关闭时的轨道色 |
-| `onColor` | hex 字符串 | `"#7FA88F"` | 打开时的轨道色 |
-| `knobColor` | hex 字符串 | `"#F2F5FA"` | 旋钮颜色 |
+| `color` | hex / token | `"@track"` | 关闭时的轨道色 |
+| `onColor` | hex / token | `"@primary"` | 打开时的轨道色 |
+| `knobColor` | hex / token | `"@knob"` | 旋钮颜色 |
 | `knobInset` | 数字 | `3` | 旋钮与轨道边缘的间距 |
 | `alpha` | 数字 0–255 | `255` | 透明度 |
 | `animate` | 布尔 | `true` | 是否播放旋钮过渡 |
@@ -372,10 +381,10 @@ wifi:draw()
 | `radius` | 数字 | `5` | 方框圆角 |
 | `text` | 字符串 | `""` | 右侧文字 |
 | `checked` | 布尔 | `false` | 是否选中 |
-| `color` | hex 字符串 | `"#3A4150"` | 方框底色 |
-| `borderColor` | hex 字符串 | `"#6A7386"` | 方框描边色 |
-| `checkColor` | hex 字符串 | `"#9FB3D3"` | 勾的颜色 |
-| `textColor` | hex 字符串 | `"#E8ECF2"` | 文字颜色 |
+| `color` | hex / token | `"@surfaceAlt"` | 方框底色 |
+| `borderColor` | hex / token | `"@borderStrong"` | 方框描边色 |
+| `checkColor` | hex / token | `"@primary"` | 勾的颜色 |
+| `textColor` | hex / token | `"@text"` | 文字颜色 |
 | `alpha` | 数字 0–255 | `255` | 透明度 |
 | `fontSize` | 数字 | `nil` | 缺省沿用当前字体 |
 | `animate` | 布尔 | `true` | 勾从中心弹入/缩回的过渡 |
@@ -431,10 +440,10 @@ remember:draw()
 | `gap` | 数字 | `8` | 选项间距 |
 | `size` | 数字 | `20` | 圆形标记直径 |
 | `textGap` | 数字 | `8` | 圆形标记与文字的间距 |
-| `color` | hex 字符串 | `"#3A4150"` | 圆形标记底色 |
-| `borderColor` | hex 字符串 | `"#6A7386"` | 未选中描边色 |
-| `selectedColor` | hex 字符串 | `"#9FB3D3"` | 选中描边与圆点颜色 |
-| `textColor` | hex 字符串 | `"#E8ECF2"` | 文字颜色 |
+| `color` | hex / token | `"@surfaceAlt"` | 圆形标记底色 |
+| `borderColor` | hex / token | `"@borderStrong"` | 未选中描边色 |
+| `selectedColor` | hex / token | `"@primary"` | 选中描边与圆点颜色 |
+| `textColor` | hex / token | `"@text"` | 文字颜色 |
 | `alpha` | 数字 0–255 | `255` | 透明度 |
 | `fontSize` | 数字 | `nil` | 缺省沿用当前字体 |
 | `animate` | 布尔 | `true` | 选中圆点弹入、旧圆点缩回的过渡 |
@@ -493,14 +502,14 @@ size:draw()
 | `min` / `max` | 数字 | `0` / `100` | 取值范围 |
 | `step` | 数字 | `1` | 步进；`0` 表示连续取值 |
 | `value` | 数字 | `0` | 当前值；构造时会先吸附到 `step` |
-| `trackColor` | hex 字符串 | `"#4A5160"` | 轨道底色 |
-| `fillColor` | hex 字符串 | `"#9FB3D3"` | 已填充部分颜色 |
-| `thumbColor` | hex 字符串 | `"#F2F5FA"` | 滑块颜色 |
+| `trackColor` | hex / token | `"@track"` | 轨道底色 |
+| `fillColor` | hex / token | `"@primary"` | 已填充部分颜色 |
+| `thumbColor` | hex / token | `"@knob"` | 滑块颜色 |
 | `trackHeight` | 数字 | `6` | 轨道高度 |
 | `thumbRadius` | 数字 | `9` | 滑块半径 |
 | `alpha` | 数字 0–255 | `255` | 透明度 |
 | `showValue` | 布尔 | `false` | 是否在右侧显示数值 |
-| `valueColor` | hex 字符串 | `"#E8ECF2"` | 数值文字颜色 |
+| `valueColor` | hex / token | `"@text"` | 数值文字颜色 |
 | `fontSize` | 数字 | `nil` | 缺省沿用当前字体 |
 | `format` | 函数 | `nil` | `function(value) -> string`，覆盖默认格式化 |
 | `onChange` | 函数 | `nil` | 值变化回调 |
@@ -558,8 +567,8 @@ volume:draw()
 | `w` / `h` | 数字 / 百分比 / `"auto"` | `220` / `12` | 尺寸 |
 | `radius` | 数字 | `nil` | 圆角；缺省取高度的一半（胶囊形） |
 | `value` | 数字 | `0` | 进度比例 `0..1`，超出范围自动夹紧 |
-| `trackColor` | hex 字符串 | `"#4A5160"` | 轨道底色 |
-| `fillColor` | hex 字符串 | `"#9FB3D3"` | 已填充部分颜色 |
+| `trackColor` | hex / token | `"@track"` | 轨道底色 |
+| `fillColor` | hex / token | `"@primary"` | 已填充部分颜色 |
 | `alpha` | 数字 0–255 | `255` | 透明度 |
 | `animate` | 布尔 | `true` | 填充宽度是否用弹簧过渡；`false` 立即落位 |
 | `springStiffness` / `springDamping` | 数字 | `260` / `30` | 填充动画的弹簧刚度 / 阻尼 |
@@ -611,8 +620,8 @@ progress:draw()
 | `x` / `y` | 数字 | `0` | 左上角坐标 |
 | `w` / `h` | 数字 / 百分比 / `"auto"` | `220` / `12` | 尺寸 |
 | `radius` | 数字 | `nil` | 圆角；缺省取高度的一半（胶囊形） |
-| `trackColor` | hex 字符串 | `"#4A5160"` | 轨道底色 |
-| `fillColor` | hex 字符串 | `"#9FB3D3"` | 滑过高光的颜色 |
+| `trackColor` | hex / token | `"@track"` | 轨道底色 |
+| `fillColor` | hex / token | `"@primary"` | 滑过高光的颜色 |
 | `alpha` | 数字 0–255 | `255` | 透明度 |
 | `speed` | 数字 | `1.1` | 每秒循环次数 |
 | `segmentRatio` | 数字 | `0.35` | 高光段占轨道宽度的比例 |
@@ -669,11 +678,11 @@ end
 | `scrollbarWidth` | 数字 | `4` | 滚动条宽度（横竖共用） |
 | `scrollbarMargin` | 数字 | `2` | 滚动条与视口边缘的间距 |
 | `edgeEffect` | 布尔 | `true` | 触顶/触底时的橡皮筋过冲与边缘光 |
-| `edgeGlowColor` / `edgeGlowSize` | hex / 数字 | `"#9FB3D3"` / `28` | 边缘光颜色 / 光带宽度 |
+| `edgeGlowColor` / `edgeGlowSize` | hex / token / 数字 | `"@primary"` / `28` | 边缘光颜色 / 光带宽度 |
 | `edgeRadius` | 数字 / `nil` | `nil` | 光带圆角；缺省取内容容器（大卡片）的 `radius`，再退回 ScrollView 自身的 `radius` |
 | `overscrollMax` / `overscrollResistance` | 数字 | `70` / `0.55` | 光带达到最亮所需的过冲量 / 拉动阻力（越小越硬） |
 | `edgeSpringStiffness` / `edgeSpringDamping` | 数字 | `380` / `30` | 松手回弹的弹簧刚度 / 阻尼 |
-| `scrollbarColor` / `scrollbarThumbColor` | hex 字符串 | `"#3A4150"` / `"#9FB3D3"` | 轨道/滑块颜色 |
+| `scrollbarColor` / `scrollbarThumbColor` | hex / token | `"@track"` / `"@primary"` | 轨道/滑块颜色 |
 | `scrollbarActiveWidth` | 数字 | `8` | 指针靠近或拖动滚动条时的宽度（离开后缩回 `scrollbarWidth`） |
 | `scrollbarSpringStiffness` / `scrollbarSpringDamping` | 数字 | `700` / `42` | 滚动条变宽的弹簧刚度 / 阻尼 |
 | `scrollbarGrowSpeed` | 数字 | `16` | 已弃用；宽度改用上面的弹簧控制 |
@@ -770,17 +779,17 @@ local view = At.ScrollView{
 | `animate` | 布尔 | `true` | 打开/关闭动画：弹簧 + 淡入淡出 + 轻微下移 |
 | `springStiffness` / `springDamping` | 数字 | `320` / `26` | 开关动画的弹簧刚度 / 阻尼 |
 | `openOffset` | 数字 | `12` | 关闭时窗口向下偏移多少像素（打开时滑回） |
-| `background` | hex | `"#0D1117"` | 背景色 |
+| `background` | hex / token | `"@background"` | 背景色 |
 | `alpha` | 数字 0–255 | `205` | 背景透明度（半透明） |
-| `borderColor` / `dividerColor` | hex | `"#3A4150"` / `"#2A303B"` | 边框 / 标题分隔线 |
-| `titleColor` / `placeholderColor` | hex | `"#DCE3EE"` / `"#6B7385"` | 标题 / 无日志提示色 |
-| `scrollbarColor` / `scrollbarThumbColor` | hex | `"#2F3542"` / `"#59627A"` | 滚动条轨道 / 滑块 |
+| `borderColor` / `dividerColor` | hex / token | `"@border"` / `"@divider"` | 边框 / 标题分隔线 |
+| `titleColor` / `placeholderColor` | hex / token | `"@text"` / `"@textFaint"` | 标题 / 无日志提示色 |
+| `scrollbarColor` / `scrollbarThumbColor` | hex / token | `"@track"` / `"@primary"` | 滚动条轨道 / 滑块 |
 | `tab` | 布尔 | `true` | 隐藏时在右上角显示可点按的 `LOG` 标签（移动端入口） |
 | `tabW` / `tabH` | 数字 | `72` / `28` | 标签尺寸 |
 | `tabMargin` | 数字 | `12` | 标签距屏幕边缘 |
 | `tabRadius` | 数字 | `6` | 标签圆角 |
 | `tabLabel` | 字符串 | `"LOG"` | 标签文字 |
-| `tabColor` / `tabTextColor` | hex | `"#1F2530"` / `"#A9C7E8"` | 标签底色 / 文字色 |
+| `tabColor` / `tabTextColor` | hex / token | `"@surfaceAlt"` / `"@primary"` | 标签底色 / 文字色 |
 | `tabAlpha` | 数字 | `225` | 标签底色透明度 |
 | `tabX` / `tabY` | 数字 | `nil` | 标签位置；缺省贴屏幕右上角 |
 | `levelColors` | 表 | 见下 | 每个等级的文字颜色 |
@@ -789,11 +798,11 @@ local view = At.ScrollView{
 
 ```lua
 levelColors = {
-    debug = "#7D8698",
-    info  = "#A9C7E8",
-    warn  = "#E8C07F",
-    error = "#E87979",
-    fatal = "#FF5555",
+    debug = "@textFaint",
+    info  = "@primary",
+    warn  = "@warning",
+    error = "@danger",
+    fatal = "@danger",
 }
 ```
 

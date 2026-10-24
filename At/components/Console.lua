@@ -102,14 +102,14 @@ local DEFAULTS = {
 	springDamping = 26,
 	openOffset = 12, -- 关闭时窗口向下偏移的像素（打开时滑回原位）
 
-	background = "#0D1117",
+	background = "@background",
 	alpha = 205, -- 半透明背景
-	borderColor = "#3A4150",
-	titleColor = "#DCE3EE",
-	placeholderColor = "#6B7385",
-	dividerColor = "#2A303B",
-	scrollbarColor = "#2F3542",
-	scrollbarThumbColor = "#59627A",
+	borderColor = "@border",
+	titleColor = "@text",
+	placeholderColor = "@textFaint",
+	dividerColor = "@divider",
+	scrollbarColor = "@track",
+	scrollbarThumbColor = "@primary",
 
 	-- 隐藏时显示的可点按标签（移动端没有 F1，用这个开关控制台）
 	tab = true,
@@ -118,18 +118,18 @@ local DEFAULTS = {
 	tabMargin = 12,
 	tabRadius = 6,
 	tabLabel = "LOG",
-	tabColor = "#1F2530",
-	tabTextColor = "#A9C7E8",
+	tabColor = "@surfaceAlt",
+	tabTextColor = "@primary",
 	tabAlpha = 225,
 	tabX = nil, -- 缺省贴屏幕右上角
 	tabY = nil,
 
 	levelColors = {
-		debug = "#7D8698",
-		info = "#A9C7E8",
-		warn = "#E8C07F",
-		error = "#E87979",
-		fatal = "#FF5555",
+		debug = "@textFaint",
+		info = "@primary",
+		warn = "@warning",
+		error = "@danger",
+		fatal = "@danger",
 	},
 }
 

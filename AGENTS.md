@@ -10,12 +10,13 @@
 - **布局**：`At.Panel` 提供 CSS 子集式排版（column/row、gap、padding、margin、百分比、auto、grow、align、justify），子组件不需要手写坐标。
 - **组件**：`At.Button`、`At.Label`、`At.TextInput`、`At.Switch`、`At.Checkbox`、`At.RadioGroup`、`At.Slider`、`At.ProgressBar`、`At.LoadingBar`、`At.ScrollView`、`At.Console`，全部继承 `At.Component` 基类。
 - **日志**：`At.log` 提供五级日志、可配置格式与条目缓冲；`At.Console` 显示这些日志。
+- **阴影**：`At.shadow` 默认 GLSL SDF 单次绘制，保留旧式多层矩形（`legacy`），可全局切换。
 - 仍保留**立即模式**函数 `At.button(...)`（只画不记状态，无涟漪），仅供旧代码使用。
 - `main.lua` 是演示：一张卡片里排了全部组件。
 - `test_smoke.lua` 用假 `love` 环境做逻辑回归，**不需要 LÖVE 也能跑**。
 
-使用文档在 `docs/`（`README.md` / `layout.md` / `components.md` / `logging.md` / `blur.md`），
-对外口径以文档为准。默认配置集中在 `At/config.lua`（blur / log / font）。
+使用文档在 `docs/`（`README.md` / `layout.md` / `components.md` / `theme.md` / `shadow.md` / `logging.md` / `blur.md`），
+对外口径以文档为准。默认配置集中在 `At/config.lua`（theme / render / shadow / blur / log / font）。
 
 ## 2. 环境与常用命令
 
@@ -32,7 +33,7 @@ lua test_smoke.lua
 stylua .
 
 # 语法检查（全部文件必须通过）
-for f in main.lua At/At.lua At/config.lua At/core/*.lua At/components/*.lua At/effects/*.lua test_smoke.lua; do luac -p "$f" || echo "FAIL $f"; done
+for f in conf.lua main.lua At/At.lua At/config.lua At/core/*.lua At/components/*.lua At/effects/*.lua test_smoke.lua; do luac -p "$f" || echo "FAIL $f"; done
 
 # 打包成 .love（纯 POSIX sh，自动切到脚本所在目录，可在任意 cwd 调用）
 ./pack.sh            # 输出 ./AtLua.love（目录名）
@@ -54,6 +55,7 @@ sh /path/to/pack.sh  # 从外部调用；项目在 /sdcard 等无执行位的位
 
 ```
 main.lua            # 演示程序：卡片 + 全部组件 + 日志/控制台/模糊
+conf.lua            # 建窗前读取 At/config.lua 的 render.msaa，避免启动黑闪
 pack.sh             # 打包脚本，产出 <名字>.love
 test_smoke.lua      # 无头逻辑测试（假 love 环境），不参与打包
 LICENSE             # 项目 MIT 许可（会打进 .love）
@@ -64,12 +66,14 @@ docs/               # 使用文档，不参与打包
   README.md         #   快速开始、事件模型、配置、组件一览、常见问题
   layout.md         #   布局引擎（CSS 子集对照、尺寸规则、限制）
   components.md     #   每个组件的属性/方法/回调/示例
+  theme.md          #   主题色、token 表、运行时换色
+  shadow.md         #   GLSL / 旧式阴影的切换、参数与性能
   logging.md        #   日志等级、输出格式、文件、控制台
   blur.md           #   背景模糊：启用、算法、性能
 AtLua.love          # 构建产物（约 12 MB，已打进字体），不要手改、不要当源码
 At/
   At.lua            # 门面：聚合模块 + 生命周期入口 + 旧式 At.button
-  config.lua        # 集中配置：blur / log / font，改完调 At.config.apply()
+  config.lua        # 集中配置：theme / render / shadow / blur / log / font，改完调 At.config.apply()
   core/             # 基础设施（不画具体控件）
     registry.lua    #   组件注册表、事件分发、唯一键盘焦点
     component.lua   #   组件基类：几何/状态/焦点/measure/生命周期
@@ -77,9 +81,11 @@ At/
     clip.lua        #   裁剪求交（嵌套 scissor 必须用它）
     motion.lua      #   动画：弹簧（固定子步积分）与缓动函数
     pixel.lua       #   像素对齐
-    color.lua       #   hex → RGBA、shade、mix
+    color.lua       #   hex → RGBA、shade、mix、主题 token 解析
+    render.lua      #   窗口渲染设置：MSAA 查询/修改
+    theme.lua       #   主题：三基色 → 语义 token，运行时热切换
     SDF.lua         #   圆角矩形 SDF + 点击命中
-    shadow.lua      #   多层缩放矩形模拟阴影
+    shadow.lua      #   阴影：GLSL SDF（默认）/ 旧式多层矩形 / none
     font.lua        #   字体装配与缓存（资源路径来自 config.font）
     input.lua       #   旧的全局文本输入 + UTF-8 工具
     log.lua         #   日志：等级、格式、缓冲、stdout、文件
@@ -152,7 +158,7 @@ At.Panel{
 | `At.Panel` | 见上表 | 无（不接收事件） |
 | `At.Label` | `text, color, fontSize, align, wrap, lineHeight` | 无 |
 | `At.Button` | `text, color, alpha, hoverColor, pressedColor, shadow, shadowArgs, ripple, paddingX/paddingY` | `onPress(self,mx,my)` / `onRelease(self,mx,my,inside)` / `onClick(self,mx,my)` |
-| `At.TextInput` | `text, placeholder, password, maxLength, borderColor, focusBorderColor, caretColor` | `onChange(text,self)` / `onSubmit(text,self)` |
+| `At.TextInput` | `text, placeholder, password, maxLength, borderColor, focusBorderColor, caretColor`；`getCaret/setCaret` | `onChange(text,self)` / `onSubmit(text,self)` |
 | `At.Switch` | `value, color, onColor, knobColor, animate, springStiffness/springDamping` | `onChange(value,self)` |
 | `At.Checkbox` | `text, checked, size, gap, checkColor` | `onChange(checked,self)` |
 | `At.RadioGroup` | `options, value(1 基), direction, gap, size, selectedColor` | `onChange(index,label,self)` |
@@ -166,20 +172,26 @@ At.Panel{
 
 ### At 入口
 
-`At.update(dt)`、`At.mousepressed(...)`、`At.mousereleased(...)`、`At.textinput(t)`、`At.keypressed(k)`、`At.wheelmoved(dx,dy)`、`At.focus(c)`、`At.clearFocus()`、`At.getFocus()`、`At.add(c)`、`At.remove(c)`、`At.registry`、`At.layout`、`At.Component`、`At.motion`、`At.blur`（`setEnabled/isEnabled/setAlgorithm/registerAlgorithm/setStrength/beginFrame/endFrame/drawBackdrop/stats/reset`）。
+`At.update(dt)`、`At.mousepressed(...)`、`At.mousereleased(...)`、`At.textinput(t)`、`At.keypressed(k)`、`At.wheelmoved(dx,dy)`、`At.focus(c)`、`At.clearFocus()`、`At.getFocus()`、`At.add(c)`、`At.remove(c)`、`At.registry`、`At.layout`、`At.Component`、`At.motion`、`At.blur`（`setEnabled/isEnabled/setAlgorithm/registerAlgorithm/setStrength/getMSAA/getMaxMSAA/beginFrame/endFrame/drawBackdrop/stats/reset`）、`At.render`（`getMSAA/setMSAA/getMaxMSAA`）。
 
-`At.config`（`At/config.lua`）：`blur = {enabled, algorithm, strength}`、`log = {level, print, maxEntries, file, filePattern}`、`font = {size, main, emoji}`；`At.config.apply()` 把配置推给各模块（`At.lua` 启动时已自动调用一次）。
+`At.config`（`At/config.lua`）：`theme = {color, black, white}`、`render = {msaa}`、`shadow = {algorithm, color, alpha, spread, layers, offsetX, offsetY}`、`blur = {enabled, algorithm, strength}`、`log = {level, print, maxEntries, file, filePattern}`、`font = {size, main, emoji}`；`At.config.apply()` 把配置推给各模块（`At.lua` 启动时已自动调用一次）。
+
+`At.render`（`At/core/render.lua`）：`getMSAA()`、`setMSAA(n)`（返回实际采样数, 是否重建）、`getMaxMSAA()`。窗口 MSAA 由 `config.render.msaa` 驱动，`config.apply()` 会调用 `setMSAA` 并在重建后重置 `At.blur` 与 `At.shadow`。
+
+`At.shadow`（`At/core/shadow.lua`）：`shadow(x,y,w,h,corner,color,spread,layers,offsetX,offsetY)`、`setAlgorithm("glsl"|"legacy"|"none")`、`getAlgorithm()`、`configure(opts)`、`defaults()`、`reset()`。默认 `glsl`；不传参数时使用 `config.shadow` 的默认值；shader 不可用时自动回退 `legacy`。
+
+`At.theme`（`At/core/theme.lua`）：`color/primary/black/white`（基色）、`tokens`（全部派生 hex）、`set{color,black,white}`、`get(name)`、`resolve(value)`、`foreground(background)`、`isToken(value)`、`reset()`、`defaults()`。组件默认颜色写成 `"@primary"`、`"@text"` 这类 token，绘制时由 `At.color` 解析；运行时 `set` 后已有组件立即换色。
 
 旧式立即模式：`At.button(x, y, w, h, res, hex, alpha, shadow, shadowArgs) -> rect`。**无状态、无涟漪、会留下非白当前颜色。**
 
 ### 其它模块
 
-- `color.hexToRGBA(hex, alpha?)`、`color.setColor(hex, alpha?)`、`color.shade(hex, factor)`、`color.mix(hexA, hexB, t)`。
+- `color.hexToRGBA(hex, alpha?)`、`color.setColor(hex, alpha?)`、`color.shade(hex, factor)`、`color.mix(hexA, hexB, t)`、`color.resolve(value)`。以上颜色参数都接受 `@primary` 这类主题 token；`resolve` 只解析 token，普通 hex 原样返回。
 - `SDF.roundRectSDF(px, py, rect)`（负数在内部）、`SDF.isClick(rect)`（读实时鼠标位置）。
 - `Ripple.new{...}` 实例（`:add/:release/:update/:draw/:count`）+ 旧单例 `At.Ripple.*`。动画按 `dt` 衰减，不传按 60Hz。
-- `input.setActive/input()/get/set/clear/join/keypressed/isActive` + `input.length(str)`、`input.removeLast(str)`（UTF-8 安全）。
+- `input.setActive/input()/get/set/clear/join/keypressed/isActive` + `input.length(str)`、`input.sub(str, first, last)`、`input.removeLast(str)`（UTF-8 安全，下标按字符而非字节）。
 - `font.get(size)` 缓存字体；`font.init(size)` 设置全局 `mainFont`/`emoji`，并以**主字体**为当前字体。主字体优先、emoji 只作 fallback：反过来（emoji 当主字体）会让数字、空格、`#`/`*` 用上 keycap 的长宽字，排版明显变宽。
-- `shadow(x, y, w, h, res, color, radius, layers, offsetX, offsetY)`：`color[4]` 是整体最大不透明度（内部已按 `layers` 归一化，改层数不会让阴影变黑），`layers` 只影响柔和度。
+- `shadow(x, y, w, h, corner, color, spread, layers, offsetX, offsetY)`：`color[4]` 是整体最大不透明度；`layers` 只对 legacy 生效，GLSL 下忽略。`At.shadow.setAlgorithm/getAlgorithm/reset` 控制算法与缓存。
 - `motion.spring{value, target, stiffness, damping, velocity}` → `Spring`（`:setTarget/:snap/:update/:isSettled`，`.value/.target/.velocity`）；`motion.damp(current, target, speed, dt)`；`motion.easeIn/easeOut/easeInOut(t)`（`0..1`）。弹簧用固定子步（1/240s）积分，掉帧不发散；`update` 的 `dt <= 0` 直接返回。
 - `log.debug/info/warn/error/fatal(...)`（写日志，被过滤时返回 nil）、`setLevel/getLevel/setFormat/setMaxEntries/setPrint/getPrint/setFile/setFilePattern/getFileName/getFilePath/closeFile/isFileEnabled/clear/count/getEntries/formatEntry`。默认格式 `[时间] - [等级/函数名]: 内容`，过滤发生在写入时，默认同时 `print` 到 stdout（Android 即 logcat）。
 
@@ -189,7 +201,8 @@ At.Panel{
 - 模块形状：`local M = {} ... return M`。require 路径从源码根开始且**不带 `.lua`**：`require("At.core.color")`。
 - **目录分层固定**：`At/core/`（基础设施）、`At/components/`（组件）、`At/effects/`（视觉特效）、`At/assets/`（资源）。新组件放 `At/components/`，新基础设施放 `At/core/`。
 - **新组件必须继承 `At.Component`**（`require("At.core.component")`）：`local proto = setmetatable({}, { __index = Component })`，构造函数调 `Component.instantiate(proto, opts, DEFAULTS)`，并导出 `setmetatable(MyComp, { __call = ... })` 以便 `At.Xxx{...}`。
-- **默认值写进 `At/config.lua`**，不要在组件里散落魔法数字；运行时改 `At.config` 后需要 `At.config.apply()` 才会生效（直接设 `At.blur.*` / `At.log.*` 仍然立即生效）。
+- **默认值写进 `At/config.lua`**，不要在组件里散落魔法数字；运行时改 `At.config` 后需要 `At.config.apply()` 才会生效（直接设 `At.blur.*` / `At.log.*` / 调 `At.theme.set` 仍然立即生效）。
+- **颜色默认值用主题 token**：组件 `DEFAULTS` 里写 `"@primary"` / `"@text"` / `"@surface"` 等，不要写死 hex；颜色属性同时接受普通 `"#RRGGBB"`。token 在绘制时解析，所以 `At.theme.set` 能热更新已有组件；不要在构造时用 `At.theme.get` 把颜色缓存成 hex（会失去热更新）。新增语义色先在 `At/core/theme.lua` 的 token 表里加，再写文档与测试。
 - **尺寸分两层**：`_specW/_specH` 是原始规格（"auto"/"50%"/数字），`w/h` 是当前像素。需要声明值时用 `declaredWidth()/declaredHeight()`；内容变化后调 `invalidateSize()`，**不要**手写 `self.w = nil` 或清 `_specW`。
 - 新组件要实现 `measure(availW, availH)` 返回自然尺寸，布局引擎在 `auto` 时依赖它。
 - **日志统一走 `At.log`**：不要在组件里直接 `print`（控制台看不到）；新增日志等级或格式语义要同步 `docs/logging.md`。
@@ -200,9 +213,9 @@ At.Panel{
 - **动画统一用 `At.motion.spring`**（需要缓动再用 `easeIn/Out/InOut`），不要自己写 `value = value + (target - value) * k` 的指数逼近；每个组件在 `_tick(dt)` 或 `update(dt)` 里推进自己的弹簧，并给 `animate = false` 留立即落位的分支。
 - 焦点只通过 `self:focus()/self:blur()` 或 `registry.setFocus` 改，不要自建 `isFocused` 字段。
 - 命名沿用现状，不要"统一"：大写开头是 `At`、`SDF`、`Ripple`、`Button`、`Label`、`Panel`、`TextInput`、`Switch`、`Checkbox`、`RadioGroup`、`Slider`、`Component`；小写是 `color`、`shadow`、`input`、`font`、`layout`、`registry`。
-- 颜色对外接受 `hex` + 0–255 `alpha`，不要引入 0–1 风格的第二套接口。
+- 颜色对外接受 `hex`（或 `"@primary"` 这类主题 token）+ 0–255 `alpha`，不要引入 0–1 风格的第二套接口。
 - 新增模块**不要**创建全局变量；已有全局（`SDF`、`color`、`shadow`、`mainFont`、`emoji`、`removeLastUTF8Char`）是遗留兼容面，可以读取，别扩散。
-- 不引入第三方库、shader 文件或构建工具。
+- 不引入第三方库、shader 文件或构建工具。内联 GLSL 字符串是允许的（`blur.lua`、`shadow.lua` 已用），不要新增 `.glsl` 文件或外部 shader 依赖。
 - **第三方资源必须登记许可证**：许可证全文放 `LICENSES/`（`.txt`，会随包分发），总览写入 `THIRD_PARTY_NOTICES.md`；不得删除资源内部的版权/许可元数据（例如字体 `name` 表）。
 - **不要从 `pack.sh` 排除 `LICENSE` 与 `LICENSES/`**：OFL 要求随字体一起分发版权声明和许可全文。
 - 改对外 API / 新组件 / 布局语义 → **同步写文档（第 10 节）** 并在 `test_smoke.lua` 补断言。
@@ -218,32 +231,36 @@ At.Panel{
 7. **`At.button`（立即模式）仍是旧语义**：无状态、无涟漪、会把当前颜色留成按钮色。
 8. **涟漪不会自己消失**：只有 `release()` 过的涟漪才会被回收（组件的拖出/松开已处理）。
 9. **`unpack` 依赖 Lua 5.1/LuaJIT**（`At.button`、`Button:draw`、`Panel:_draw` 展开 `shadowArgs` 处）；Lua 5.2+ 直接运行会 `attempt to call a nil value`，`luac -p` 查不出来。
-10. **阴影是 O(layers) 次 `rectangle`**，默认 20 层；字体两个 TTF 约占包体 99%；`AtLua.love` 是产物不要手改。
+10. **legacy 阴影是 O(layers) 次 `rectangle`**（默认 20 层）；默认 GLSL 阴影只 draw 一次；字体两个 TTF 约占包体 99%；`AtLua.love` 是产物不要手改。
 11. **渲染类问题无法用测试证明**：`test_smoke.lua` 是假 `love` 的逻辑回归，圆角、阴影、裁剪、字体观感必须在真机 `love .` 看。
 12. **`ScrollView` 必须晚于内容创建**：事件按注册表倒序派发，这样它才能先判断点击该不该交给子组件。它把"落在空白处或被动组件上的拖动"当作滚动，只有可交互子组件（按钮/输入框/滑动条等）才不拦截。
 13. **滚出视口的子组件仍会被点击**：`ScrollView` 用 `containsDescendant` 把这类点击吃掉，但前提是它先收到事件；如果它比子组件先创建，就会失效（见上一条）。
 14. **软键盘依赖 `setTextInput`**：桌面端不弹键盘是正常的；移动端聚焦时会带输入框矩形调用 `love.keyboard.setTextInput(true, x, y, w, h)`，失焦收起。别忘了把 `love.textinput`/`love.keypressed`/`love.wheelmoved` 接到 `At.*`。
-15. **阴影透明度必须按层数归一化**：`shadow` 用多层叠加模拟模糊，曾经每层固定 7.5%，20 层叠出约 80% 不透明，看起来像卡片底下有一圈黑底。现在 `layerAlpha = color[4] * 2 / (layers + 1)`，`color[4]` 即最终最大不透明度；不要再改回"按层直接给 alpha"。
+15. **legacy 阴影透明度必须按层数归一化**：legacy 用多层叠加模拟模糊，曾经每层固定 7.5%，20 层叠出约 80% 不透明，看起来像卡片底下有一圈黑底。现在 `layerAlpha = color[4] * 2 / (layers + 1)`，`color[4]` 即最终最大不透明度；不要再改回"按层直接给 alpha"。
 16. **嵌套 scissor 必须求交**：`TextInput` 曾直接 `setScissor` 覆盖了 `ScrollView` 的裁剪，导致滚动时输入框文字画到视口外（看起来像"图层错乱"）。新代码一律用 `At.clip.apply/restore`，不要直接 `love.graphics.setScissor`。
 17. **`scrollY` 保持浮点**：平滑滚动与惯性都靠它，`layout()` 里只对内容位移做 `pixel.round`；不要取整存回（会破坏缓动、让滚动条抖）。滚动 API 分工：`setScroll` 立即（拖拽/滚动条/`scrollToVisible`）、`scrollTo/scrollBy` 平滑（只改 `_scrollTarget`，由 `_tickScroll` 缓动），`onScroll` 在平滑过程中逐帧触发。
 18. **被动组件会挡住拖动（已踩过）**：`Label` 早期没有 `interactive = false`，它的矩形几乎铺满整行，`ScrollView` 误判"点在子组件上"而拒绝拖动，表现为"大片区域拖不动"。现在 `ScrollView` 只把 `isInteractive()` 为真的子组件当作拦截目标；新增纯展示组件务必设 `interactive = false` 或不实现 `_press`。
 19. **滚动条宽度是动画值**：`_barW` 每帧向 `scrollbarWidth` / `scrollbarActiveWidth` 收敛，`_barMetrics` 用的是它；命中判定另用 `scrollbarHitWidth`，两者不要混用。
 20. **Android 没有终端窗口，也没有 F1**：`At.log` 默认 `print` 到 stdout → logcat（`adb logcat -s love`）；`At.Console` 隐藏时靠右上角 `LOG` 标签（`tab = true`）点开，标题栏 `C` 清空，不要只依赖键盘快捷键。自定义输出用 `At.log.setPrint(function(text, entry) ... end)`。
-21. **日志文件默认关闭且写入存档目录**：`At.log.setFile(true)` 才写文件，文件名是 `os.date` pattern（默认 `%Y-%m-%d %H:%M:%S.log`）。LÖVE 下必须走 `love.filesystem`（源码目录只读，Android 只有应用存档目录可写），普通 Lua 才用 `io`；Windows 文件名不能含 `:`，跨平台用 `%H-%M-%S`。记得在 `love.quit` 调 `closeFile()`。
+21. **日志文件默认关闭且写入存档目录**：`At.log.setFile(true)` 才写文件，文件名是 `os.date` pattern（默认 `%Y-%m-%d_%H-%M-%S.log`）。LÖVE 下优先走 `love.filesystem`（Android 只有应用存档目录可写），打不开时退回 `io.open` 写当前工作目录（存档目录只读的开发环境）；两边都失败才提示。Windows 文件名不能含 `:`，默认 pattern 已避开。记得在 `love.quit` 调 `closeFile()`。
 22. **控制台必须最后创建/绘制**：事件按注册表倒序派发、绘制按调用顺序，`At.Console` 晚于页面内容创建并在 `love.draw` 最后 `:draw()`，否则会被内容盖住或被抢先消费事件。控制台的日志区**内部复用 `At.ScrollView`**（`autoRegister=false`，由控制台手动转发鼠标/滚轮，日志内容由内部 `LogLines` 绘制），滚动/滚动条/惯性/触边光都不许另写一套；跟随最新由 `_stick` / `_lastMax` 判断（旧的 `_offset` 已删除），`show()` 会滚回最新。日志的等级过滤发生在**写入时**（调高等级看不到旧日志），格式则在**显示时**应用（`formatEntry`），所以改格式会影响历史日志的显示。
 23. **字体主次不能反**：`At/core/font.lua` 里 `main:setFallbacks(emojiFont)`，当前字体是主字体。若改回"emoji 为当前字体、主字体作回退"，数字/空格会变成 emoji 字体的长宽字（keycap 设计），看起来"空格和数字特别宽"。
 24. **`ScrollView` 是双向的**：`layout()` 先量内容自然宽度，`_availW` 取 `max(视口内宽, 自然宽)`——比视口窄的内容按视口宽排版（保证 `"100%"` 有效），更宽的内容保留自身宽度以产生横向滚动。横竖滚动条只在对应 `maxScrollX/Y > 0` 时绘制，两条轨道互相让出对方厚度；命中判定分 `_barHit`（纵）与 `_hbarHit`（横），别只改一个。滚轮 `dx` 横向、`dy` 纵向、`Shift+滚轮` 走横向，某个轴没有滚动空间时会退让给另一轴。`ScrollView` 自身 `interactive = true`，所以嵌套时外层会让事件给内层（但滚轮不做"内层滚到底再传给外层"的链式滚动）。
 25. **背景模糊需要每帧包住 `beginFrame/endFrame`**：组件只在 `alpha < 255` 时调用 `drawBackdrop`，且必须能从当前 canvas 取到背景快照；直接画到屏幕（当前 canvas 为 nil）时模糊会被跳过而不报错。每个模糊组件每帧一次全画布拷贝，组件多时开销明显。`gaussian` 需要 shader，失败自动回退 `downscale`；canvas 不支持时 `At.blur` 自动关闭。模糊一定要"先降采样再密集采样"：高分辨率 + 稀疏采样会把画面复制成小方块，`gaussian` 固定先降到 1/2、采样间距 radius/4，`downscale` 用多级金字塔，勿改回一步大倍数缩放。
-26. **改 `At.config` 不会自动生效**：`At.lua` 只在启动时 `apply()` 一次；运行时改完 `At.config.blur/log/font` 要再调 `At.config.apply()`。字体路径来自 `config.font`（`At/core/font.lua` 读取），移动资源时同步改这里与 `LICENSES/`。
+26. **改 `At.config` 不会自动生效**：`At.lua` 只在启动时 `apply()` 一次；运行时改完 `At.config.theme/render/shadow/blur/log/font` 要再调 `At.config.apply()`（`apply` 会覆盖临时的 `At.theme.set`）。字体路径来自 `config.font`（`At/core/font.lua` 读取），移动资源时同步改这里与 `LICENSES/`。
 27. **许可证不能只写一句"MIT/OFL"**：字体版权与 OFL 全文必须实际随包分发（`LICENSES/`），且 `pack.sh` 不能把它们排除掉；替换字体时要重新读字体的 `name` 表确认版权方，不要凭文件名猜。
 28. `pack.sh` 直接覆盖同名 `.love`，排除 `pack.sh`、`test_*.lua`、`AGENTS.md`、`*.md`、`docs/`、`*.love`、`*.zip`、`*.bash`、`*.log`、`*.tmp`、`.gitignore` 与 `.git`/`.vscode`/`.idea`/`__pycache__`/`temp_package`/`node_modules`。排除规则在 python 与 zip 两条分支各写一份，新增产物类型时两处都要改。
 29. **动画不要自己积分**：手写 `value = value + (target - value) * (1 - exp(-speed*dt))` 在不同帧率下手感不同、且没法过冲。统一用 `At.motion.spring`（固定子步 1/240s），把它放在 `_tick(dt)`（可见组件）或组件自己的 `update(dt)`（隐藏时还要继续的动画，如控制台关闭）里推进；`animate = false` 时必须 `:snap()` 到目标，保证测试与低性能路径立即一致。绘制时把弹簧值 `math.min/max` 夹到用途需要的范围（例如 alpha 用 `min(1, v)`，否则 `>1` 会让半透明判定失效）。
 30. **控制台的开关动画跨越 `visible`**：`hide()` 只把 `visible` 置 `false`，窗口还要淡出，所以 `Console:update` 独立推进弹簧、`draw` 在 `visible or open > 0.001` 时继续画窗口，`open < 0.999` 时画 `LOG` 标签并让标签随进度淡出。动画期间窗口不接收鼠标事件（`visible == false`），这是有意的；改这里别把"隐藏"直接当成"不画"。
 31. **过冲不是 `scrollY`，也不移动内容**：`ScrollView` 的触顶/触底过冲保存在 `_overX` / `_overY`，**只驱动边缘光带的强度**；`scrollX` / `scrollY`、`onScroll` 和 `content.x/y` 始终夹在合法范围内（内容不会被推出容器、不会留出空隙，光带叠加在容器边缘的内容上）。拖拽时用"期望位置 − 夹紧后位置"的差值累积过冲，松手由 `edgeSpring` 淡出；滚轮、惯性、拖动滚动条顶到两端时点亮 `_edgePulse`。不要把 over 写回 `scrollY`，也不要把 over 加到 `content.x/y` 上（会看起来画到容器外）。另外**触边特效必须按轴隔离**：`_pulseEdge`、`tickAxis`、拖拽速度记录三处都要检查对应轴的 `maxScroll > 0`，否则横滚视口垂直拖动会在松手惯性的第一帧冒上下光。光带圆角默认取**内容容器（大卡片）的 `radius`**（`_edgeRadius`，可用 `edgeRadius` 覆盖），并且只对“内容贴住视口”的那一侧收角；滚动到中间时是切面，不能按圆角裁。
+32. **抗锯齿靠 MSAA，不靠小数坐标**：窗口 MSAA 在 `At/config.lua` 的 `render.msaa` 里配置（默认 4，0 = 关闭）。`conf.lua` 在建窗前 `require("At.config")` 并设 `t.window.msaa`，所以启动时 `config.apply()` 发现值一致、不会 `setMode` 重建窗口（否则会黑闪）；运行中改 msaa 才会重建。具体由 `At.config.apply()` → `At.render.setMSAA()` 应用；组件坐标仍必须对齐整数像素，不要为了让边缘平滑把矩形/文字位置改成小数。`At.render.setMSAA` 会重建窗口后缓冲，`config.apply` 随后调用 `At.blur.reset()`；`At.blur` 的 scene canvas 读取 `At.render.getMSAA()` 并用 `{ msaa = n }` 创建，否则整帧先画进非 MSAA canvas，窗口设置会被白费；创建失败要退回无 MSAA 画布。MSAA 会增加显存/带宽开销，低端设备可降到 2 或 0。
+33. **阴影默认 GLSL，legacy 只是兼容路径**：`config.shadow.algorithm` 默认 `"glsl"`，一次 SDF draw；不传 `shadowArgs` 时用 `config.shadow`（默认 `@primaryDark`、spread 3、offset 1/2、alpha 0.3）；`"legacy"` 仍按 `layers+1` 次矩形叠加，`layers` 在 GLSL 下被忽略。`shadowArgs` 的颜色 alpha 是 **0–1**，不要按组件的 0–255 传。shader/白纹理是惰性缓存的，窗口重建或换上下文后 `At.shadow.reset()` 重新编译；shader 不可用会自动回退 legacy。`At.config.apply()` 在 MSAA 重建后同时 reset blur 与 shadow。
+34. **TextInput 光标是 UTF-8 字符下标，不是字节位置**：`_caret` 取 `0..input.length(text)`，插入/删除用 `input.sub` 按字符切，不要用 `string.sub` 按字节切（中文/emoji 会被切坏）。点击定位用当前字体 `getWidth(前缀)` 找最近边界；密码模式按掩码宽度算。文本超宽时 `_scrollX` 负责水平滚动，`_ensureCaretVisible` 必须在光标变化、输入、绘制前调用；失焦要归零。竖直/可见性仍由外层 `ScrollView` 管。
+35. **主题 token 在绘制时解析，不要在构造时缓存**：组件默认色是 `"@primary"` 这类字符串，`At.color` 的 `hexToRGBA/setColor/shade/mix` 内部调用 `color.resolve`；因此 `At.theme.set` 能热更新已有组件。若在 `new` 里用 `At.theme.get` 转成具体 hex 存起来，就只影响新组件。`color.lua` 对 `theme` 是**惰性 require**（只在遇到 `@` 时加载），用来避开 `theme -> color -> theme` 的加载环；不要改成顶层 `require("At.core.theme")`。`theme.set` 只接受三基色，`@danger/@warning/@success` 是固定语义色。
 
 ## 8. 改动检查清单
 
-- [ ] `for f in main.lua At/At.lua At/config.lua At/core/*.lua At/components/*.lua At/effects/*.lua test_smoke.lua; do luac -p "$f"; done` 全部通过。
+- [ ] `for f in conf.lua main.lua At/At.lua At/config.lua At/core/*.lua At/components/*.lua At/effects/*.lua test_smoke.lua; do luac -p "$f"; done` 全部通过。
 - [ ] `lua test_smoke.lua` 打印 `SMOKE OK`；行为变了就补断言（布局数值、组件状态、焦点）。
 - [ ] 没有新增全局变量；模块仍 `return` 表；组件继承 `Component` 且实现 `measure`；纯展示组件 `interactive = false`。
 - [ ] 尺寸读写走 `declaredWidth/declaredHeight` + `invalidateSize`，没有手动清 `_specW`。
@@ -251,6 +268,10 @@ At.Panel{
 - [ ] 绘制后颜色/字体/线宽/线型/scissor 已恢复；嵌套裁剪走 `At.clip`；文字与形状坐标已对齐整数像素。
 - [ ] 对外 API 变了：更新 `docs/`（第 10 节）、本文件第 3/5 节、`main.lua` 演示与测试。
 - [ ] 新增可配置项时放进 `At/config.lua` 并同步 `docs/README.md` 的配置表与 `At.config.apply()`。
+- [ ] 颜色默认值使用主题 token；新增 token 同步 `At/core/theme.lua`、`docs/theme.md`、`docs/components.md` 默认值列与 `test_smoke.lua`。
+- [ ] 主题改动验证：`At.theme.set` 后已有组件变色、`reset` 可恢复、非法颜色报错、`At.config.apply()` 能重新推入配置。
+- [ ] 阴影改动验证：`glsl` 每次只 draw 一次、`legacy` 仍按 layers+1 次绘制、shader 不可用时自动回退、`config.shadow.algorithm` 可切换与复位。
+- [ ] 输入框改动验证：点击定位、拖动选择光标、中间插入/删除、方向键/Home/End、UTF-8 与密码模式、长文本水平滚动。
 - [ ] 有 LÖVE 时 `love .` 手动过一遍：悬停、按下、拖出/拖回、输入、开关动画、拖动滑动条、进度条过渡、滚轮平滑滚动、拖拽惯性、触顶/触底光效与滚动条端点反馈。
 - [ ] 涉及平滑滚动/惯性的断言必须模拟若干帧（`At.update(1/60)`），不能只改目标就断言位置。
 - [ ] 日志改动覆盖等级过滤、格式（字符串与函数）、缓冲裁剪；控制台改动覆盖显隐、拖动、滚动、开关动画。
@@ -281,6 +302,8 @@ At.Panel{
 | `docs/README.md` | 快速开始、事件模型、组件一览、常见问题 | 内部实现、逐属性细节 |
 | `docs/layout.md` | CSS 子集对照、尺寸规则、排版时机、限制、示例 | 组件属性表 |
 | `docs/components.md` | 每个组件的属性表、方法、回调、示例 | 布局算法细节 |
+| `docs/theme.md` | 主题三基色、token 表、运行时换色、浅色主题、限制 | 组件逐属性细节 |
+| `docs/shadow.md` | GLSL / 旧式阴影的切换、参数、性能与限制 | 组件属性表 |
 | `docs/logging.md` | 日志等级、格式、缓冲、与控制台配合 | 组件属性表 |
 | `docs/blur.md` | 背景模糊的启用、算法、性能与限制 | 组件属性表 |
 | `AGENTS.md`（本文件） | 代理约束、约定、陷阱、改哪里 | 使用教程正文 |
@@ -302,6 +325,6 @@ At.Panel{
 
 ### 同步与校验
 
-- `lua test_smoke.lua` 末尾有文档断言：`docs/components.md` 必须出现全部组件名，`docs/layout.md` 必须出现 `grow`/`justify`，`docs/README.md` 必须出现 `love.update`，本文件必须出现"文档规范"。新增组件时同步加断言。
+- `lua test_smoke.lua` 末尾有文档断言：`docs/components.md` 必须出现全部组件名，`docs/layout.md` 必须出现 `grow`/`justify`，`docs/README.md` 必须出现 `love.update`，本文件必须出现"文档规范"。新增组件时同步加断言；主题改动还要检查 `docs/theme.md` 包含默认主题色与 `At.theme.set`；阴影改动检查 `docs/shadow.md` 包含 `At.shadow.setAlgorithm` 与 `glsl`。
 - 改对外 API 的顺序：源码 → `docs/components.md` → 本文件第 5 节 → `main.lua` 演示 → `test_smoke.lua`。
 - `docs/` 与 `*.md` 不参与打包（`pack.sh` 已排除），不要把它们当运行时资源引用。

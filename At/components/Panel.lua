@@ -4,7 +4,7 @@
 --   local card = At.Panel{
 --       x = 40, y = 40, w = 360, h = "auto",
 --       gap = 12, padding = 16, radius = 14,
---       background = "#242A34",
+--       background = "@surface",
 --       children = {
 --           At.Label{ text = "登录" },
 --           At.TextInput{ w = "100%" },
@@ -56,9 +56,6 @@ function Panel.new(opts)
 	if type(self.shadow) == "table" then
 		self.shadowArgs = self.shadow
 		self.shadow = true
-	end
-	if self.shadow and not self.shadowArgs then
-		self.shadowArgs = { { 0, 0, 0, 0.2 }, 5, 20, 2, 3 }
 	end
 
 	return self
@@ -140,7 +137,11 @@ function proto:_draw()
 	local w, h = pixel.round(self.w), pixel.round(self.h)
 
 	if self.shadow then
-		shadow.shadow(x, y, w, h, radius, unpack(self.shadowArgs))
+		if self.shadowArgs then
+			shadow.shadow(x, y, w, h, radius, unpack(self.shadowArgs))
+		else
+			shadow.shadow(x, y, w, h, radius)
+		end
 	end
 
 	if self.background then

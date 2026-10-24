@@ -18,6 +18,7 @@
 -- "组件之前已经画上去的内容"，不依赖上一帧，也没有延迟。
 
 local log = require("At.core.log")
+local render = require("At.core.render")
 
 local blur = {}
 
@@ -33,6 +34,7 @@ local state = {
 	previousCanvas = nil,
 	width = 0,
 	height = 0,
+	msaa = 0,
 	scratch = {},
 	stats = { frames = 0, backdrops = 0, snapshots = 0 },
 }
@@ -120,6 +122,22 @@ function blur.stats()
 	return { frames = s.frames, backdrops = s.backdrops, snapshots = s.snapshots }
 end
 
+-- 当前实际生效的 MSAA：内部 scene canvas 已创建时取它的真实采样数
+function blur.getMSAA()
+	if state.scene and state.scene.getMSAA then
+		local ok, value = pcall(state.scene.getMSAA, state.scene)
+		if ok then
+			return value
+		end
+	end
+	return render.getMSAA()
+end
+
+-- 设备支持的最大 MSAA 采样数（0 表示未知/不支持）
+function blur.getMaxMSAA()
+	return render.getMaxMSAA()
+end
+
 -- 清掉失败状态与缓存画布，便于换设备/换配置后重试
 function blur.reset()
 	state.failed = false
@@ -134,6 +152,7 @@ function blur.reset()
 	end)
 	state.scene, state.snapshot = nil, nil
 	state.width, state.height = 0, 0
+	state.msaa = 0
 	releaseScratch()
 	return blur
 end
@@ -156,11 +175,20 @@ local function fail(message)
 	return nil
 end
 
-local function newCanvas(width, height)
+local function newCanvas(width, height, msaa)
 	if not (love and love.graphics and love.graphics.newCanvas) then
 		return fail("当前环境不支持 canvas")
 	end
-	local ok, canvas = pcall(love.graphics.newCanvas, width, height)
+
+	-- 场景画布跟随窗口的 MSAA：模糊开启时整帧先画到这里，
+	-- 若这里不抗锯齿，At.config.render.msaa 给窗口开的 MSAA 就白开了。
+	local ok, canvas
+	if msaa and msaa > 1 then
+		ok, canvas = pcall(love.graphics.newCanvas, width, height, { msaa = msaa })
+	end
+	if not ok or not canvas then
+		ok, canvas = pcall(love.graphics.newCanvas, width, height)
+	end
 	if not ok or not canvas then
 		return fail("创建 canvas 失败")
 	end
@@ -181,7 +209,8 @@ end
 
 local function ensureSize()
 	local width, height = love.graphics.getDimensions()
-	if state.scene and state.width == width and state.height == height then
+	local msaa = render.getMSAA()
+	if state.scene and state.width == width and state.height == height and state.msaa == msaa then
 		return true
 	end
 
@@ -195,7 +224,7 @@ local function ensureSize()
 	end)
 	releaseScratch()
 
-	state.scene = newCanvas(width, height)
+	state.scene = newCanvas(width, height, msaa)
 	if not state.scene then
 		return false
 	end
@@ -205,6 +234,7 @@ local function ensureSize()
 	end
 
 	state.width, state.height = width, height
+	state.msaa = msaa
 	return true
 end
 

@@ -79,11 +79,13 @@ At.blur.getAlgorithms()                  -- 已注册的算法名
 | `drawBackdrop(x, y, w, h, radius)` | 在指定区域绘制模糊背景；组件内部调用，返回是否绘制 |
 | `registerAlgorithm(name, fn)` / `getAlgorithms()` | 注册/列出算法 |
 | `stats()` | `{ frames, backdrops, snapshots }`，排查性能与是否触发 |
+| `getMSAA()` / `getMaxMSAA()` | 当前实际生效的 MSAA 采样数 / 设备支持的最大采样数 |
 | `getError()` / `reset()` | 失败原因 / 清缓存重试 |
 
 ## 性能与限制
 
 - 每个触发模糊的组件，每帧要做**一次全画布拷贝**（snapshot）+ 若干次模糊 pass；组件多时开销明显，建议只给控制台、弹窗这类少数面板使用。
+- 内部 scene canvas 会跟随窗口的 MSAA（`love.window.getMode()` 里的 `msaa`）；`At/config.lua` 的 `render.msaa` 为 4 时模糊路径也保持抗锯齿。MSAA 会增加显存与带宽开销，低端设备可以改成 2 或 0。
 - 模糊区域按组件大小分配缓存画布，尺寸变化会重新创建（`At.blur.reset()` 可强制清理）。
 - 需要 LÖVE 11（canvas / shader / stencil）。不支持 canvas 时 `At.blur` 自动关闭并通过 `At.log.warn` 提示，组件退回普通半透明绘制。
 - stencil 不可用时退化为矩形裁剪，圆角处会露出一点直角边缘。

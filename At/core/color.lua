@@ -1,7 +1,19 @@
 color = {}
 
+-- 主题 token（"@primary" / "@textMuted" …）在这里惰性解析成具体 hex。
+-- 惰性 require 是为了避开 color <-> theme 的循环依赖：theme 构建派生色时
+-- 会调用 color.mix，而普通 hex 不需要加载 theme。
+local function resolve(value)
+	if type(value) == "string" and value:sub(1, 1) == "@" then
+		return require("At.core.theme").get(value)
+	end
+	return value
+end
+
+color.resolve = resolve
+
 function color.hexToRGBA(hex, alpha)
-	hex = hex:gsub("#", "")
+	hex = resolve(hex):gsub("#", "")
 	local r = tonumber("0x" .. hex:sub(1, 2)) / 255 -- 转为 0-1
 	local g = tonumber("0x" .. hex:sub(3, 4)) / 255
 	local b = tonumber("0x" .. hex:sub(5, 6)) / 255
@@ -35,6 +47,8 @@ end
 
 -- 在两个颜色之间插值：t = 0 → hexA，t = 1 → hexB
 function color.mix(hexA, hexB, t)
+	hexA = resolve(hexA)
+	hexB = resolve(hexB)
 	t = t or 0
 	if t <= 0 then
 		return hexA

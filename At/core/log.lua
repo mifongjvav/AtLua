@@ -32,7 +32,7 @@ local state = {
 	-- 文件输出（默认关闭，用 setFile(true) 开启）
 	file = {
 		enabled = false,
-		pattern = "%Y-%m-%d %H:%M:%S.log", -- os.date 格式，按启动时间生成文件名
+		pattern = "%Y-%m-%d_%H-%M-%S.log", -- os.date 格式；不用冒号，Windows 也合法
 		name = nil,
 		absolute = nil,
 		handle = nil,
@@ -215,8 +215,12 @@ local function openFile()
 	local f = state.file
 	local name = os.date(f.pattern)
 	f.name = name
+	f.handle = nil
+	f.viaLove = false
+	f.absolute = name
 	ensureDirectory(name)
 
+	-- 优先写 LÖVE 存档目录（Android 上唯一稳定可写的位置）
 	if love and love.filesystem and love.filesystem.newFile then
 		local ok, file = pcall(love.filesystem.newFile, name, "a")
 		if ok and file then
@@ -226,20 +230,25 @@ local function openFile()
 			f.absolute = okDir and saveDir and (saveDir .. "/" .. name) or name
 			return true
 		end
-	else
-		local handle = io.open(name, "a")
-		if handle then
-			f.handle = handle
-			f.viaLove = false
-			f.absolute = name
-			return true
-		end
+	end
+
+	-- 存档目录只读、文件名被 PhysFS 拒绝或没有 LÖVE 时，退回普通 io。
+	-- 在桌面开发环境里通常就是当前工作目录，至少不会“开了文件输出却什么都没写”。
+	local okIO, handle = pcall(io.open, name, "a")
+	if okIO and handle then
+		f.handle = handle
+		f.viaLove = false
+		local okCwd, cwd = pcall(function()
+			return love and love.filesystem and love.filesystem.getWorkingDirectory and love.filesystem.getWorkingDirectory()
+		end)
+		f.absolute = okCwd and cwd and (cwd .. "/" .. name) or name
+		return true
 	end
 
 	f.enabled = false
 	f.handle = nil
 	-- 打开失败时直接提示（不能用 log 自身，避免递归）
-	print("[At.log] 无法创建日志文件: " .. tostring(name))
+	print("[At.log] 无法创建日志文件: " .. tostring(name) .. "（存档目录和当前目录都不可写）")
 	return false
 end
 
@@ -295,7 +304,7 @@ end
 
 -- 文件名 pattern（os.date 格式）。例如 "%Y-%m-%d_%H-%M-%S.log" 可避开 Windows 的非法字符
 function log.setFilePattern(pattern)
-	state.file.pattern = tostring(pattern or "%Y-%m-%d %H:%M:%S.log")
+	state.file.pattern = tostring(pattern or "%Y-%m-%d_%H-%M-%S.log")
 	if state.file.enabled then
 		log.closeFile()
 		state.file.enabled = true

@@ -20,6 +20,12 @@ local function setStatus(text)
 	end
 end
 
+-- 背景跟随主题的深色槽位；换主题后重新取一次
+local function syncBackground()
+	local r, g, b = At.color.hexToRGBA("@background")
+	love.graphics.setBackgroundColor(r, g, b)
+end
+
 local function refreshState()
 	if not stateLabel then
 		return
@@ -51,8 +57,8 @@ card = At.Panel({
 	gap = 14,
 	padding = 20,
 	radius = 16,
-	background = "#242A34",
-	borderColor = "#39404D",
+	background = "@surface",
+	borderColor = "@border",
 	shadow = false, -- 想要柔和阴影可改成 { { 0, 0, 0, 0.18 }, 6, 12, 0, 4 }
 })
 
@@ -62,7 +68,7 @@ card:add(At.Label({
 	wrap = true,
 	w = "100%",
 	lineHeight = 1.4,
-	color = "#A9B2C2",
+	color = "@textMuted",
 }))
 
 nameInput = At.TextInput({
@@ -124,7 +130,7 @@ card:add(At.Panel({
 card:add(At.Label({
 	text = "开关可以点击切换，也可以按住左右拖动",
 	fontSize = 13,
-	color = "#8F98A8",
+	color = "@textFaint",
 }))
 
 card:add(At.RadioGroup({
@@ -139,7 +145,31 @@ card:add(At.RadioGroup({
 	end,
 }))
 
-volumeLabel = At.Label({ text = "音量：" .. state.volume, fontSize = 15, color = "#A9B2C2" })
+-- 主题色切换：At.theme 改的是全局 token，下面所有默认配色会立即跟着变
+local themeRow = At.Panel({ direction = "row", align = "center", gap = 8 })
+themeRow:add(At.Label({ text = "主题色", fontSize = 13, color = "@textMuted" }))
+for _, preset in ipairs({
+	{ label = "默认", color = "A7DCFF" },
+	{ label = "薄荷", color = "7FE0C4" },
+	{ label = "暖橙", color = "FFC08A" },
+}) do
+	themeRow:add(At.Button({
+		w = 64,
+		h = 30,
+		radius = 8,
+		text = preset.label,
+		color = preset.color,
+		onClick = function()
+			At.theme.set({ color = preset.color })
+			syncBackground()
+			At.log.info("主题色切换为 %s", preset.color)
+			setStatus("主题色：" .. preset.label)
+		end,
+	}))
+end
+card:add(themeRow)
+
+volumeLabel = At.Label({ text = "音量：" .. state.volume, fontSize = 15, color = "@textMuted" })
 card:add(volumeLabel)
 
 card:add(At.Slider({
@@ -162,17 +192,17 @@ card:add(At.Slider({
 	end,
 }))
 
-card:add(At.Label({ text = "确定性进度条（跟随音量）", fontSize = 13, color = "#8F98A8" }))
+card:add(At.Label({ text = "确定性进度条（跟随音量）", fontSize = 13, color = "@textFaint" }))
 volumeProgress = At.ProgressBar({ w = "100%", h = 10, value = state.volume / 100 })
 card:add(volumeProgress)
 
-card:add(At.Label({ text = "不确定性进度条", fontSize = 13, color = "#8F98A8" }))
+card:add(At.Label({ text = "不确定性进度条", fontSize = 13, color = "@textFaint" }))
 card:add(At.LoadingBar({ w = "100%", h = 10, speed = 1.2 }))
 
 local resetBtn = At.Button({
 	w = "48%",
 	text = "重置",
-	color = "#5A6374",
+	color = "@surfaceStrong",
 	onClick = function()
 		state.volume = 60
 		volumeLabel:setText("音量：60")
@@ -184,7 +214,7 @@ local resetBtn = At.Button({
 submitBtn = At.Button({
 	w = "48%",
 	text = "提交",
-	color = "#7FA88F",
+	color = "@primary",
 	onClick = function()
 		At.log.info("点击提交按钮")
 		setStatus(state.nickname ~= "" and ("已提交：" .. state.nickname) or "请先输入昵称")
@@ -206,10 +236,10 @@ card:add(At.Checkbox({
 	end,
 }))
 
-statusLabel = At.Label({ text = "试试点击、拖动、输入", fontSize = 15, color = "#9FB3D3" })
+statusLabel = At.Label({ text = "试试点击、拖动、输入", fontSize = 15, color = "@primary" })
 card:add(statusLabel)
 
-stateLabel = At.Label({ text = "焦点：无", fontSize = 14, color = "#8F98A8" })
+stateLabel = At.Label({ text = "焦点：无", fontSize = 14, color = "@textFaint" })
 card:add(stateLabel)
 
 -- 横向溢出的示例：标签栏比卡片宽，底部滚动条会自动出现
@@ -221,13 +251,13 @@ card:add(At.ScrollView({ w = "100%", h = 46, content = tagRow }))
 card:add(At.Label({
 	text = "标签栏比卡片宽：左右拖动或滚轮查看，底部滚动条自动出现",
 	fontSize = 12,
-	color = "#6E7788",
+	color = "@textFaint",
 }))
 
 card:add(At.Label({
 	text = "点右上角 LOG（或 F1）开关控制台 · C 清空 · F3 背景模糊",
 	fontSize = 13,
-	color = "#6E7788",
+	color = "@textFaint",
 }))
 
 -- ---------- 滚动视口 ----------
@@ -269,7 +299,8 @@ function love.load()
 	end
 
 	At.log.info("演示启动，LÖVE %s", tostring(love.getVersion and love.getVersion() or "?"))
-	love.graphics.setBackgroundColor(At.color.hexToRGBA("#1B1F27"))
+	At.log.info("MSAA: 窗口 %d / 设备上限 %d", At.render.getMSAA(), At.render.getMaxMSAA())
+	love.graphics.setBackgroundColor(At.color.hexToRGBA("@background"))
 end
 
 function love.update(dt)

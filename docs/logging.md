@@ -42,8 +42,8 @@ adb logcat | grep -i love     # 或者不过滤标签，自己 grep
 默认关闭。开启后每条日志按同一格式**追加**写入文件，每行写完立即 `flush`：
 
 ```lua
-At.log.setFile(true)          -- 文件名取自启动时间，默认 "YYYY-MM-DD HH:MM:SS.log"
-At.log.getFileName()          -- "2026-10-18 16:43:40.log"（相对存档目录）
+At.log.setFile(true)          -- 文件名取自启动时间，默认 "YYYY-MM-DD_HH-MM-SS.log"
+At.log.getFileName()          -- "2026-10-18_16-43-40.log"（相对存档目录）
 At.log.getFilePath()          -- 完整路径，便于在日志里打印出来
 At.log.setFile(false)         -- 关闭并 flush
 At.log.closeFile()            -- 同上；建议在 love.quit 里调用
@@ -51,20 +51,23 @@ At.log.closeFile()            -- 同上；建议在 love.quit 里调用
 
 写入位置：
 
-- **LÖVE 项目**走 `love.filesystem`：桌面是存档目录（`love.filesystem.getSaveDirectory()`），
-  Android 是应用存档目录（`.../files/save/` 下）。游戏源码目录是只读的，不能往那里写。
-- **普通 Lua**（没有 `love.filesystem`）退回 `io.open`，写到当前工作目录。
+- **LÖVE 项目**优先走 `love.filesystem`：桌面是存档目录（`love.filesystem.getSaveDirectory()`），
+  Android 是应用存档目录（`.../files/save/` 下）。
+- 如果存档目录不可写（只读容器、受限环境）或文件名被 PhysFS 拒绝，会**自动退回 `io.open`**，
+  写到当前工作目录；用 `At.log.getFilePath()` 查看实际落点。
+- **普通 Lua**（没有 `love.filesystem`）同样走 `io.open`，写到当前工作目录。
+- 两边都失败时才会打印 `[At.log] 无法创建日志文件: ...（存档目录和当前目录都不可写）`。
 
-文件名 pattern 用 `os.date` 语法，默认 `"%Y-%m-%d %H:%M:%S.log"`：
+文件名 pattern 用 `os.date` 语法，默认 `"%Y-%m-%d_%H-%M-%S.log"`（不用冒号，Windows 也合法）：
 
 ```lua
 At.log.setFilePattern("%Y-%m-%d_%H-%M-%S.log")  -- 避开 Windows 的非法字符 ':'
-At.log.setFilePattern("logs/%Y-%m-%d.log")      -- 按天一个文件（LÖVE 会自动建子目录）
+At.log.setFilePattern("logs/%Y-%m-%d.log")      -- 按天一个文件（存档目录下会自动建子目录）
 ```
 
 注意：
 
-- `:` 和空格在 Linux/Android 文件名里合法，**Windows 不允许 `:`**；跨平台请用 `%H-%M-%S`。
+- `:` 和空格在 Linux/Android 文件名里合法，**Windows 不允许 `:`**；默认 pattern 已使用 `_` 和 `-`，自定义时也请避开冒号。
 - 一次运行只打开一个文件；再次 `setFile(true)` 会按当时的时间重新生成文件名。
 - 文件输出与终端镜像、控制台互相独立：`setPrint(false)` 不影响写文件，`clear()` 也不会清空已写入的内容。
 - 每行 `flush` 是为了崩溃时保留现场；正常情况下在 `love.quit` 调 `closeFile()` 收尾。

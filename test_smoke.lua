@@ -3,7 +3,7 @@
 --   lua test_smoke.lua      -- 在项目根目录执行，全部通过会打印 SMOKE OK
 --
 -- 覆盖：组件注册/事件分发、命中与圆角边界、按压会话（拖出/拖回）、
--- 涟漪生成与回收、帧率无关性、旧 API 兼容、演示程序回调接线。
+-- 涟漪生成与回收、帧率无关性、主题 token 与热切换、旧 API 兼容、演示程序回调接线。
 -- 只做逻辑回归，不验证真实渲染效果。不会被打包进 .love。
 package.path = "./?.lua;" .. package.path
 unpack = table.unpack -- 兼容 LÖVE(LuaJIT) 的 unpack，系统 Lua 5.2+ 没有它
@@ -21,6 +21,8 @@ local mouseDown = false
 local textInputRect = nil
 local currentCanvas = nil
 local shiftDown = false
+local canvasCalls = {}
+local windowMSAAValue = 4
 
 local function makeFont(size)
 	return {
@@ -112,10 +114,15 @@ love = {
 		getCanvas = function()
 			return currentCanvas
 		end,
-		newCanvas = function(w, h)
+		newCanvas = function(w, h, settings)
+			canvasCalls[#canvasCalls + 1] = settings
 			return {
 				width = w,
 				height = h,
+				msaa = settings and settings.msaa,
+				getMSAA = function(canvas)
+					return canvas.msaa or 1
+				end,
 				getWidth = function()
 					return w
 				end,
@@ -154,6 +161,9 @@ love = {
 		getHeight = function()
 			return 600
 		end,
+		getSystemLimits = function()
+			return { msaa = 8 }
+		end,
 	},
 	mouse = {
 		getPosition = function()
@@ -161,6 +171,15 @@ love = {
 		end,
 		isDown = function(button)
 			return mouseDown and button == 1
+		end,
+	},
+	window = {
+		getMode = function()
+			return 800, 600, { msaa = windowMSAAValue }
+		end,
+		setMode = function(w, h, flags)
+			windowMSAAValue = flags and flags.msaa or 0
+			return true
 		end,
 	},
 	keyboard = {
@@ -197,6 +216,73 @@ local light = At.color.shade("#808080", 0.1)
 local dark = At.color.shade("#808080", -0.12)
 check(light == "#8D8D8D", "shade 调亮: " .. light)
 check(dark == "#717171", "shade 调暗: " .. dark)
+
+-- ---------- 主题 ----------
+check(At.theme.color == "#A7DCFF", "主题色默认 A7DCFF: " .. At.theme.color)
+check(At.theme.primary == "#A7DCFF", "primary 是 color 的只读别名")
+check(At.theme.black == "#3D3D3D", "黑色默认 3D3D3D: " .. At.theme.black)
+check(At.theme.white == "#FFFFFF", "白色默认 FFFFFF: " .. At.theme.white)
+check(At.theme.get("@primary") == "#A7DCFF", "primary token 解析")
+check(At.theme.get("primary") == "#A7DCFF", "token 可不带 @")
+check(At.theme.get("@theme") == "#A7DCFF", "@theme 是 primary 别名")
+check(At.theme.get("@primaryDark") == At.color.shade("#A7DCFF", -0.82), "primaryDark 是深色主题色")
+check(At.theme.get("@background") == "#3D3D3D", "background 取黑色槽位")
+check(At.theme.get("@text") == "#FFFFFF", "text 取白色槽位")
+check(At.theme.get("@surface") == At.color.mix("#3D3D3D", "#FFFFFF", 0.06), "surface 由基色派生")
+check(At.color.resolve("@textMuted") == At.theme.get("@textMuted"), "color.resolve 解析 token")
+check(At.color.resolve("A7DCFF") == "A7DCFF", "普通 hex 原样返回")
+
+local r, g, b = At.color.hexToRGBA("@primary")
+check(
+	math.abs(r - 167 / 255) < 1e-9 and math.abs(g - 220 / 255) < 1e-9 and math.abs(b - 1) < 1e-9,
+	"token 可用于 hexToRGBA"
+)
+
+-- 组件默认色是 token，改主题后无需重建组件
+local themeBtn = At.Button({ text = "主题", w = 80, h = 32 })
+check(themeBtn.color == "@primary", "按钮默认底色是 @primary")
+check(themeBtn:fillColor() == "#A7DCFF", "按钮默认取当前主题色")
+At.config.theme.color = "00AAFF"
+At.config.apply()
+check(At.theme.color == "#00AAFF", "config.apply 把 theme 配置推给 At.theme")
+At.config.theme.color = "A7DCFF"
+At.config.apply()
+check(At.theme.color == "#A7DCFF", "主题配置复位")
+At.theme.set({ color = "112233" })
+check(At.theme.get("@primary") == "#112233", "set 后主题色更新")
+check(themeBtn:fillColor() == "#112233", "已有组件跟着主题更新")
+check(At.theme.get("@background") == "#3D3D3D", "只改主题色不影响黑色槽位")
+check(At.theme.get("@onPrimary") == "#FFFFFF", "深色主题色自动用白字")
+At.theme.reset()
+check(At.theme.get("@onPrimary") == "#3D3D3D", "浅色主题色自动用深色字")
+At.theme.set({ black = "FFFFFF", white = "3D3D3D" })
+check(At.theme.get("@background") == "#FFFFFF", "浅色主题背景取黑色槽位")
+check(At.theme.get("@text") == "#3D3D3D", "浅色主题文字取白色槽位")
+check(At.theme.get("@onPrimary") == "#3D3D3D", "浅色主题下主题色仍用深色字")
+At.theme.reset()
+check(themeBtn:fillColor() == "#A7DCFF", "reset 后恢复默认主题色")
+check(At.theme.get("@surface") ~= At.theme.get("@surfaceStrong"), "不同派生 token 有区分度")
+check(At.theme.foreground("@primary") == "#3D3D3D", "浅色主题色上的前景是深色")
+check(At.theme.foreground("@surfaceStrong") == "#FFFFFF", "深色表面上的前景是白色")
+check(not pcall(function()
+	At.theme.set({ color = "not-a-color" })
+end), "非法主题色会报错")
+At.theme.reset()
+
+-- ---------- 渲染 / MSAA ----------
+check(At.render.getMSAA() == 4, "窗口默认 MSAA 为 4")
+check(At.render.getMaxMSAA() == 8, "设备最大 MSAA 为 8")
+At.config.render.msaa = 2
+At.config.apply()
+check(At.render.getMSAA() == 2, "config.render.msaa 可以改 MSAA")
+check(windowMSAAValue == 2, "setMode 收到新的 msaa")
+At.config.render.msaa = 4
+At.config.apply()
+check(At.render.getMSAA() == 4, "MSAA 配置可复位")
+check(At.render.setMSAA(99) == 8, "超过上限的 MSAA 被夹到设备上限")
+At.render.setMSAA(4)
+check(At.render.getMSAA() == 4, "setMSAA 可恢复")
+themeBtn:destroy()
 
 -- ---------- 按钮基本行为 ----------
 local clicks, presses, releases = 0, 0, 0
@@ -542,6 +628,37 @@ mouseX, mouseY = 20, 20
 At.mousepressed(20, 20, 1)
 ti:draw()
 check(love.graphics.getScissor() == nil, "绘制后 scissor 已恢复")
+
+-- 光标定位、中间插入与删除
+ti:destroy()
+At.registry.clear()
+local caretTi = At.TextInput({ x = 100, y = 100, w = 200, h = 40, text = "abcd", fontSize = 16 })
+mouseX, mouseY = 125, 110
+check(At.mousepressed(125, 110, 1) == true, "点击输入框")
+At.mousereleased(125, 110, 1)
+check(caretTi:getCaret() == 2, "点击字符中间定位光标: " .. caretTi:getCaret())
+At.keypressed("backspace")
+check(caretTi:getText() == "acd" and caretTi:getCaret() == 1, "中间退格删除光标前字符")
+At.textinput("X")
+check(caretTi:getText() == "aXcd" and caretTi:getCaret() == 2, "在光标处插入字符")
+At.keypressed("delete")
+check(caretTi:getText() == "aXd" and caretTi:getCaret() == 2, "delete 删除光标后字符")
+At.keypressed("home")
+check(caretTi:getCaret() == 0, "home 移到开头")
+At.keypressed("right")
+check(caretTi:getCaret() == 1, "right 右移一位")
+At.keypressed("end")
+check(caretTi:getCaret() == 3, "end 移到末尾")
+At.keypressed("left")
+check(caretTi:getCaret() == 2, "left 左移一位")
+caretTi:setText("abcdefghijklmnopqrstuvwxyz", true)
+caretTi:setCaret(26)
+caretTi:draw()
+check(caretTi._scrollX > 0, "长文本下光标保持在可视区")
+caretTi:setCaret(0)
+check(caretTi:getCaret() == 0, "setCaret 可设置光标位置")
+check(At.input.sub("你好abc", 2, 3) == "好a", "input.sub 按字符取子串")
+caretTi:destroy()
 
 -- ---------- Switch ----------
 At.registry.clear()
@@ -918,7 +1035,24 @@ view:update(1 / 60)
 At.mousereleased(mouseX, mouseY, 1)
 check(view.scrollY > 0, "点轨道跳转: " .. view.scrollY)
 
--- ---------- 阴影层数归一化 ----------
+-- ---------- 阴影 ----------
+check(At.shadow.getAlgorithm() == "glsl", "阴影默认使用 GLSL")
+local shadowBtn = At.Button({ text = "S" })
+local shadowDefaults = At.shadow.defaults()
+check(shadowBtn.shadowArgs == nil, "默认阴影参数来自 config.shadow")
+check(shadowDefaults.color == "@primaryDark", "默认阴影用深色主题色")
+check(shadowDefaults.spread == 3 and shadowDefaults.offsetX == 1 and shadowDefaults.offsetY == 2, "默认阴影更小")
+shadowBtn:destroy()
+At.config.shadow.spread = 2
+At.config.apply()
+check(At.shadow.defaults().spread == 2, "config.apply 可覆盖阴影大小")
+At.config.shadow.spread = 3
+At.config.apply()
+check(not pcall(At.shadow.setAlgorithm, "nope"), "未知阴影算法报错")
+At.config.shadow.algorithm = "legacy"
+At.config.apply()
+check(At.shadow.getAlgorithm() == "legacy", "config 可切到旧式阴影")
+
 local alphas = {}
 local realSetColor = love.graphics.setColor
 love.graphics.setColor = function(r, g, b, a)
@@ -928,13 +1062,37 @@ end
 At.shadow.shadow(0, 0, 100, 50, 6, { 0, 0, 0, 0.25 }, 6, 20, 0, 4)
 love.graphics.setColor = realSetColor
 
-check(#alphas == 21, "阴影按 layers+1 层绘制: " .. #alphas)
+check(#alphas == 21, "旧式阴影按 layers+1 层绘制: " .. #alphas)
 local alphaSum = 0
 for _, a in ipairs(alphas) do
 	alphaSum = alphaSum + a
 end
-check(alphaSum < 0.6, "阴影透明度按层数归一化，不会叠成黑底: " .. alphaSum)
-check(alphaSum > 0.1, "阴影仍然可见: " .. alphaSum)
+check(alphaSum < 0.6, "旧式阴影透明度按层数归一化: " .. alphaSum)
+check(alphaSum > 0.1, "旧式阴影仍然可见: " .. alphaSum)
+
+At.shadow.setAlgorithm("glsl")
+local drawBefore = draws.draw
+At.shadow.shadow(0, 0, 100, 50, 6, { 0, 0, 0, 0.25 }, 6, 20, 0, 4)
+check(draws.draw == drawBefore + 1, "GLSL 阴影只画一次")
+
+-- shader 不可用时自动回退旧实现
+local realNewShader = love.graphics.newShader
+love.graphics.newShader = nil
+At.shadow.reset()
+alphas = {}
+love.graphics.setColor = function(r, g, b, a)
+	alphas[#alphas + 1] = a
+	realSetColor(r, g, b, a)
+end
+At.shadow.shadow(0, 0, 100, 50, 6, { 0, 0, 0, 0.25 }, 6, 20, 0, 4)
+love.graphics.setColor = realSetColor
+love.graphics.newShader = realNewShader
+At.shadow.reset()
+check(#alphas == 21, "GLSL 不可用时回退旧式阴影: " .. #alphas)
+
+At.config.shadow.algorithm = "glsl"
+At.config.apply()
+check(At.shadow.getAlgorithm() == "glsl", "阴影算法可复位")
 
 -- 滚动条悬停变宽
 view:setScroll(0)
@@ -1196,6 +1354,23 @@ check(fileContains("docs/blur.md", "setAlgorithm"), "docs/blur.md 缺少 setAlgo
 check(fileContains("docs/blur.md", "beginFrame"), "docs/blur.md 缺少 beginFrame")
 check(fileContains("docs/README.md", "At.blur"), "docs/README.md 缺少模糊说明")
 check(fileContains("At/config.lua", "blur"), "At/config.lua 缺少 blur 配置")
+check(fileContains("At/config.lua", "theme"), "At/config.lua 缺少 theme 配置")
+check(fileContains("docs/theme.md", "A7DCFF"), "docs/theme.md 缺少默认主题色")
+check(fileContains("docs/theme.md", "@primary"), "docs/theme.md 缺少 token 说明")
+check(fileContains("docs/theme.md", "At.theme.set"), "docs/theme.md 缺少运行时切换说明")
+check(fileContains("At/config.lua", "msaa"), "At/config.lua 缺少 msaa 配置")
+check(fileContains("conf.lua", "render.msaa"), "conf.lua 没有从 At/config 读取 msaa")
+check(fileContains("At/config.lua", "shadow"), "At/config.lua 缺少 shadow 配置")
+check(fileContains("docs/shadow.md", "At.shadow.setAlgorithm"), "docs/shadow.md 缺少算法切换说明")
+check(fileContains("docs/shadow.md", "glsl"), "docs/shadow.md 缺少 glsl 说明")
+check(fileContains("docs/README.md", "At.shadow"), "docs/README.md 缺少阴影说明")
+check(fileContains("docs/README.md", "config.render.msaa"), "docs/README.md 缺少 MSAA 配置说明")
+check(fileContains("AGENTS.md", "At.render"), "AGENTS.md 缺少渲染模块说明")
+check(fileContains("docs/README.md", "MSAA"), "docs/README.md 缺少抗锯齿说明")
+check(fileContains("docs/blur.md", "MSAA"), "docs/blur.md 缺少 MSAA 说明")
+check(fileContains("docs/README.md", "At.theme"), "docs/README.md 缺少主题说明")
+check(fileContains("docs/components.md", "@primary"), "docs/components.md 缺少主题 token 默认值")
+check(fileContains("AGENTS.md", "At.theme"), "AGENTS.md 缺少主题说明")
 check(fileContains("docs/README.md", "At.config"), "docs/README.md 缺少配置说明")
 check(fileContains("AGENTS.md", "At/config.lua"), "AGENTS.md 缺少配置说明")
 check(fileContains("AGENTS.md", "文档规范"), "AGENTS.md 缺少文档规范章节")
@@ -1225,7 +1400,11 @@ check(At.blur.getAlgorithm() == customAlgorithm, "可以传自定义函数")
 At.blur.setAlgorithm("downscale")
 
 At.blur.resetStats()
+canvasCalls = {}
 check(At.blur.beginFrame() == true, "beginFrame 生效")
+check(canvasCalls[1] and canvasCalls[1].msaa == 4, "模糊场景画布跟随窗口 MSAA")
+check(At.blur.getMSAA() == 4, "getMSAA 返回当前实际采样数")
+check(At.blur.getMaxMSAA() == 8, "getMaxMSAA 返回设备上限")
 local translucentPanel = At.Panel({
 	x = 10,
 	y = 10,
@@ -1381,15 +1560,37 @@ os.remove(logFileName)
 check(At.log.setFile(false) == false, "可以关闭文件输出")
 check(At.log.isFileEnabled() == false, "关闭后不再写入")
 
+-- love.filesystem 不可写时退回 io.open（当前工作目录）
+local oldFilesystem = love.filesystem
+love.filesystem = {
+	newFile = function()
+		return nil
+	end,
+	getSaveDirectory = function()
+		return "/readonly"
+	end,
+}
+At.log.setFilePattern("test_atlog_fallback_%Y%m%d_%H%M%S.log")
+check(At.log.setFile(true) == true, "存档目录不可写时退回 io")
+local fallbackName = At.log.getFileName()
+At.log.info("fallback line")
+At.log.closeFile()
+love.filesystem = oldFilesystem
+local fallbackHandle = assert(io.open(fallbackName, "r"))
+local fallbackContent = fallbackHandle:read("*a")
+fallbackHandle:close()
+check(fallbackContent:find("fallback line", 1, true) ~= nil, "io fallback 写入成功")
+os.remove(fallbackName)
+
 At.log.setFilePattern(nil)
-check(At.log.getFilePattern() == "%Y-%m-%d %H:%M:%S.log", "默认文件名格式")
+check(At.log.getFilePattern() == "%Y-%m-%d_%H-%M-%S.log", "默认文件名格式")
 local sampleName = os.date(At.log.getFilePattern())
 check(
-	sampleName:match("^%d%d%d%d%-%d%d%-%d%d %d%d:%d%d:%d%d%.log$") ~= nil,
-	"默认文件名形如 2026-10-18 16:43:40.log: " .. sampleName
+	sampleName:match("^%d%d%d%d%-%d%d%-%d%d_%d%d%-%d%d%-%d%d%.log$") ~= nil,
+	"默认文件名形如 2026-10-18_16-43-40.log: " .. sampleName
 )
 
-At.log.setFilePattern("%Y-%m-%d %H:%M:%S.log")
+At.log.setFilePattern("%Y-%m-%d_%H-%M-%S.log")
 At.log.setLevel(savedLevel)
 At.log.clear()
 

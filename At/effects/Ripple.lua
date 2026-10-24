@@ -27,6 +27,7 @@ local FALLBACK_DT = 1 / 60
 local function newEmitter(opts)
 	local self = setmetatable({
 		enabled = true,
+		colorHex = "#FFFFFF",
 		color = { 1, 1, 1 },
 		ripples = {},
 	}, proto)
@@ -53,7 +54,8 @@ end
 
 -- alpha 沿用库的对外约定：0-255
 function proto:setColor(hex, alpha)
-	local r, g, b = color.hexToRGBA(hex, alpha or 255)
+	self.colorHex = hex or "#FFFFFF"
+	local r, g, b = color.hexToRGBA(self.colorHex, alpha or 255)
 	self.color = { r, g, b }
 end
 
@@ -140,7 +142,8 @@ function proto:update(dt)
 end
 
 function proto:draw()
-	local c = self.color
+	-- 每帧解析 hex，@theme token 换主题后旧涟漪也会跟着变色
+	local c = { color.hexToRGBA(self.colorHex) }
 	for i = 1, #self.ripples do
 		local r = self.ripples[i]
 		local s = r.scale

@@ -39,14 +39,14 @@ local DEFAULTS = {
 	scrollbarGrowSpeed = 16, -- 已弃用：滚动条宽度改用弹簧
 	scrollbarSpringStiffness = 700,
 	scrollbarSpringDamping = 42,
-	scrollbarColor = "#3A4150",
-	scrollbarThumbColor = "#9FB3D3",
+	scrollbarColor = "@track",
+	scrollbarThumbColor = "@primary",
 	scrollbarHitWidth = 16, -- 滚动条的可拖拽宽度（比视觉宽度大，方便手指）
 	scrollbarMargin = 2,
 	wheelStep = 44,
 	-- 触顶/触底：拖到边界后可以再拉出一点（橡皮筋），松开弹回，并在边缘泛光
 	edgeEffect = true,
-	edgeGlowColor = "#9FB3D3",
+	edgeGlowColor = "@primary",
 	edgeGlowSize = 28,
 	edgeRadius = nil, -- 光带圆角；缺省取内容容器（大卡片）的 radius，再退回 ScrollView 的 radius
 	overscrollMax = 70, -- 最多能拉出多少像素

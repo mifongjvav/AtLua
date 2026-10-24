@@ -2,7 +2,7 @@
 --
 --   local btn = At.Button{
 --       x = 60, y = 60, w = 180, h = 48, radius = 12,
---       color = "#9FB3D3", text = "确定",
+--       color = "@primary", text = "确定",
 --       onClick = function(self) print("click", self.text) end,
 --   }
 --
@@ -13,6 +13,7 @@
 
 local Component = require("At.core.component")
 local color = require("At.core.color")
+local theme = require("At.core.theme")
 local shadow = require("At.core.shadow")
 local pixel = require("At.core.pixel")
 local blur = require("At.effects.blur")
@@ -28,17 +29,17 @@ local DEFAULTS = {
 	h = 44,
 	radius = 10,
 
-	color = "#9FB3D3",
+	color = "@primary",
 	alpha = 255,
 	hoverColor = nil, -- 缺省由 color.shade 自动算
 	pressedColor = nil,
 
 	shadow = true,
-	shadowArgs = nil, -- {颜色RGBA表, radius, layers, offsetX, offsetY}
+	shadowArgs = nil, -- {颜色, spread, layers, offsetX, offsetY}；nil 用 config.shadow
 
-	ripple = true, -- true / false / { color = "#FFFFFF", alpha = 255 }
+	ripple = true, -- true / false / { color = "@white", alpha = 255 }
 	text = nil,
-	textColor = "#FFFFFF",
+	textColor = nil, -- 缺省按底色对比度自动选 @text / @onPrimary
 	fontSize = nil, -- 缺省沿用当前 love.graphics 字体
 	paddingX = 16, -- 仅用于 auto 尺寸
 	paddingY = 10,
@@ -55,20 +56,17 @@ local function normalizeStyle(self)
 		self.shadowArgs = self.shadow
 		self.shadow = true
 	end
-	if self.shadow and not self.shadowArgs then
-		self.shadowArgs = { { 0, 0, 0, 0.2 }, 5, 20, 2, 3 }
-	end
 
 	if type(self.ripple) == "table" then
 		local opts = self.ripple
 		self.ripple = true
 		self._ripple = Ripple.new({
 			enabled = opts.enabled,
-			color = opts.color or "#FFFFFF",
+			color = opts.color or "@white",
 			alpha = opts.alpha,
 		})
 	elseif self.ripple then
-		self._ripple = Ripple.new({ color = "#FFFFFF" })
+		self._ripple = Ripple.new({ color = "@white" })
 	else
 		self._ripple = nil
 	end
@@ -123,7 +121,7 @@ end
 function proto:setRippleEnabled(enabled)
 	if not self._ripple then
 		if enabled then
-			self._ripple = Ripple.new({ color = "#FFFFFF" })
+			self._ripple = Ripple.new({ color = "@white" })
 		end
 		return self
 	end
@@ -142,15 +140,15 @@ end
 -- 底色优先级：按下 > 悬停 > 常态；禁用时回到底色
 function proto:fillColor()
 	if not self.enabled then
-		return self.color
+		return color.resolve(self.color)
 	end
 	if self._pressed and self._hover then
-		return self.pressedColor or color.shade(self.color, -0.12)
+		return self.pressedColor and color.resolve(self.pressedColor) or color.shade(self.color, -0.12)
 	end
 	if self._hover then
-		return self.hoverColor or color.shade(self.color, 0.10)
+		return self.hoverColor and color.resolve(self.hoverColor) or color.shade(self.color, 0.10)
 	end
-	return self.color
+	return color.resolve(self.color)
 end
 
 function proto:fillAlpha()
@@ -169,7 +167,11 @@ function proto:_draw()
 	r = { x = x, y = y, w = w, h = h, radius = r.radius }
 
 	if self.shadow then
-		shadow.shadow(x, y, w, h, r.radius, unpack(self.shadowArgs))
+		if self.shadowArgs then
+			shadow.shadow(x, y, w, h, r.radius, unpack(self.shadowArgs))
+		else
+			shadow.shadow(x, y, w, h, r.radius)
+		end
 	end
 
 	if self:fillAlpha() < 255 then
@@ -185,7 +187,7 @@ function proto:_draw()
 		local pressT = self._pressT and self._pressT.value or 0
 		local glow = math.min(0.13, hoverT * 0.05 + pressT * 0.08)
 		if glow > 0.004 then
-			color.setColor("#FFFFFF", math.floor(self:fillAlpha() * glow))
+			color.setColor("@white", math.floor(self:fillAlpha() * glow))
 			love.graphics.rectangle("fill", x, y, w, h, r.radius)
 		end
 	end
@@ -219,7 +221,7 @@ function proto:_drawText(r)
 	local textW = f:getWidth(text)
 	local textH = f:getHeight()
 
-	color.setColor(self.textColor, self:fillAlpha())
+	color.setColor(self.textColor or theme.foreground(self:fillColor()), self:fillAlpha())
 	love.graphics.print(text, math.floor(r.x + (r.w - textW) / 2), math.floor(r.y + (r.h - textH) / 2))
 end
 

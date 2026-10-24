@@ -20,8 +20,8 @@ local DEFAULTS = {
 	radius = nil, -- 缺省取高度的一半（胶囊形）
 
 	value = 0, -- 0..1
-	trackColor = "#4A5160",
-	fillColor = "#9FB3D3",
+	trackColor = "@track",
+	fillColor = "@primary",
 	alpha = 255,
 
 	animate = true,

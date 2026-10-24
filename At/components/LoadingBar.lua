@@ -20,8 +20,8 @@ local DEFAULTS = {
 	h = 12,
 	radius = nil, -- 缺省取高度的一半（胶囊形）
 
-	trackColor = "#4A5160",
-	fillColor = "#9FB3D3",
+	trackColor = "@track",
+	fillColor = "@primary",
 	alpha = 255,
 
 	speed = 1.1, -- 每秒跑几个来回

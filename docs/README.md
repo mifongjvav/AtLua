@@ -38,7 +38,7 @@ function love.load()
     card = At.Panel{
         x = 40, y = 40, w = 320, h = "auto",
         gap = 12, padding = 16, radius = 14,
-        background = "#242A34",
+        background = "@surface",
         children = {
             At.Label{ text = "示例" },
             nameInput,
@@ -84,6 +84,13 @@ end
 集中在 [`At/config.lua`](../At/config.lua)，改默认值或运行时调整后调用 `At.config.apply()`：
 
 ```lua
+At.config.theme.color = "7FE0C4"       -- 主题色，派生所有组件默认配色
+At.config.render.msaa = 4              -- 抗锯齿采样数（0 关闭）
+At.config.shadow.algorithm = "glsl"    -- glsl / legacy / none
+At.config.shadow.color = "@primaryDark" -- 阴影颜色
+At.config.shadow.spread = 3            -- 阴影大小
+At.config.shadow.offsetX = 1
+At.config.shadow.offsetY = 2
 At.config.blur.enabled = true          -- 背景模糊（毛玻璃）
 At.config.blur.algorithm = "downscale"
 At.config.log.level = "debug"          -- 日志等级
@@ -94,11 +101,29 @@ At.config.apply()
 
 | 配置段 | 字段 |
 | --- | --- |
+| `theme` | `color` / `black` / `white` |
+| `render` | `msaa` |
+| `shadow` | `algorithm`（`glsl` / `legacy` / `none`）、`color`、`alpha`、`spread`、`layers`、`offsetX`、`offsetY` |
 | `blur` | `enabled` / `algorithm` / `strength` |
 | `log` | `level` / `print` / `maxEntries` / `file` / `filePattern` |
 | `font` | `size` / `main` / `emoji` |
 
 `At.lua` 启动时会自动 `apply()` 一次；之后改 `At.config` 需要再调 `apply()`。
+
+### 主题色
+
+默认主题色是 `#A7DCFF`、黑色 `#3D3D3D`、白色 `#FFFFFF`。组件的默认配色都是 `@` 开头的主题 token（如 `@primary`、`@text`、`@surface`），
+绘制时解析，所以运行时改主题会立即影响已有组件；`At.Panel` 的 `background` / `borderColor`
+默认仍是 `nil`（透明容器），需要卡片底色时显式传 `@surface`。
+
+```lua
+At.theme.set({ color = "7FE0C4" })   -- 换主题色，不需要重建组件
+At.Label{ text = "提示", color = "@textMuted" }
+At.Panel{ background = "@surface", borderColor = "@border" }
+```
+
+token 列表、默认派生色、`At.theme.get` / `At.theme.set` / `At.theme.reset` 与浅色主题做法
+见 [theme.md](theme.md)。显式传 `"#RRGGBB"` 的组件不跟随主题。
 
 ## 组件一览
 
@@ -107,7 +132,7 @@ At.config.apply()
 | `At.Panel` | CSS 子集式布局容器，可做卡片背景 | [components.md#at-panel](components.md#at-panel) |
 | `At.Label` | 文字标签，支持换行与对齐 | [components.md#at-label](components.md#at-label) |
 | `At.Button` | 带状态、涟漪、阴影与回调的按钮 | [components.md#at-button](components.md#at-button) |
-| `At.TextInput` | 单行输入框，支持密码、回车提交、Esc 失焦 | [components.md#at-textinput](components.md#at-textinput) |
+| `At.TextInput` | 单行输入框：点击/拖动定位光标、方向键、密码、回车提交、Esc 失焦 | [components.md#at-textinput](components.md#at-textinput) |
 | `At.Switch` | 带过渡动画的开关 | [components.md#at-switch](components.md#at-switch) |
 | `At.Checkbox` | 多选框，点击整行切换 | [components.md#at-checkbox](components.md#at-checkbox) |
 | `At.RadioGroup` | 单选组，`value` 是 1 基下标 | [components.md#at-radiogroup](components.md#at-radiogroup) |
@@ -137,7 +162,7 @@ function love.update(dt) s:update(dt) end   -- 之后读 s.value（0..1，可能
 `At.motion` 还提供 `damp(current, target, speed, dt)`、`easeIn/easeOut/easeInOut(t)`；弹簧内部按固定子步积分，掉帧也不会发散。
 
 布局规则见 [layout.md](layout.md)，每个组件的完整属性/方法/回调见 [components.md](components.md)，
-日志与浮动控制台见 [logging.md](logging.md)，背景模糊（毛玻璃）见 [blur.md](blur.md)。
+主题色与 token 见 [theme.md](theme.md)，日志与浮动控制台见 [logging.md](logging.md)，阴影算法见 [shadow.md](shadow.md)，背景模糊（毛玻璃）见 [blur.md](blur.md)。
 
 ## 事件模型
 
@@ -161,6 +186,8 @@ At.clearFocus()                 -- 主动清空焦点
 ## 约定
 
 - **颜色 alpha 是 0–255**，不是 0–1。内部会转成 LÖVE 需要的 0–1；对外始终传 0–255。
+- **颜色默认值可以是主题 token**：`"@primary"`、`"@text"` 这类字符串会在绘制时由
+  `At.color` 解析成 hex；普通 `"#RRGGBB"` 仍然有效。token 见 [theme.md](theme.md)。
 - **坐标是左上角 + 宽高**：几何参数统一为 `x, y, w, h, radius`，`x/y` 指组件左上角，不是中心。
 - **绘制位置对齐整数像素**：布局算出的坐标、`ScrollView` 的滚动量、文字位置都会四舍五入到整数（`At.pixel.round`），这样文字不虚、1px 边框不毛。需要亚像素动画时请自己在绘制前处理。
 - **模块命名沿用现状**：大写开头的是 `At`、`SDF`、`Ripple`、`Button`、`Panel`、`Label`、`TextInput`、`Switch`、`Checkbox`、`RadioGroup`、`Slider`、`ScrollView`、`Component`；小写的是 `color`、`shadow`、`input`、`font`、`layout`、`registry`。
@@ -197,15 +224,50 @@ At.clearFocus()                 -- 主动清空焦点
 
 **卡片/按钮底部有一圈发黑的光晕？**
 
-旧版 `shadow` 把多层半透明黑矩形直接叠加（20 层各约 7.5%），累积后接近 80% 不透明，看起来就是黑底。现在已经按层数归一化：`shadowArgs` 里颜色的 alpha 即整体最大不透明度。确实不想要阴影时把它设为 `shadow = false`。
+旧版 `shadow` 把多层半透明黑矩形直接叠加（20 层各约 7.5%），累积后接近 80% 不透明，看起来就是黑底。
+现在默认改用 GLSL SDF 阴影（一次绘制），旧的“多层缩放矩形”也保留：`At.config.shadow.algorithm = "glsl" / "legacy" / "none"`。
+无论哪种算法，`shadowArgs` 里颜色的 alpha 都是整体最大不透明度（0–1）。只关闭某个组件时用它自己的 `shadow = false`；运行时切换用 `At.shadow.setAlgorithm("glsl")` / `At.shadow.setAlgorithm("legacy")`，详见 [shadow.md](shadow.md)。
 
 **Android 上看不到日志 / 控制台？**
 
-Android 没有终端窗口，`At.log` 默认会把日志 `print` 到 **logcat**（`adb logcat -s love`），也可以用手机上的 logcat 阅读器。想把日志留在设备上就开文件输出：`At.log.setFile(true)`，文件在应用存档目录里（路径见 `At.log.getFilePath()`，Android 上是 `.../files/save/YYYY-MM-DD HH:MM:SS.log`）。浮动控制台默认隐藏，但右上角有个 `LOG` 标签，点它就能打开（移动端没有 `F1`）；打开后点标题栏的 `C` 清空、`×` 关闭。
+Android 没有终端窗口，`At.log` 默认会把日志 `print` 到 **logcat**（`adb logcat -s love`），也可以用手机上的 logcat 阅读器。想把日志留在设备上就开文件输出：`At.log.setFile(true)`，文件在应用存档目录里（路径见 `At.log.getFilePath()`，Android 上是 `.../files/save/YYYY-MM-DD_HH-MM-SS.log`）。浮动控制台默认隐藏，但右上角有个 `LOG` 标签，点它就能打开（移动端没有 `F1`）；打开后点标题栏的 `C` 清空、`×` 关闭。
 
 **半透明组件没有毛玻璃效果？**
 
 需要同时满足：`At.blur.setEnabled(true)`，并且绘制包在 `At.blur.beginFrame()` / `At.blur.endFrame()` 之间（否则拿不到背景快照）；组件背景的 `alpha` 必须小于 255（控制台默认 205，Panel/输入框/按钮要把 alpha 调低）。细节见 [blur.md](blur.md)。
+
+**圆角、圆形或 1px 边框边缘有锯齿？**
+
+在 [`At/config.lua`](../At/config.lua) 里改 `render.msaa`，默认 4，设为 0 关闭：
+
+```lua
+At.config.render.msaa = 4
+At.config.apply()          -- At.lua 启动时已自动调用一次
+```
+
+`At.config.apply()` 会调用 `At.render.setMSAA()` 重建窗口后缓冲；设备不支持请求值时
+LÖVE 会尽量使用支持的采样数，`At.render.getMSAA()` 返回实际值。`At.blur` 的内部
+scene canvas 也会读取同一个值创建同样采样的画布，否则画面先被画进非 MSAA canvas，
+窗口开再高也会重新出现锯齿。
+
+查实际值：
+
+```lua
+print("窗口 MSAA:", At.render.getMSAA())     -- 实际生效的采样数
+print("设备上限:", At.render.getMaxMSAA())
+print("模糊画布:", At.blur.getMSAA())        -- 已创建时是 canvas:getMSAA() 的真实值
+```
+
+另外组件绘制前会把坐标对齐整数像素，这是**故意**的：配合 MSAA 能得到清晰又不毛的 1px 边框；
+不要为了"看起来更平滑"而把坐标改成小数。
+
+**启动时会闪一下黑窗口？**
+
+LÖVE 会先创建窗口、再执行 `main.lua`。如果等到 `At.config.apply()` 才调用 `love.window.setMode()`
+去应用 MSAA，窗口会重建一次，表现就是开屏黑闪。仓库根目录的 [`conf.lua`](../conf.lua) 在
+**创建窗口之前** `require("At.config")` 并设置 `t.window.msaa`，所以默认启动不会重建窗口。
+把这段 conf 复制到你自己的项目即可；如果已有 `conf.lua`，把读取 `At.config` 的那几行合并进去。
+之后运行时再改 `At.config.render.msaa` 仍然会重建窗口，这是 MSAA 本身的限制。
 
 **为什么数字和空格看起来特别宽？**
 

@@ -17,9 +17,9 @@ local DEFAULTS = {
 	h = 28,
 	radius = nil, -- 缺省取高度的一半（胶囊形）
 	value = false,
-	color = "#4A5160", -- 关闭时的轨道色
-	onColor = "#7FA88F", -- 打开时的轨道色
-	knobColor = "#F2F5FA",
+	color = "@track", -- 关闭时的轨道色
+	onColor = "@primary", -- 打开时的轨道色
+	knobColor = "@knob",
 	knobInset = 3,
 	alpha = 255,
 	-- 弹簧参数：越大越硬/越快；damping 越大越不弹

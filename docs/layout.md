@@ -162,7 +162,7 @@ local At = require("At.At")
 local card = At.Panel{
     x = 40, y = 40, w = 360, h = "auto",
     direction = "column", gap = 12, padding = 16,
-    radius = 14, background = "#242A34",
+    radius = 14, background = "@surface",
     children = {
         At.Label{ text = "登录" },
         At.TextInput{ w = "100%", placeholder = "用户名" },
@@ -182,7 +182,7 @@ local At = require("At.At")
 local toolbar = At.Panel{
     x = 20, y = 20, w = 600, h = 56,
     direction = "row", align = "center", gap = 8, padding = 8,
-    background = "#242A34",
+    background = "@surface",
     children = {
         At.Button{ w = 80, text = "新建" },
         At.Label{ text = "标题", grow = 1, align = "center" },
@@ -201,7 +201,7 @@ local At = require("At.At")
 local panel = At.Panel{
     x = 40, y = 40, w = 400, h = 200,
     direction = "column", align = "center", justify = "center",
-    padding = 16, background = "#242A34",
+    padding = 16, background = "@surface",
     children = {
         At.Button{ w = 160, text = "开始" },
     },
