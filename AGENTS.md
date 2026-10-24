@@ -1,6 +1,6 @@
 # AGENTS.md
 
-给在本仓库中工作的 AI 编码代理（以及人类协作者）的说明。**改代码前先读第 4、6、7 节**；**写/改文档前先读第 10 节**。
+给在本仓库中工作的 AI 编码代理（以及人类协作者）的说明。**改代码前先读第 4、6、7 节**；**写/改文档前先读第 10 节，写完 Markdown 必须跑 `prettier --write .`**。
 
 ## 1. 项目是什么
 
@@ -29,8 +29,11 @@ love .
 # 逻辑回归测试（不需要 LÖVE；必须在项目根目录执行）
 lua test_smoke.lua
 
-# 格式化（提交前必须跑；配置在 stylua.toml：tab 缩进、列宽 120）
+# Lua 格式化（提交前必须跑；配置在 stylua.toml：tab 缩进、列宽 120）
 stylua .
+
+# Markdown 格式化（写完任何 .md 后必须跑；Prettier 3）
+prettier --write .
 
 # 语法检查（全部文件必须通过）
 for f in conf.lua main.lua At/At.lua At/config.lua At/core/*.lua At/components/*.lua At/effects/*.lua test_smoke.lua; do luac -p "$f" || echo "FAIL $f"; done
@@ -219,6 +222,7 @@ At.Panel{
 - **第三方资源必须登记许可证**：许可证全文放 `LICENSES/`（`.txt`，会随包分发），总览写入 `THIRD_PARTY_NOTICES.md`；不得删除资源内部的版权/许可元数据（例如字体 `name` 表）。
 - **不要从 `pack.sh` 排除 `LICENSE` 与 `LICENSES/`**：OFL 要求随字体一起分发版权声明和许可全文。
 - 改对外 API / 新组件 / 布局语义 → **同步写文档（第 10 节）** 并在 `test_smoke.lua` 补断言。
+- **写完 Markdown 必须跑 `prettier --write .`**：改完 `AGENTS.md`、`README.md`、`docs/*.md` 等任意 Markdown 后都要执行，提交前检查 diff，确认它只调整了表格/换行而没有改坏代码块、链接或 `*.md` / `test_*.lua` 这类通配符。Prettier 3 通过 `pnpm` 全局安装时命令就是 `prettier`。
 - **完成改动必须提交**：验证通过后立即 `git add -A` + `git commit`；不要把改完的代码/文档留在工作区。提交前确认没有把 `*.love`、日志、截图、缓存等产物加进去；只有用户明确要求时才 `git push`。
 
 ## 7. 已知限制与陷阱
@@ -278,6 +282,7 @@ At.Panel{
 - [ ] 日志改动覆盖等级过滤、格式（字符串与函数）、缓冲裁剪；控制台改动覆盖显隐、拖动、滚动、开关动画。
 - [ ] 动画改动模拟多帧 `At.update(1/60)` 再断言（不能改完目标就断言最终值），并覆盖 `animate = false` 的立即落位。
 - [ ] 提交前跑过 `stylua .`，且 `stylua --check .` 通过。
+- [ ] 改了任意 `.md` 后跑过 `prettier --write .`，并检查 Markdown diff（表格/换行/代码块/链接没有被误改）。
 - [ ] 改了目录/资源后跑 `./pack.sh`，并 `unzip -Z1 AtLua.love` 抽查（不应出现 `docs/`、`*.md`、`test_*.lua`；**应包含 LICENSE 与 LICENSES/**）。
 - [ ] 新增/替换字体或其它第三方资源时，`LICENSES/` 与 `THIRD_PARTY_NOTICES.md` 已更新，且版权信息未被删除。
 - [ ] **改动已完成：`git add -A` 并 `git commit`**；工作区没有未提交的源码/文档改动，也没有 `*.love`、日志、截图等产物。
@@ -292,6 +297,7 @@ At.Panel{
 - 不要在未手动运行的情况下声称 UI/视觉效果正常——测试只背书逻辑。
 - 不要把 `docs/` 的内容整段抄进本文件：这里写约束，文档写用法。
 - 不要把 `temp_package/`、新生成的 `.love`、系统缓存目录留在工作区。
+- 不要写完 Markdown 不跑 `prettier --write .`；也不要把 Prettier 生成的无关格式改动当成功能改动提交而不检查。
 - 不要做完改动却不提交（工作区应保持干净）；也不要在用户没有明确要求时擅自 push。
 
 ## 10. 文档规范
@@ -328,6 +334,7 @@ At.Panel{
 
 ### 同步与校验
 
+- 写完/改完任意 Markdown 后必须跑 `prettier --write .`，再提交；Prettier 只负责格式化，不替代内容检查。
 - `lua test_smoke.lua` 末尾有文档断言：`docs/components.md` 必须出现全部组件名，`docs/layout.md` 必须出现 `grow`/`justify`，`docs/README.md` 必须出现 `love.update`，本文件必须出现"文档规范"。新增组件时同步加断言；主题改动还要检查 `docs/theme.md` 包含默认主题色与 `At.theme.set`；阴影改动检查 `docs/shadow.md` 包含 `At.shadow.setAlgorithm` 与 `glsl`。
 - 改对外 API 的顺序：源码 → `docs/components.md` → 本文件第 5 节 → `main.lua` 演示 → `test_smoke.lua`。
 - `docs/` 与 `*.md` 不参与打包（`pack.sh` 已排除），不要把它们当运行时资源引用。
