@@ -301,6 +301,10 @@ end
 At.system.reset()
 themeBtn._accent, themeBtn._accentSource = At.system.getAccentColor(true)
 check(themeBtn._accent == "#123456" and themeBtn._accentSource == "env", "AT_ACCENT_COLOR 覆盖系统主题色")
+themeBtn._colors = At.system.getAccentColors(true)
+check(themeBtn._colors.env == "#123456", "getAccentColors 返回 env 来源")
+themeBtn._accent, themeBtn._accentSource = At.system.getAccentColor(true, "gtk")
+check(themeBtn._accent == nil and themeBtn._accentSource == "gtk", "指定 GTK 时不使用 env 覆盖")
 os.getenv = themeBtn._oldGetenv
 At.system.reset()
 
@@ -1497,6 +1501,7 @@ check(fileContains("docs/theme.md", "A7DCFF"), "docs/theme.md 缺少默认主题
 check(fileContains("docs/theme.md", "@primary"), "docs/theme.md 缺少 token 说明")
 check(fileContains("docs/theme.md", "At.theme.set"), "docs/theme.md 缺少运行时切换说明")
 check(fileContains("docs/theme.md", "At.system"), "docs/theme.md 缺少系统主题说明")
+check(fileContains("docs/theme.md", "getAccentColors"), "docs/theme.md 缺少 GTK/Qt 来源选择说明")
 check(fileContains("docs/README.md", "At.system"), "docs/README.md 缺少系统主题说明")
 check(fileContains("AGENTS.md", "At.system"), "AGENTS.md 缺少系统主题说明")
 check(fileContains("At/config.lua", "msaa"), "At/config.lua 缺少 msaa 配置")

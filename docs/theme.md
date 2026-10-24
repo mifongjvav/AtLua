@@ -128,6 +128,12 @@ local mode, reason = At.system.getThemeMode()
 local accent, source = At.system.getAccentColor()
 -- accent: "#RRGGBB" / nil
 -- source: "GNOME/GTK" / "KDE/Qt" / "Windows" / "macOS" / "env" / nil
+
+local colors = At.system.getAccentColors()
+-- { gtk = "#...", qt = "#...", env = "#...", ... }
+
+local gtk, gtkSource = At.system.getAccentColor(false, "gtk") -- 只取 GTK
+local qt = At.system.getAccentColor(false, "qt")             -- 只取 Qt
 ```
 
 - **系统明暗**：只有 LÖVE 12+ 的 `love.window.getSystemTheme` 能提供；LÖVE 11 返回
@@ -140,10 +146,14 @@ local accent, source = At.system.getAccentColor()
   - `AT_ACCENT_COLOR`（或 `AT_THEME_COLOR`）环境变量优先级最高，格式 `#RRGGBB`
 - 结果会缓存；系统主题色改变后调用 `At.system.reset()` 再取一次。探测失败只返回
   `nil` + 原因，不会报错或阻塞启动；Android/iOS 和没有 `io.popen` 的环境不做探测。
-- `getAccentColor(refresh)` 传 `true` 可强制重新探测。
+- `getAccentColor(refresh, source)`：`refresh` 传 `true` 强制重新探测；`source` 可传
+  `"gtk"` / `"qt"` / `"windows"` / `"macos"` / `"env"` 只取对应来源，不传则自动选择
+  （env 优先，Linux 再按当前桌面优先 GTK 或 Qt）。指定 `"gtk"` / `"qt"` 时会忽略
+  `AT_ACCENT_COLOR`。`getAccentColors()` 可一次取回全部可用来源，适合做来源切换按钮。
 
 示例里“外观”默认选“系统”（LÖVE 12+ 且系统给出明暗时跟随），也可以手动切“白色”/“深色”；
-“主题色”里的“系统色”按钮会尝试使用 Qt/GTK 等桌面主题色，失败时保留当前主题色并给出提示。
+“系统色”一行提供“自动”；Linux 上还会额外显示“GTK”和“Qt”，可在两种桌面配色之间切换。
+失败时保留当前主题色并给出提示。
 
 ```lua
 local mode = At.system.getThemeMode()

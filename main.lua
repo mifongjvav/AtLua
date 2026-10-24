@@ -7,6 +7,8 @@ local At = require("At.At")
 local initialSystemMode = At.system.getThemeMode()
 local initialAppearance = (initialSystemMode == "light" or initialSystemMode == "dark") and "system" or "dark"
 local lastSystemMode = initialSystemMode
+local systemOS = love.system and love.system.getOS and love.system.getOS() or ""
+local showGtkQt = systemOS == "Linux" or systemOS == "FreeBSD"
 
 local state = {
 	ripples = true,
@@ -262,27 +264,43 @@ for _, preset in ipairs({
 		end,
 	}))
 end
-themeRow:add(At.Button({
-	w = 82,
-	h = 30,
-	radius = 8,
-	text = "系统色",
-	color = "@surfaceStrong",
-	onClick = function()
-		local accent, source = At.system.getAccentColor(true)
-		if accent then
-			state.themeColor = accent
-			state.themeSource = "系统（" .. tostring(source) .. "）"
-			applyTheme()
-			At.log.info("系统主题色: %s (%s)", accent, tostring(source))
-			setStatus("系统主题色：" .. tostring(source))
-		else
-			At.log.warn("系统主题色不可用: %s", tostring(source))
-			setStatus("未检测到 Qt/GTK 系统主题色（" .. tostring(source) .. "）")
-		end
-	end,
-}))
 card:add(themeRow)
+
+-- 系统主题色来源：自动 / GTK / Qt（LÖVE 12+；GTK/Qt 按钮只在 Linux 显示）
+if At.system.hasThemeApi() then
+	local systemColorRow = At.Panel({ direction = "row", align = "center", gap = 8 })
+	systemColorRow:add(At.Label({ text = "系统色", fontSize = 13, color = "@textMuted" }))
+
+	local function addSystemColorButton(label, source)
+		systemColorRow:add(At.Button({
+			w = 58,
+			h = 30,
+			radius = 8,
+			text = label,
+			color = "@surfaceStrong",
+			onClick = function()
+				local accent, actual = At.system.getAccentColor(true, source)
+				if accent then
+					state.themeColor = accent
+					state.themeSource = source and label or ("系统（" .. tostring(actual) .. "）")
+					applyTheme()
+					At.log.info("系统主题色[%s]: %s (%s)", label, accent, tostring(actual))
+					setStatus("系统主题色：" .. tostring(actual))
+				else
+					At.log.warn("%s 主题色不可用: %s", label, tostring(actual))
+					setStatus(label .. " 主题色不可用（" .. tostring(actual) .. "）")
+				end
+			end,
+		}))
+	end
+
+	addSystemColorButton("自动", nil)
+	if showGtkQt then
+		addSystemColorButton("GTK", "gtk")
+		addSystemColorButton("Qt", "qt")
+	end
+	card:add(systemColorRow)
+end
 
 -- QDial 风格的圆形旋钮：wrapping 时用完整 360°，越过 359° 从 0° 继续
 angleLabel = At.Label({ text = "角度：45°", fontSize = 14, color = "@textMuted" })

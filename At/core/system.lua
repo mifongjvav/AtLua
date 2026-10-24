@@ -8,6 +8,9 @@
 --     -- accent: "#RRGGBB" | nil
 --     -- source: "env" | "GNOME/GTK" | "KDE/Qt" | "Windows" | "macOS" | nil
 --
+--   local colors = At.system.getAccentColors()   -- 全部可用来源
+--   At.system.getAccentColor(true, "gtk")        -- 只取 GTK / "qt"
+--
 -- 系统主题明暗由 LÖVE 12 的 love.window.getSystemTheme 提供；LÖVE 11 没有
 -- 这个 API，本模块会返回 unsupported。主题色没有 LÖVE 原生 API，因此只在
 -- 桌面平台通过固定命令/配置文件尽力读取：GNOME/GTK 的 accent-color、
@@ -19,8 +22,7 @@
 
 local system = {}
 
-local accentColor
-local accentSource
+local accentColors = {}
 local accentChecked = false
 
 local GNOME_ACCENTS = {
@@ -215,64 +217,133 @@ function system.getThemeMode()
 	return nil, "unknown"
 end
 
--- 返回系统主题色与来源；第一次调用会探测并缓存
-function system.getAccentColor(refresh)
-	if refresh then
-		accentChecked = false
-	end
-	if accentChecked then
-		return accentColor, accentSource
-	end
-	accentChecked = true
-	accentColor, accentSource = nil, nil
-
-	local envColor, envSource = tryEnv()
+-- 探测所有可用的系统主题色来源；第一次调用后缓存
+local function detectAccentColors()
+	local colors = {}
+	local envColor = tryEnv()
 	if envColor then
-		accentColor, accentSource = envColor, envSource
-		return accentColor, accentSource
+		colors.env = envColor
 	end
-
 	if not system.hasThemeApi() then
-		accentSource = "unsupported"
-		return nil, accentSource
+		return colors
 	end
 
 	local osName = currentOS()
-	local color, source
+	if osName == "Linux" or osName == "FreeBSD" then
+		local gtk = tryGnome()
+		local qt = tryKdeCommand()
+		if not qt then
+			qt = tryKdeFile()
+		end
+		colors.gtk = gtk
+		colors.qt = qt
+	elseif osName == "Windows" then
+		colors.windows = tryWindows()
+	elseif osName == "OS X" then
+		colors.macos = tryMac()
+	end
+	return colors
+end
+
+-- 返回所有可用来源的副本：{ env=?, gtk=?, qt=?, windows=?, macos=? }
+function system.getAccentColors(refresh)
+	if refresh then
+		accentChecked = false
+	end
+	if not accentChecked then
+		accentChecked = true
+		accentColors = detectAccentColors()
+	end
+	local copy = {}
+	for key, value in pairs(accentColors) do
+		copy[key] = value
+	end
+	return copy
+end
+
+local function sourceLabel(source)
+	if source == "gtk" then
+		return "GNOME/GTK"
+	elseif source == "qt" then
+		return "KDE/Qt"
+	elseif source == "windows" then
+		return "Windows"
+	elseif source == "macos" then
+		return "macOS"
+	elseif source == "env" then
+		return "env"
+	end
+	return tostring(source)
+end
+
+-- 返回主题色与来源。
+--   getAccentColor(refresh?)            -- 自动：env > 当前桌面优先的 GTK/Qt > 其它
+--   getAccentColor(refresh?, "gtk")     -- 只取 GTK
+--   getAccentColor(refresh?, "qt")      -- 只取 Qt
+-- 指定 gtk/qt 时忽略 env 覆盖；没有对应来源时返回 nil + 来源名。
+function system.getAccentColor(refresh, source)
+	local colors = system.getAccentColors(refresh)
+
+	if source == "gtk" then
+		if colors.gtk then
+			return colors.gtk, sourceLabel("gtk")
+		end
+		return nil, "gtk"
+	elseif source == "qt" then
+		if colors.qt then
+			return colors.qt, sourceLabel("qt")
+		end
+		return nil, "qt"
+	elseif source == "windows" then
+		if colors.windows then
+			return colors.windows, sourceLabel("windows")
+		end
+		return nil, "windows"
+	elseif source == "macos" then
+		if colors.macos then
+			return colors.macos, sourceLabel("macos")
+		end
+		return nil, "macos"
+	elseif source == "env" then
+		if colors.env then
+			return colors.env, sourceLabel("env")
+		end
+		return nil, "env"
+	end
+
+	if colors.env then
+		return colors.env, sourceLabel("env")
+	end
+
+	local osName = currentOS()
 	if osName == "Linux" or osName == "FreeBSD" then
 		local desktop = (os.getenv("XDG_CURRENT_DESKTOP") or os.getenv("DESKTOP_SESSION") or ""):lower()
-		if desktop:find("kde", 1, true) or desktop:find("plasma", 1, true) then
-			color, source = tryKdeCommand()
-			if not color then
-				color, source = tryKdeFile()
-			end
-			if not color then
-				color, source = tryGnome()
-			end
-		else
-			color, source = tryGnome()
-			if not color then
-				color, source = tryKdeCommand()
-			end
-			if not color then
-				color, source = tryKdeFile()
+		local kdeFirst = desktop:find("kde", 1, true) or desktop:find("plasma", 1, true)
+		local order = kdeFirst and { "qt", "gtk" } or { "gtk", "qt" }
+		for _, key in ipairs(order) do
+			if colors[key] then
+				return colors[key], sourceLabel(key)
 			end
 		end
 	elseif osName == "Windows" then
-		color, source = tryWindows()
+		if colors.windows then
+			return colors.windows, sourceLabel("windows")
+		end
 	elseif osName == "OS X" then
-		color, source = tryMac()
+		if colors.macos then
+			return colors.macos, sourceLabel("macos")
+		end
 	end
 
-	accentColor, accentSource = color, source or "unavailable"
-	return accentColor, accentSource
+	if not system.hasThemeApi() then
+		return nil, "unsupported"
+	end
+	return nil, "unavailable"
 end
-
 -- 清空主题色缓存；环境/系统主题色切换后调用
 function system.reset()
 	accentChecked = false
-	accentColor = nil
-	accentSource = nil
+	accentColors = {}
 	return system
 end
 

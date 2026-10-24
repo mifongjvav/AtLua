@@ -127,7 +127,8 @@ token 列表、默认派生色、`At.theme.get` / `At.theme.set` / `At.theme.res
 
 系统主题（LÖVE 12+）：`At.system.getThemeMode()` 读取系统明暗，`At.system.getAccentColor()`
 尽力读取 GNOME/GTK、KDE/Qt、Windows、macOS 的主题色；不支持时返回 `nil`，可以用
-`AT_ACCENT_COLOR="#RRGGBB"` 覆盖。示例默认跟随系统明暗，也可以手动切白色主题或系统主题色。
+`AT_ACCENT_COLOR="#RRGGBB"` 覆盖。示例默认跟随系统明暗，也可以手动切白色主题；Linux 上
+“系统色”可分别选择 GTK 或 Qt 配色。
 
 ## 组件一览
 
