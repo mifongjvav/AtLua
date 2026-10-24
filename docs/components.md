@@ -372,29 +372,30 @@ wifi:draw()
 
 ### 属性
 
-| 属性                                        | 类型                     | 默认值            | 说明                                |
-| ------------------------------------------- | ------------------------ | ----------------- | ----------------------------------- |
-| `x` / `y`                                   | 数字                     | `0`               | 左上角坐标                          |
-| `w` / `h`                                   | 数字 / 百分比 / `"auto"` | `"auto"`          | 尺寸；auto 时按方框、间距和文字测量 |
-| `size`                                      | 数字                     | `22`              | 方框边长                            |
-| `gap`                                       | 数字                     | `8`               | 方框与文字的间距                    |
-| `radius`                                    | 数字                     | `5`               | 方框圆角                            |
-| `text`                                      | 字符串                   | `""`              | 右侧文字                            |
-| `checked`                                   | 布尔                     | `false`           | 是否选中                            |
-| `color`                                     | hex / token              | `"@surfaceAlt"`   | 方框底色                            |
-| `borderColor`                               | hex / token              | `"@borderStrong"` | 方框描边色                          |
-| `checkColor`                                | hex / token              | `"@primary"`      | 勾的颜色                            |
-| `textColor`                                 | hex / token              | `"@text"`         | 文字颜色                            |
-| `innerShadow`                               | 布尔                     | `true`            | 方框内部阴影开关（GLSL）            |
-| `innerShadowColor`                          | hex / token              | `"@primaryDark"`  | 内阴影颜色                          |
-| `innerShadowAlpha`                          | 数字 0–1                 | `0.16`            | 内阴影最大不透明度                  |
-| `innerShadowSize`                           | 数字                     | `3`               | 从边缘向内衰减的像素距离            |
-| `innerShadowOffsetX` / `innerShadowOffsetY` | 数字                     | `0` / `0`         | 内阴影偏移                          |
-| `alpha`                                     | 数字 0–255               | `255`             | 透明度                              |
-| `fontSize`                                  | 数字                     | `nil`             | 缺省沿用当前字体                    |
-| `animate`                                   | 布尔                     | `true`            | 勾从中心弹入/缩回的过渡             |
-| `springStiffness` / `springDamping`         | 数字                     | `420` / `22`      | 勾动画的弹簧刚度 / 阻尼             |
-| `onChange`                                  | 函数                     | `nil`             | 选中状态变化回调                    |
+| 属性                                        | 类型                     | 默认值            | 说明                                 |
+| ------------------------------------------- | ------------------------ | ----------------- | ------------------------------------ |
+| `x` / `y`                                   | 数字                     | `0`               | 左上角坐标                           |
+| `w` / `h`                                   | 数字 / 百分比 / `"auto"` | `"auto"`          | 尺寸；auto 时按方框、间距和文字测量  |
+| `size`                                      | 数字                     | `22`              | 方框边长                             |
+| `gap`                                       | 数字                     | `8`               | 方框与文字的间距                     |
+| `radius`                                    | 数字                     | `5`               | 方框圆角                             |
+| `text`                                      | 字符串                   | `""`              | 右侧文字                             |
+| `checked`                                   | 布尔                     | `false`           | 是否选中                             |
+| `color`                                     | hex / token              | `"@surfaceAlt"`   | 方框底色                             |
+| `borderColor`                               | hex / token              | `"@borderStrong"` | 未选中时的方框描边色                 |
+| `selectedColor`                             | hex / token              | `"@primary"`      | 选中时的方框底色与描边色             |
+| `checkColor`                                | hex / token / `nil`      | `nil`             | 勾的颜色；`nil` 按选中底色自动取深浅 |
+| `textColor`                                 | hex / token              | `"@text"`         | 文字颜色                             |
+| `innerShadow`                               | 布尔                     | `true`            | 方框内部阴影开关（GLSL）             |
+| `innerShadowColor`                          | hex / token              | `"@primaryDark"`  | 内阴影颜色                           |
+| `innerShadowAlpha`                          | 数字 0–1                 | `0.16`            | 内阴影最大不透明度                   |
+| `innerShadowSize`                           | 数字                     | `3`               | 从边缘向内衰减的像素距离             |
+| `innerShadowOffsetX` / `innerShadowOffsetY` | 数字                     | `0` / `0`         | 内阴影偏移                           |
+| `alpha`                                     | 数字 0–255               | `255`             | 透明度                               |
+| `fontSize`                                  | 数字                     | `nil`             | 缺省沿用当前字体                     |
+| `animate`                                   | 布尔                     | `true`            | 勾从中心弹入/缩回的过渡              |
+| `springStiffness` / `springDamping`         | 数字                     | `420` / `22`      | 勾动画的弹簧刚度 / 阻尼              |
+| `onChange`                                  | 函数                     | `nil`             | 选中状态变化回调                     |
 
 ### 方法
 
@@ -412,8 +413,10 @@ wifi:draw()
 | ---------- | ----------------- | -------------------------------------------------- |
 | `onChange` | `(checked, self)` | 用户点击切换，或非 silent 的 `setValue` / `toggle` |
 
-点击整行都有效：命中范围包含方框、间距和右侧文字。方框内阴影需要 GLSL；shader
-不可用时会自动跳过，不影响勾选与文字。
+点击整行都有效：命中范围包含方框、间距和右侧文字。选中后方框会填充
+`selectedColor`，勾默认按底色自动取深色或浅色（`checkColor` 可显式覆盖）；
+背景会随勾的弹簧一起淡入/淡出。方框内阴影需要 GLSL，shader 不可用时会自动跳过，
+不影响勾选与文字。
 
 ### 示例
 

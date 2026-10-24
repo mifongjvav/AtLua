@@ -8,6 +8,7 @@ local color = require("At.core.color")
 local pixel = require("At.core.pixel")
 local motion = require("At.core.motion")
 local shadow = require("At.core.shadow")
+local theme = require("At.core.theme")
 
 local Checkbox = {}
 local proto = setmetatable({}, { __index = Component })
@@ -23,7 +24,8 @@ local DEFAULTS = {
 	checked = false,
 	color = "@surfaceAlt",
 	borderColor = "@borderStrong",
-	checkColor = "@primary",
+	selectedColor = "@primary",
+	checkColor = nil, -- nil = 按选中底色自动取深色/浅色
 	textColor = "@text",
 	innerShadow = true,
 	innerShadowColor = "@primaryDark",
@@ -118,9 +120,18 @@ function proto:_draw()
 	local box = pixel.round(self.size)
 	local x, y = pixel.xy(r.x, r.y)
 	local boxY = pixel.round(y + (r.h - box) / 2)
+	local pop = self.animate == false and (self.checked and 1 or 0) or (self._pop and self._pop.value or 0)
+	local t = math.min(1, math.max(0, pop))
+	local selected = self.checked
 
 	color.setColor(self.color, self.alpha)
 	love.graphics.rectangle("fill", x, boxY, box, box, self.radius)
+
+	-- 选中时先铺一层主题色底；背景随勾的弹簧一起淡入/淡出
+	if selected or t > 0.01 then
+		color.setColor(self.selectedColor, math.floor((self.alpha or 255) * t))
+		love.graphics.rectangle("fill", x, boxY, box, box, self.radius)
+	end
 
 	if self.innerShadow ~= false then
 		shadow.inner(
@@ -137,20 +148,20 @@ function proto:_draw()
 		)
 	end
 
-	color.setColor(self.borderColor, self.alpha)
+	color.setColor(selected and self.selectedColor or self.borderColor, self.alpha)
 	love.graphics.setLineWidth(1)
 	love.graphics.rectangle("line", x, boxY, box, box, self.radius)
 
 	-- 勾从中心缩放弹入：pop 0 = 不可见，1 = 完整大小
-	local pop = self.animate == false and (self.checked and 1 or 0) or (self._pop and self._pop.value or 0)
-	if self.checked or pop > 0.01 then
-		local t = math.min(1, math.max(0, pop))
+	if selected or t > 0.01 then
+		-- 深色底配浅色勾、浅色底配深色勾；用户显式传 checkColor 时优先
+		local checkColor = self.checkColor or theme.foreground(self.selectedColor)
 		local scale = 0.55 + 0.45 * t
 		local cx, cy = x + box / 2, boxY + box / 2
 		local function pt(fx, fy)
 			return pixel.round(cx + (fx - 0.5) * box * scale), pixel.round(cy + (fy - 0.5) * box * scale)
 		end
-		color.setColor(self.checkColor, math.floor((self.alpha or 255) * t))
+		color.setColor(checkColor, math.floor((self.alpha or 255) * t))
 		love.graphics.setLineWidth(2)
 		local ax, ay = pt(0.24, 0.52)
 		local bx, by = pt(0.44, 0.72)

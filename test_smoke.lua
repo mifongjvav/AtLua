@@ -1176,6 +1176,10 @@ check(
 	shadowBtn._check.innerShadow == true and shadowBtn._check.innerShadowColor == "@primaryDark",
 	"多选框默认开启内阴影"
 )
+check(
+	shadowBtn._check.selectedColor == "@primary" and shadowBtn._check.checkColor == nil,
+	"多选框选中底色与自动勾色"
+)
 shadowBtn._check:destroy()
 shadowBtn:destroy()
 At.config.shadow.spread = 2
