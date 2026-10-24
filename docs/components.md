@@ -4,22 +4,22 @@
 
 公共几何与状态成员：
 
-| 成员 | 说明 |
-| --- | --- |
-| `:draw()` | 保存并恢复颜色/字体/线宽后绘制；`Panel` 会先排版再画子项 |
-| `:update(dt)` | 由 `At.update(dt)` 调用：更新悬停、动画与拖拽 |
-| `:mousepressed(mx, my, button)` | 命中并消费返回 `true`；只处理左键（`button == 1`） |
-| `:mousereleased(mx, my, button)` | 松开收尾；`Panel` 不参与 |
-| `:measure(availW, availH)` | 返回自然尺寸，供 `w/h = "auto"` 使用 |
-| `:destroy()` | 从注册表注销；`Panel` 会连带销毁子组件 |
-| `:contains(px, py)` | 用传入坐标做圆角命中判断 |
-| `:rect()` | 返回 `{ x, y, w, h, radius }` |
-| `:setRect(x, y, w, h, radius?)` / `:setPosition(x, y)` / `:setSize(w, h)` | 改几何 |
-| `:setEnabled(bool)` / `:setVisible(bool)` | 禁用会中止按压并失焦；隐藏会跳过绘制与更新 |
-| `:isHovered()` / `:isPressed()` / `:isEnabled()` / `:isVisible()` | 状态查询 |
-| `:isInteractive()` | 是否响应鼠标：显式 `interactive` 优先，否则看有没有实现 `_press/_release` |
-| `:focus()` / `:blur()` / `:isFocused()` | 焦点控制（同一时刻只有一个） |
-| `:declaredWidth()` / `:declaredHeight()` / `:invalidateSize()` | 原始尺寸规格与重新测量 |
+| 成员                                                                      | 说明                                                                      |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `:draw()`                                                                 | 保存并恢复颜色/字体/线宽后绘制；`Panel` 会先排版再画子项                  |
+| `:update(dt)`                                                             | 由 `At.update(dt)` 调用：更新悬停、动画与拖拽                             |
+| `:mousepressed(mx, my, button)`                                           | 命中并消费返回 `true`；只处理左键（`button == 1`）                        |
+| `:mousereleased(mx, my, button)`                                          | 松开收尾；`Panel` 不参与                                                  |
+| `:measure(availW, availH)`                                                | 返回自然尺寸，供 `w/h = "auto"` 使用                                      |
+| `:destroy()`                                                              | 从注册表注销；`Panel` 会连带销毁子组件                                    |
+| `:contains(px, py)`                                                       | 用传入坐标做圆角命中判断                                                  |
+| `:rect()`                                                                 | 返回 `{ x, y, w, h, radius }`                                             |
+| `:setRect(x, y, w, h, radius?)` / `:setPosition(x, y)` / `:setSize(w, h)` | 改几何                                                                    |
+| `:setEnabled(bool)` / `:setVisible(bool)`                                 | 禁用会中止按压并失焦；隐藏会跳过绘制与更新                                |
+| `:isHovered()` / `:isPressed()` / `:isEnabled()` / `:isVisible()`         | 状态查询                                                                  |
+| `:isInteractive()`                                                        | 是否响应鼠标：显式 `interactive` 优先，否则看有没有实现 `_press/_release` |
+| `:focus()` / `:blur()` / `:isFocused()`                                   | 焦点控制（同一时刻只有一个）                                              |
+| `:declaredWidth()` / `:declaredHeight()` / `:invalidateSize()`            | 原始尺寸规格与重新测量                                                    |
 
 `x` / `y` 默认都是 `0`；`enabled`、`visible` 默认 `true`；`autoRegister` 默认 `true`；`passthrough` 默认 `false`。颜色 alpha 一律是 **0–255**，坐标一律是**左上角 + 宽高**。
 
@@ -43,37 +43,37 @@
 
 ### 属性
 
-| 属性 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `x` / `y` | 数字 | `0` | 左上角坐标 |
-| `w` / `h` | 数字 / 百分比 / `"auto"` | `"auto"` | 容器尺寸；auto 由子项撑开 |
-| `direction` | 字符串 | `"column"` | 主轴方向：`"column"` / `"row"` |
-| `gap` | 数字 | `8` | 子项间距 |
-| `padding` | 数字或表 | `0` | 内边距，表为 `{ left, top, right, bottom }` |
-| `align` | 字符串 | `"start"` | 交叉轴对齐：`start` / `center` / `end` / `stretch` |
-| `justify` | 字符串 | `"start"` | 主轴分布：`start` / `center` / `end` / `space-between` |
-| `children` | 表 | `{}` | 子组件数组 |
-| `background` | hex / token | `nil` | 背景色 |
-| `borderColor` | hex / token | `nil` | 描边色 |
-| `borderWidth` | 数字 | `1` | 描边线宽 |
-| `radius` | 数字 | `0` | 圆角半径 |
-| `alpha` | 数字 0–255 | `255` | 背景与描边的透明度 |
-| `shadow` | 布尔或表 | `false` | `true` 用默认阴影；传表等价于直接给 `shadowArgs`。阴影算法由 `At.config.shadow.algorithm` 决定；`shadowArgs` 里颜色的 alpha（0–1）是整体最大不透明度 |
-| `shadowArgs` | 表 | `nil` | `{ 颜色, spread, layers, offsetX, offsetY }`；`nil` 时使用 `At.config.shadow` 的默认值（默认深色主题色、较小的 spread/偏移）。颜色可传 RGBA 表或 hex/token |
-| `autoRegister` | 布尔 | `false` | 容器不登记到 registry |
-| `passthrough` | 布尔 | `true` | 不消费鼠标事件 |
+| 属性           | 类型                     | 默认值     | 说明                                                                                                                                                       |
+| -------------- | ------------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `x` / `y`      | 数字                     | `0`        | 左上角坐标                                                                                                                                                 |
+| `w` / `h`      | 数字 / 百分比 / `"auto"` | `"auto"`   | 容器尺寸；auto 由子项撑开                                                                                                                                  |
+| `direction`    | 字符串                   | `"column"` | 主轴方向：`"column"` / `"row"`                                                                                                                             |
+| `gap`          | 数字                     | `8`        | 子项间距                                                                                                                                                   |
+| `padding`      | 数字或表                 | `0`        | 内边距，表为 `{ left, top, right, bottom }`                                                                                                                |
+| `align`        | 字符串                   | `"start"`  | 交叉轴对齐：`start` / `center` / `end` / `stretch`                                                                                                         |
+| `justify`      | 字符串                   | `"start"`  | 主轴分布：`start` / `center` / `end` / `space-between`                                                                                                     |
+| `children`     | 表                       | `{}`       | 子组件数组                                                                                                                                                 |
+| `background`   | hex / token              | `nil`      | 背景色                                                                                                                                                     |
+| `borderColor`  | hex / token              | `nil`      | 描边色                                                                                                                                                     |
+| `borderWidth`  | 数字                     | `1`        | 描边线宽                                                                                                                                                   |
+| `radius`       | 数字                     | `0`        | 圆角半径                                                                                                                                                   |
+| `alpha`        | 数字 0–255               | `255`      | 背景与描边的透明度                                                                                                                                         |
+| `shadow`       | 布尔或表                 | `false`    | `true` 用默认阴影；传表等价于直接给 `shadowArgs`。阴影算法由 `At.config.shadow.algorithm` 决定；`shadowArgs` 里颜色的 alpha（0–1）是整体最大不透明度       |
+| `shadowArgs`   | 表                       | `nil`      | `{ 颜色, spread, layers, offsetX, offsetY }`；`nil` 时使用 `At.config.shadow` 的默认值（默认深色主题色、较小的 spread/偏移）。颜色可传 RGBA 表或 hex/token |
+| `autoRegister` | 布尔                     | `false`    | 容器不登记到 registry                                                                                                                                      |
+| `passthrough`  | 布尔                     | `true`     | 不消费鼠标事件                                                                                                                                             |
 
 ### 方法
 
-| 方法 | 说明 |
-| --- | --- |
-| `:add(child)` | 追加子组件并让 auto 尺寸失效，返回该子组件 |
-| `:remove(child)` | 移除子组件，返回是否找到 |
-| `:clear()` | 清空子组件列表 |
-| `:measure(availW, availH)` | 按内容测量应有尺寸，不修改坐标 |
-| `:layout(availW, availH)` | 立即重排一次，返回 `w, h`；参数决定百分比基数 |
-| `:draw()` | 先 `layout()` 再画背景，最后画每个子组件；每次绘制都会重排（幂等） |
-| `:destroy()` | 先销毁全部子组件，再注销自己 |
+| 方法                       | 说明                                                               |
+| -------------------------- | ------------------------------------------------------------------ |
+| `:add(child)`              | 追加子组件并让 auto 尺寸失效，返回该子组件                         |
+| `:remove(child)`           | 移除子组件，返回是否找到                                           |
+| `:clear()`                 | 清空子组件列表                                                     |
+| `:measure(availW, availH)` | 按内容测量应有尺寸，不修改坐标                                     |
+| `:layout(availW, availH)`  | 立即重排一次，返回 `w, h`；参数决定百分比基数                      |
+| `:draw()`                  | 先 `layout()` 再画背景，最后画每个子组件；每次绘制都会重排（幂等） |
+| `:destroy()`               | 先销毁全部子组件，再注销自己                                       |
 
 ### 回调
 
@@ -103,23 +103,23 @@ card:draw()
 
 ### 属性
 
-| 属性 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `x` / `y` | 数字 | `0` | 左上角坐标 |
-| `w` / `h` | 数字 / 百分比 / `"auto"` | `"auto"` | 尺寸；auto 时按文字测量 |
-| `text` | 字符串 | `""` | 显示的文字 |
-| `color` | hex / token | `"@text"` | 文字颜色 |
-| `alpha` | 数字 0–255 | `255` | 透明度 |
-| `align` | 字符串 | `"left"` | 相对自身宽度：`left` / `center` / `right` |
-| `wrap` | 布尔 | `false` | 自动换行；为 `true` 时需要给定宽度 |
-| `lineHeight` | 数字 | `1.2` | 行高倍数 |
-| `fontSize` | 数字 | 未设置 | 缺省沿用当前字体；设置后走 `At.font.get(size)` |
+| 属性         | 类型                     | 默认值    | 说明                                           |
+| ------------ | ------------------------ | --------- | ---------------------------------------------- |
+| `x` / `y`    | 数字                     | `0`       | 左上角坐标                                     |
+| `w` / `h`    | 数字 / 百分比 / `"auto"` | `"auto"`  | 尺寸；auto 时按文字测量                        |
+| `text`       | 字符串                   | `""`      | 显示的文字                                     |
+| `color`      | hex / token              | `"@text"` | 文字颜色                                       |
+| `alpha`      | 数字 0–255               | `255`     | 透明度                                         |
+| `align`      | 字符串                   | `"left"`  | 相对自身宽度：`left` / `center` / `right`      |
+| `wrap`       | 布尔                     | `false`   | 自动换行；为 `true` 时需要给定宽度             |
+| `lineHeight` | 数字                     | `1.2`     | 行高倍数                                       |
+| `fontSize`   | 数字                     | 未设置    | 缺省沿用当前字体；设置后走 `At.font.get(size)` |
 
 ### 方法
 
-| 方法 | 说明 |
-| --- | --- |
-| `:setText(text)` | 改文字并让 auto 尺寸失效，下次绘制/排版重新测量 |
+| 方法               | 说明                                                     |
+| ------------------ | -------------------------------------------------------- |
+| `:setText(text)`   | 改文字并让 auto 尺寸失效，下次绘制/排版重新测量          |
 | `:measure(availW)` | 返回文字宽与行高；`wrap = true` 时返回限定宽度与行数高度 |
 
 ### 回调
@@ -148,47 +148,47 @@ hint:draw()
 
 ### 属性
 
-| 属性 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `x` / `y` | 数字 | `0` | 左上角坐标 |
-| `w` / `h` | 数字 / 百分比 / `"auto"` | `120` / `44` | 尺寸；auto 时按文字加内边距测量 |
-| `radius` | 数字 | `10` | 圆角半径 |
-| `color` | hex / token | `"@primary"` | 常态底色 |
-| `alpha` | 数字 0–255 | `255` | 透明度；禁用时按 `alpha * 0.45` 变淡 |
-| `hoverColor` | hex / token | `nil` | 悬停底色；缺省由 `color.shade(color, 0.10)` 推导 |
-| `pressedColor` | hex / token | `nil` | 按下底色；缺省由 `color.shade(color, -0.12)` 推导 |
-| `shadow` | 布尔或表 | `true` | `true` 用默认阴影；传表等价于直接给 `shadowArgs`；算法见 [shadow.md](shadow.md) |
-| `shadowArgs` | 表 | `nil` | `{ 颜色, spread, layers, offsetX, offsetY }`；`nil` 时使用 `At.config.shadow` 的默认值（默认深色主题色、较小的 spread/偏移）。颜色可传 RGBA 表或 hex/token |
-| `ripple` | 布尔或表 | `true` | `true` / `false` / `{ color = "@white", alpha = 255, enabled = true }` |
-| `text` | 字符串 | `nil` | 按钮文字；`nil` 或 `""` 时不画文字 |
-| `textColor` | hex / token | `nil`（自动） | 文字颜色；缺省按底色对比度自动选 `@text` / `@onPrimary` |
-| `fontSize` | 数字 | `nil` | 缺省沿用当前字体 |
-| `paddingX` / `paddingY` | 数字 | `16` / `10` | 仅用于 auto 尺寸 |
-| `enabled` | 布尔 | `true` | 禁用后变淡且不响应事件 |
-| `animate` | 布尔 | `true` | 悬停/按下的高光过渡；关掉则高光立即到位 |
-| `springStiffness` / `springDamping` | 数字 | `500` / `30` | 高光过渡的弹簧刚度 / 阻尼 |
+| 属性                                | 类型                     | 默认值        | 说明                                                                                                                                                       |
+| ----------------------------------- | ------------------------ | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `x` / `y`                           | 数字                     | `0`           | 左上角坐标                                                                                                                                                 |
+| `w` / `h`                           | 数字 / 百分比 / `"auto"` | `120` / `44`  | 尺寸；auto 时按文字加内边距测量                                                                                                                            |
+| `radius`                            | 数字                     | `10`          | 圆角半径                                                                                                                                                   |
+| `color`                             | hex / token              | `"@primary"`  | 常态底色                                                                                                                                                   |
+| `alpha`                             | 数字 0–255               | `255`         | 透明度；禁用时按 `alpha * 0.45` 变淡                                                                                                                       |
+| `hoverColor`                        | hex / token              | `nil`         | 悬停底色；缺省由 `color.shade(color, 0.10)` 推导                                                                                                           |
+| `pressedColor`                      | hex / token              | `nil`         | 按下底色；缺省由 `color.shade(color, -0.12)` 推导                                                                                                          |
+| `shadow`                            | 布尔或表                 | `true`        | `true` 用默认阴影；传表等价于直接给 `shadowArgs`；算法见 [shadow.md](shadow.md)                                                                            |
+| `shadowArgs`                        | 表                       | `nil`         | `{ 颜色, spread, layers, offsetX, offsetY }`；`nil` 时使用 `At.config.shadow` 的默认值（默认深色主题色、较小的 spread/偏移）。颜色可传 RGBA 表或 hex/token |
+| `ripple`                            | 布尔或表                 | `true`        | `true` / `false` / `{ color = "@white", alpha = 255, enabled = true }`                                                                                     |
+| `text`                              | 字符串                   | `nil`         | 按钮文字；`nil` 或 `""` 时不画文字                                                                                                                         |
+| `textColor`                         | hex / token              | `nil`（自动） | 文字颜色；缺省按底色对比度自动选 `@text` / `@onPrimary`                                                                                                    |
+| `fontSize`                          | 数字                     | `nil`         | 缺省沿用当前字体                                                                                                                                           |
+| `paddingX` / `paddingY`             | 数字                     | `16` / `10`   | 仅用于 auto 尺寸                                                                                                                                           |
+| `enabled`                           | 布尔                     | `true`        | 禁用后变淡且不响应事件                                                                                                                                     |
+| `animate`                           | 布尔                     | `true`        | 悬停/按下的高光过渡；关掉则高光立即到位                                                                                                                    |
+| `springStiffness` / `springDamping` | 数字                     | `500` / `30`  | 高光过渡的弹簧刚度 / 阻尼                                                                                                                                  |
 
 ### 方法
 
-| 方法 | 说明 |
-| --- | --- |
-| `:setText(text)` | 改文字并让 auto 尺寸失效 |
-| `:setColor(hex, alpha?)` | 改底色，可选同时改 alpha |
-| `:setRippleEnabled(bool)` | 开关涟漪 |
-| `:rippleCount()` | 当前存活的涟漪数量（调试用） |
-| `:fillColor()` / `:fillAlpha()` | 返回当前应使用的底色 / 透明度 |
-| `:measure()` | 按文字加 `paddingX/paddingY` 返回自然尺寸 |
-| `At.Button.setStyle(button, opts)` | 批量覆盖样式并重建涟漪 |
+| 方法                               | 说明                                      |
+| ---------------------------------- | ----------------------------------------- |
+| `:setText(text)`                   | 改文字并让 auto 尺寸失效                  |
+| `:setColor(hex, alpha?)`           | 改底色，可选同时改 alpha                  |
+| `:setRippleEnabled(bool)`          | 开关涟漪                                  |
+| `:rippleCount()`                   | 当前存活的涟漪数量（调试用）              |
+| `:fillColor()` / `:fillAlpha()`    | 返回当前应使用的底色 / 透明度             |
+| `:measure()`                       | 按文字加 `paddingX/paddingY` 返回自然尺寸 |
+| `At.Button.setStyle(button, opts)` | 批量覆盖样式并重建涟漪                    |
 
 公共方法（`setEnabled`、`setRect`、`isHovered`、`isPressed`、`destroy` 等）见本节开头的公共成员表。
 
 ### 回调
 
-| 回调 | 参数 | 时机 |
-| --- | --- | --- |
-| `onPress` | `(self, mx, my)` | 在按钮内按下 |
+| 回调        | 参数                     | 时机                                                  |
+| ----------- | ------------------------ | ----------------------------------------------------- |
+| `onPress`   | `(self, mx, my)`         | 在按钮内按下                                          |
 | `onRelease` | `(self, mx, my, inside)` | 每次松开都调用；`inside` 表示松开时指针是否仍在按钮内 |
-| `onClick` | `(self, mx, my)` | 松开时指针在按钮内且 `enabled` |
+| `onClick`   | `(self, mx, my)`         | 松开时指针在按钮内且 `enabled`                        |
 
 按压语义（容易写错）：
 
@@ -221,57 +221,57 @@ btn:setEnabled(false)   -- 禁用后变淡且不再响应
 
 ### 属性
 
-| 属性 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `x` / `y` | 数字 | `0` | 左上角坐标 |
-| `w` / `h` | 数字 / 百分比 / `"auto"` | `220` / `44` | 尺寸；auto 时按文字与内边距测量 |
-| `radius` | 数字 | `10` | 圆角半径 |
-| `text` | 字符串 | `""` | 当前文本 |
-| `placeholder` | 字符串 | `""` | 无文本时的提示文字 |
-| `fontSize` | 数字 | `16` | 字号 |
-| `paddingX` / `paddingY` | 数字 | `12` / `10` | 文字内边距 |
-| `color` | hex / token | `"@surfaceAlt"` | 底色 |
-| `alpha` | 数字 0–255 | `255` | 透明度 |
-| `borderColor` | hex / token | `"@border"` | 未聚焦描边色 |
-| `focusBorderColor` | hex / token | `"@primary"` | 聚焦描边色 |
-| `textColor` | hex / token | `"@text"` | 文本颜色 |
-| `placeholderColor` | hex / token | `"@textFaint"` | 提示文字颜色 |
-| `caretColor` | hex / token | `"@primary"` | 光标颜色 |
-| `caretWidth` | 数字 | `2` | 光标宽度 |
-| `caretPeriod` | 数字 | `0.5` | 闪烁周期（秒），`0` 表示常亮 |
-| `maxLength` | 数字 | `0` | 最大字符数，`0` 表示不限；按 UTF-8 字符计 |
-| `password` | 布尔 | `false` | 密码模式，按字符数显示掩码 |
-| `maskChar` | 字符串 | `"*"` | 密码模式的掩码字符 |
-| `onChange` | 函数 | `nil` | 文本变化回调 |
-| `onSubmit` | 函数 | `nil` | 回车提交回调 |
-| `animate` | 布尔 | `true` | 聚焦/失焦时边框颜色与线宽的过渡 |
-| `focusSpringStiffness` / `focusSpringDamping` | 数字 | `380` / `28` | 聚焦过渡的弹簧刚度 / 阻尼 |
-| `onFocus` | 函数 | `nil` | 获得焦点时（移动端会同时唤起软键盘） |
-| `onBlur` | 函数 | `nil` | 失去焦点时（软键盘随之收起） |
+| 属性                                          | 类型                     | 默认值          | 说明                                      |
+| --------------------------------------------- | ------------------------ | --------------- | ----------------------------------------- |
+| `x` / `y`                                     | 数字                     | `0`             | 左上角坐标                                |
+| `w` / `h`                                     | 数字 / 百分比 / `"auto"` | `220` / `44`    | 尺寸；auto 时按文字与内边距测量           |
+| `radius`                                      | 数字                     | `10`            | 圆角半径                                  |
+| `text`                                        | 字符串                   | `""`            | 当前文本                                  |
+| `placeholder`                                 | 字符串                   | `""`            | 无文本时的提示文字                        |
+| `fontSize`                                    | 数字                     | `16`            | 字号                                      |
+| `paddingX` / `paddingY`                       | 数字                     | `12` / `10`     | 文字内边距                                |
+| `color`                                       | hex / token              | `"@surfaceAlt"` | 底色                                      |
+| `alpha`                                       | 数字 0–255               | `255`           | 透明度                                    |
+| `borderColor`                                 | hex / token              | `"@border"`     | 未聚焦描边色                              |
+| `focusBorderColor`                            | hex / token              | `"@primary"`    | 聚焦描边色                                |
+| `textColor`                                   | hex / token              | `"@text"`       | 文本颜色                                  |
+| `placeholderColor`                            | hex / token              | `"@textFaint"`  | 提示文字颜色                              |
+| `caretColor`                                  | hex / token              | `"@primary"`    | 光标颜色                                  |
+| `caretWidth`                                  | 数字                     | `2`             | 光标宽度                                  |
+| `caretPeriod`                                 | 数字                     | `0.5`           | 闪烁周期（秒），`0` 表示常亮              |
+| `maxLength`                                   | 数字                     | `0`             | 最大字符数，`0` 表示不限；按 UTF-8 字符计 |
+| `password`                                    | 布尔                     | `false`         | 密码模式，按字符数显示掩码                |
+| `maskChar`                                    | 字符串                   | `"*"`           | 密码模式的掩码字符                        |
+| `onChange`                                    | 函数                     | `nil`           | 文本变化回调                              |
+| `onSubmit`                                    | 函数                     | `nil`           | 回车提交回调                              |
+| `animate`                                     | 布尔                     | `true`          | 聚焦/失焦时边框颜色与线宽的过渡           |
+| `focusSpringStiffness` / `focusSpringDamping` | 数字                     | `380` / `28`    | 聚焦过渡的弹簧刚度 / 阻尼                 |
+| `onFocus`                                     | 函数                     | `nil`           | 获得焦点时（移动端会同时唤起软键盘）      |
+| `onBlur`                                      | 函数                     | `nil`           | 失去焦点时（软键盘随之收起）              |
 
 ### 方法
 
-| 方法 | 说明 |
-| --- | --- |
-| `:getText()` | 返回当前文本 |
-| `:getCaret()` | 返回光标位置：`0` = 第一个字符前，`length()` = 末尾 |
-| `:setCaret(index)` | 设置光标位置（自动夹到 `0..length`），并让文本水平滚动到光标可见 |
-| `:setText(text, silent?)` | 设文本并把光标移到末尾；`silent` 为真时不触发 `onChange` |
-| `:clear()` | 清空文本（等价于 `setText("")`，会触发 `onChange`） |
-| `:length()` | 返回 UTF-8 字符数 |
-| `:focus()` / `:blur()` | 获取 / 放弃键盘焦点 |
-| `:textinput(t)` | 追加输入（由 `At.textinput` 转发） |
-| `:keypressed(key)` | 处理 `backspace` / `delete` / `left` / `right` / `home` / `end` / `return` / `kpenter` / `escape` |
-| `:measure()` | 按文本或 placeholder 返回自然尺寸 |
+| 方法                      | 说明                                                                                              |
+| ------------------------- | ------------------------------------------------------------------------------------------------- |
+| `:getText()`              | 返回当前文本                                                                                      |
+| `:getCaret()`             | 返回光标位置：`0` = 第一个字符前，`length()` = 末尾                                               |
+| `:setCaret(index)`        | 设置光标位置（自动夹到 `0..length`），并让文本水平滚动到光标可见                                  |
+| `:setText(text, silent?)` | 设文本并把光标移到末尾；`silent` 为真时不触发 `onChange`                                          |
+| `:clear()`                | 清空文本（等价于 `setText("")`，会触发 `onChange`）                                               |
+| `:length()`               | 返回 UTF-8 字符数                                                                                 |
+| `:focus()` / `:blur()`    | 获取 / 放弃键盘焦点                                                                               |
+| `:textinput(t)`           | 追加输入（由 `At.textinput` 转发）                                                                |
+| `:keypressed(key)`        | 处理 `backspace` / `delete` / `left` / `right` / `home` / `end` / `return` / `kpenter` / `escape` |
+| `:measure()`              | 按文本或 placeholder 返回自然尺寸                                                                 |
 
 ### 回调
 
-| 回调 | 参数 | 时机 |
-| --- | --- | --- |
-| `onChange` | `(text, self)` | 输入、退格、`setText`（非 silent）时 |
-| `onSubmit` | `(text, self)` | 按 `return` / `kpenter` 时；提交后不失焦 |
-| `onFocus` | `(self)` | 点击或 `:focus()` 获得焦点时 |
-| `onBlur` | `(self)` | 点击空白/其他组件、`Esc`、`:blur()`、禁用或销毁时 |
+| 回调       | 参数           | 时机                                              |
+| ---------- | -------------- | ------------------------------------------------- |
+| `onChange` | `(text, self)` | 输入、退格、`setText`（非 silent）时              |
+| `onSubmit` | `(text, self)` | 按 `return` / `kpenter` 时；提交后不失焦          |
+| `onFocus`  | `(self)`       | 点击或 `:focus()` 获得焦点时                      |
+| `onBlur`   | `(self)`       | 点击空白/其他组件、`Esc`、`:blur()`、禁用或销毁时 |
 
 注意：
 
@@ -311,35 +311,35 @@ name:draw()
 
 ### 属性
 
-| 属性 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `x` / `y` | 数字 | `0` | 左上角坐标 |
-| `w` / `h` | 数字 | `52` / `28` | 轨道尺寸 |
-| `radius` | 数字 | `nil` | 轨道圆角；缺省取 `min(w, h) / 2`（胶囊形） |
-| `value` | 布尔 | `false` | 当前状态 |
-| `color` | hex / token | `"@track"` | 关闭时的轨道色 |
-| `onColor` | hex / token | `"@primary"` | 打开时的轨道色 |
-| `knobColor` | hex / token | `"@knob"` | 旋钮颜色 |
-| `knobInset` | 数字 | `3` | 旋钮与轨道边缘的间距 |
-| `alpha` | 数字 0–255 | `255` | 透明度 |
-| `animate` | 布尔 | `true` | 是否播放旋钮过渡 |
-| `springStiffness` / `springDamping` | 数字 | `320` / `26` | 旋钮弹簧刚度 / 阻尼；越大越硬、阻尼越大越不弹 |
-| `speed` | 数字 | `nil` | 已弃用；传入时等价于 `springStiffness = speed * 20` |
-| `onChange` | 函数 | `nil` | 状态变化回调 |
+| 属性                                | 类型        | 默认值       | 说明                                                |
+| ----------------------------------- | ----------- | ------------ | --------------------------------------------------- |
+| `x` / `y`                           | 数字        | `0`          | 左上角坐标                                          |
+| `w` / `h`                           | 数字        | `52` / `28`  | 轨道尺寸                                            |
+| `radius`                            | 数字        | `nil`        | 轨道圆角；缺省取 `min(w, h) / 2`（胶囊形）          |
+| `value`                             | 布尔        | `false`      | 当前状态                                            |
+| `color`                             | hex / token | `"@track"`   | 关闭时的轨道色                                      |
+| `onColor`                           | hex / token | `"@primary"` | 打开时的轨道色                                      |
+| `knobColor`                         | hex / token | `"@knob"`    | 旋钮颜色                                            |
+| `knobInset`                         | 数字        | `3`          | 旋钮与轨道边缘的间距                                |
+| `alpha`                             | 数字 0–255  | `255`        | 透明度                                              |
+| `animate`                           | 布尔        | `true`       | 是否播放旋钮过渡                                    |
+| `springStiffness` / `springDamping` | 数字        | `320` / `26` | 旋钮弹簧刚度 / 阻尼；越大越硬、阻尼越大越不弹       |
+| `speed`                             | 数字        | `nil`        | 已弃用；传入时等价于 `springStiffness = speed * 20` |
+| `onChange`                          | 函数        | `nil`        | 状态变化回调                                        |
 
 ### 方法
 
-| 方法 | 说明 |
-| --- | --- |
-| `:getValue()` | 返回当前布尔值 |
+| 方法                        | 说明                                               |
+| --------------------------- | -------------------------------------------------- |
+| `:getValue()`               | 返回当前布尔值                                     |
 | `:setValue(value, silent?)` | 设值；`silent` 为真时不触发 `onChange`；返回当前值 |
-| `:toggle()` | 取反并返回新值 |
-| `:measure()` | 使用公共实现，返回声明尺寸 |
+| `:toggle()`                 | 取反并返回新值                                     |
+| `:measure()`                | 使用公共实现，返回声明尺寸                         |
 
 ### 回调
 
-| 回调 | 参数 | 时机 |
-| --- | --- | --- |
+| 回调       | 参数            | 时机                                                    |
+| ---------- | --------------- | ------------------------------------------------------- |
 | `onChange` | `(value, self)` | 用户点击/拖动切换，或非 silent 的 `setValue` / `toggle` |
 
 关于动画 `_t`：
@@ -372,39 +372,39 @@ wifi:draw()
 
 ### 属性
 
-| 属性 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `x` / `y` | 数字 | `0` | 左上角坐标 |
-| `w` / `h` | 数字 / 百分比 / `"auto"` | `"auto"` | 尺寸；auto 时按方框、间距和文字测量 |
-| `size` | 数字 | `22` | 方框边长 |
-| `gap` | 数字 | `8` | 方框与文字的间距 |
-| `radius` | 数字 | `5` | 方框圆角 |
-| `text` | 字符串 | `""` | 右侧文字 |
-| `checked` | 布尔 | `false` | 是否选中 |
-| `color` | hex / token | `"@surfaceAlt"` | 方框底色 |
-| `borderColor` | hex / token | `"@borderStrong"` | 方框描边色 |
-| `checkColor` | hex / token | `"@primary"` | 勾的颜色 |
-| `textColor` | hex / token | `"@text"` | 文字颜色 |
-| `alpha` | 数字 0–255 | `255` | 透明度 |
-| `fontSize` | 数字 | `nil` | 缺省沿用当前字体 |
-| `animate` | 布尔 | `true` | 勾从中心弹入/缩回的过渡 |
-| `springStiffness` / `springDamping` | 数字 | `420` / `22` | 勾动画的弹簧刚度 / 阻尼 |
-| `onChange` | 函数 | `nil` | 选中状态变化回调 |
+| 属性                                | 类型                     | 默认值            | 说明                                |
+| ----------------------------------- | ------------------------ | ----------------- | ----------------------------------- |
+| `x` / `y`                           | 数字                     | `0`               | 左上角坐标                          |
+| `w` / `h`                           | 数字 / 百分比 / `"auto"` | `"auto"`          | 尺寸；auto 时按方框、间距和文字测量 |
+| `size`                              | 数字                     | `22`              | 方框边长                            |
+| `gap`                               | 数字                     | `8`               | 方框与文字的间距                    |
+| `radius`                            | 数字                     | `5`               | 方框圆角                            |
+| `text`                              | 字符串                   | `""`              | 右侧文字                            |
+| `checked`                           | 布尔                     | `false`           | 是否选中                            |
+| `color`                             | hex / token              | `"@surfaceAlt"`   | 方框底色                            |
+| `borderColor`                       | hex / token              | `"@borderStrong"` | 方框描边色                          |
+| `checkColor`                        | hex / token              | `"@primary"`      | 勾的颜色                            |
+| `textColor`                         | hex / token              | `"@text"`         | 文字颜色                            |
+| `alpha`                             | 数字 0–255               | `255`             | 透明度                              |
+| `fontSize`                          | 数字                     | `nil`             | 缺省沿用当前字体                    |
+| `animate`                           | 布尔                     | `true`            | 勾从中心弹入/缩回的过渡             |
+| `springStiffness` / `springDamping` | 数字                     | `420` / `22`      | 勾动画的弹簧刚度 / 阻尼             |
+| `onChange`                          | 函数                     | `nil`             | 选中状态变化回调                    |
 
 ### 方法
 
-| 方法 | 说明 |
-| --- | --- |
-| `:getValue()` | 返回是否选中 |
+| 方法                          | 说明                                         |
+| ----------------------------- | -------------------------------------------- |
+| `:getValue()`                 | 返回是否选中                                 |
 | `:setValue(checked, silent?)` | 设选中状态；`silent` 为真时不触发 `onChange` |
-| `:toggle()` | 取反并返回新状态 |
-| `:setText(text)` | 改文字并让 auto 尺寸失效 |
-| `:measure()` | 返回自然尺寸 |
+| `:toggle()`                   | 取反并返回新状态                             |
+| `:setText(text)`              | 改文字并让 auto 尺寸失效                     |
+| `:measure()`                  | 返回自然尺寸                                 |
 
 ### 回调
 
-| 回调 | 参数 | 时机 |
-| --- | --- | --- |
+| 回调       | 参数              | 时机                                               |
+| ---------- | ----------------- | -------------------------------------------------- |
 | `onChange` | `(checked, self)` | 用户点击切换，或非 silent 的 `setValue` / `toggle` |
 
 点击整行都有效：命中范围包含方框、间距和右侧文字。
@@ -430,39 +430,39 @@ remember:draw()
 
 ### 属性
 
-| 属性 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `x` / `y` | 数字 | `0` | 左上角坐标 |
-| `w` / `h` | 数字 / 百分比 / `"auto"` | `"auto"` | 尺寸；auto 时按选项测量 |
-| `options` | 表 | `{}` | 选项文字数组 |
-| `value` | 数字 / `nil` | `nil` | 选中项下标（从 1 开始）；`nil` 表示未选中 |
-| `direction` | 字符串 | `"column"` | 排列方向：`"column"` / `"row"` |
-| `gap` | 数字 | `8` | 选项间距 |
-| `size` | 数字 | `20` | 圆形标记直径 |
-| `textGap` | 数字 | `8` | 圆形标记与文字的间距 |
-| `color` | hex / token | `"@surfaceAlt"` | 圆形标记底色 |
-| `borderColor` | hex / token | `"@borderStrong"` | 未选中描边色 |
-| `selectedColor` | hex / token | `"@primary"` | 选中描边与圆点颜色 |
-| `textColor` | hex / token | `"@text"` | 文字颜色 |
-| `alpha` | 数字 0–255 | `255` | 透明度 |
-| `fontSize` | 数字 | `nil` | 缺省沿用当前字体 |
-| `animate` | 布尔 | `true` | 选中圆点弹入、旧圆点缩回的过渡 |
-| `springStiffness` / `springDamping` | 数字 | `420` / `22` | 圆点动画的弹簧刚度 / 阻尼 |
-| `onChange` | 函数 | `nil` | 选中项变化回调 |
+| 属性                                | 类型                     | 默认值            | 说明                                      |
+| ----------------------------------- | ------------------------ | ----------------- | ----------------------------------------- |
+| `x` / `y`                           | 数字                     | `0`               | 左上角坐标                                |
+| `w` / `h`                           | 数字 / 百分比 / `"auto"` | `"auto"`          | 尺寸；auto 时按选项测量                   |
+| `options`                           | 表                       | `{}`              | 选项文字数组                              |
+| `value`                             | 数字 / `nil`             | `nil`             | 选中项下标（从 1 开始）；`nil` 表示未选中 |
+| `direction`                         | 字符串                   | `"column"`        | 排列方向：`"column"` / `"row"`            |
+| `gap`                               | 数字                     | `8`               | 选项间距                                  |
+| `size`                              | 数字                     | `20`              | 圆形标记直径                              |
+| `textGap`                           | 数字                     | `8`               | 圆形标记与文字的间距                      |
+| `color`                             | hex / token              | `"@surfaceAlt"`   | 圆形标记底色                              |
+| `borderColor`                       | hex / token              | `"@borderStrong"` | 未选中描边色                              |
+| `selectedColor`                     | hex / token              | `"@primary"`      | 选中描边与圆点颜色                        |
+| `textColor`                         | hex / token              | `"@text"`         | 文字颜色                                  |
+| `alpha`                             | 数字 0–255               | `255`             | 透明度                                    |
+| `fontSize`                          | 数字                     | `nil`             | 缺省沿用当前字体                          |
+| `animate`                           | 布尔                     | `true`            | 选中圆点弹入、旧圆点缩回的过渡            |
+| `springStiffness` / `springDamping` | 数字                     | `420` / `22`      | 圆点动画的弹簧刚度 / 阻尼                 |
+| `onChange`                          | 函数                     | `nil`             | 选中项变化回调                            |
 
 ### 方法
 
-| 方法 | 说明 |
-| --- | --- |
-| `:getValue()` | 返回当前 1 基下标，未选中返回 `nil` |
-| `:getLabel()` | 返回当前选中项的文字，未选中返回 `nil` |
+| 方法                        | 说明                                         |
+| --------------------------- | -------------------------------------------- |
+| `:getValue()`               | 返回当前 1 基下标，未选中返回 `nil`          |
+| `:getLabel()`               | 返回当前选中项的文字，未选中返回 `nil`       |
 | `:setValue(index, silent?)` | 设选中下标；`silent` 为真时不触发 `onChange` |
-| `:measure()` | 按选项数量、间距和 `direction` 返回自然尺寸 |
+| `:measure()`                | 按选项数量、间距和 `direction` 返回自然尺寸  |
 
 ### 回调
 
-| 回调 | 参数 | 时机 |
-| --- | --- | --- |
+| 回调       | 参数                   | 时机                                        |
+| ---------- | ---------------------- | ------------------------------------------- |
 | `onChange` | `(index, label, self)` | 用户点击某个选项，或非 silent 的 `setValue` |
 
 注意：
@@ -495,38 +495,38 @@ size:draw()
 
 ### 属性
 
-| 属性 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `x` / `y` | 数字 | `0` | 左上角坐标 |
-| `w` / `h` | 数字 / 百分比 / `"auto"` | `200` / `28` | 尺寸；轨道可用宽度为 `w - thumbRadius * 2` |
-| `min` / `max` | 数字 | `0` / `100` | 取值范围 |
-| `step` | 数字 | `1` | 步进；`0` 表示连续取值 |
-| `value` | 数字 | `0` | 当前值；构造时会先吸附到 `step` |
-| `trackColor` | hex / token | `"@track"` | 轨道底色 |
-| `fillColor` | hex / token | `"@primary"` | 已填充部分颜色 |
-| `thumbColor` | hex / token | `"@knob"` | 滑块颜色 |
-| `trackHeight` | 数字 | `6` | 轨道高度 |
-| `thumbRadius` | 数字 | `9` | 滑块半径 |
-| `alpha` | 数字 0–255 | `255` | 透明度 |
-| `showValue` | 布尔 | `false` | 是否在右侧显示数值 |
-| `valueColor` | hex / token | `"@text"` | 数值文字颜色 |
-| `fontSize` | 数字 | `nil` | 缺省沿用当前字体 |
-| `format` | 函数 | `nil` | `function(value) -> string`，覆盖默认格式化 |
-| `onChange` | 函数 | `nil` | 值变化回调 |
+| 属性          | 类型                     | 默认值       | 说明                                        |
+| ------------- | ------------------------ | ------------ | ------------------------------------------- |
+| `x` / `y`     | 数字                     | `0`          | 左上角坐标                                  |
+| `w` / `h`     | 数字 / 百分比 / `"auto"` | `200` / `28` | 尺寸；轨道可用宽度为 `w - thumbRadius * 2`  |
+| `min` / `max` | 数字                     | `0` / `100`  | 取值范围                                    |
+| `step`        | 数字                     | `1`          | 步进；`0` 表示连续取值                      |
+| `value`       | 数字                     | `0`          | 当前值；构造时会先吸附到 `step`             |
+| `trackColor`  | hex / token              | `"@track"`   | 轨道底色                                    |
+| `fillColor`   | hex / token              | `"@primary"` | 已填充部分颜色                              |
+| `thumbColor`  | hex / token              | `"@knob"`    | 滑块颜色                                    |
+| `trackHeight` | 数字                     | `6`          | 轨道高度                                    |
+| `thumbRadius` | 数字                     | `9`          | 滑块半径                                    |
+| `alpha`       | 数字 0–255               | `255`        | 透明度                                      |
+| `showValue`   | 布尔                     | `false`      | 是否在右侧显示数值                          |
+| `valueColor`  | hex / token              | `"@text"`    | 数值文字颜色                                |
+| `fontSize`    | 数字                     | `nil`        | 缺省沿用当前字体                            |
+| `format`      | 函数                     | `nil`        | `function(value) -> string`，覆盖默认格式化 |
+| `onChange`    | 函数                     | `nil`        | 值变化回调                                  |
 
 ### 方法
 
-| 方法 | 说明 |
-| --- | --- |
-| `:getValue()` | 返回当前值 |
+| 方法                        | 说明                                                                |
+| --------------------------- | ------------------------------------------------------------------- |
+| `:getValue()`               | 返回当前值                                                          |
 | `:setValue(value, silent?)` | 吸附到 `step` 并夹到 `[min, max]`；`silent` 为真时不触发 `onChange` |
-| `:keypressed(key)` | `left` / `down` 减一步，`right` / `up` 加一步 |
-| `:focus()` / `:blur()` | 获取 / 放弃焦点，方向键只发给焦点组件 |
+| `:keypressed(key)`          | `left` / `down` 减一步，`right` / `up` 加一步                       |
+| `:focus()` / `:blur()`      | 获取 / 放弃焦点，方向键只发给焦点组件                               |
 
 ### 回调
 
-| 回调 | 参数 | 时机 |
-| --- | --- | --- |
+| 回调       | 参数            | 时机                                                 |
+| ---------- | --------------- | ---------------------------------------------------- |
 | `onChange` | `(value, self)` | 点击、拖动、方向键或非 silent 的 `setValue` 改变值时 |
 
 注意：
@@ -561,31 +561,31 @@ volume:draw()
 
 ### 属性
 
-| 属性 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `x` / `y` | 数字 | `0` | 左上角坐标 |
-| `w` / `h` | 数字 / 百分比 / `"auto"` | `220` / `12` | 尺寸 |
-| `radius` | 数字 | `nil` | 圆角；缺省取高度的一半（胶囊形） |
-| `value` | 数字 | `0` | 进度比例 `0..1`，超出范围自动夹紧 |
-| `trackColor` | hex / token | `"@track"` | 轨道底色 |
-| `fillColor` | hex / token | `"@primary"` | 已填充部分颜色 |
-| `alpha` | 数字 0–255 | `255` | 透明度 |
-| `animate` | 布尔 | `true` | 填充宽度是否用弹簧过渡；`false` 立即落位 |
-| `springStiffness` / `springDamping` | 数字 | `260` / `30` | 填充动画的弹簧刚度 / 阻尼 |
-| `onChange` | 函数 | `nil` | 进度变化回调 |
+| 属性                                | 类型                     | 默认值       | 说明                                     |
+| ----------------------------------- | ------------------------ | ------------ | ---------------------------------------- |
+| `x` / `y`                           | 数字                     | `0`          | 左上角坐标                               |
+| `w` / `h`                           | 数字 / 百分比 / `"auto"` | `220` / `12` | 尺寸                                     |
+| `radius`                            | 数字                     | `nil`        | 圆角；缺省取高度的一半（胶囊形）         |
+| `value`                             | 数字                     | `0`          | 进度比例 `0..1`，超出范围自动夹紧        |
+| `trackColor`                        | hex / token              | `"@track"`   | 轨道底色                                 |
+| `fillColor`                         | hex / token              | `"@primary"` | 已填充部分颜色                           |
+| `alpha`                             | 数字 0–255               | `255`        | 透明度                                   |
+| `animate`                           | 布尔                     | `true`       | 填充宽度是否用弹簧过渡；`false` 立即落位 |
+| `springStiffness` / `springDamping` | 数字                     | `260` / `30` | 填充动画的弹簧刚度 / 阻尼                |
+| `onChange`                          | 函数                     | `nil`        | 进度变化回调                             |
 
 ### 方法
 
-| 方法 | 说明 |
-| --- | --- |
-| `:getValue()` | 返回当前进度（`0..1`） |
+| 方法                        | 说明                                                  |
+| --------------------------- | ----------------------------------------------------- |
+| `:getValue()`               | 返回当前进度（`0..1`）                                |
 | `:setValue(value, silent?)` | 设进度并夹到 `0..1`；`silent` 为真时不触发 `onChange` |
-| `:measure()` | 返回声明尺寸；auto 时用默认宽高 |
+| `:measure()`                | 返回声明尺寸；auto 时用默认宽高                       |
 
 ### 回调
 
-| 回调 | 参数 | 时机 |
-| --- | --- | --- |
+| 回调       | 参数            | 时机                 |
+| ---------- | --------------- | -------------------- |
 | `onChange` | `(value, self)` | 值变化且非 silent 时 |
 
 注意：
@@ -615,26 +615,26 @@ progress:draw()
 
 ### 属性
 
-| 属性 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `x` / `y` | 数字 | `0` | 左上角坐标 |
-| `w` / `h` | 数字 / 百分比 / `"auto"` | `220` / `12` | 尺寸 |
-| `radius` | 数字 | `nil` | 圆角；缺省取高度的一半（胶囊形） |
-| `trackColor` | hex / token | `"@track"` | 轨道底色 |
-| `fillColor` | hex / token | `"@primary"` | 滑过高光的颜色 |
-| `alpha` | 数字 0–255 | `255` | 透明度 |
-| `speed` | 数字 | `1.1` | 每秒循环次数 |
-| `segmentRatio` | 数字 | `0.35` | 高光段占轨道宽度的比例 |
-| `minSegment` | 数字 | `24` | 高光段最小像素宽度 |
-| `running` | 布尔 | `true` | 是否继续滑动 |
+| 属性           | 类型                     | 默认值       | 说明                             |
+| -------------- | ------------------------ | ------------ | -------------------------------- |
+| `x` / `y`      | 数字                     | `0`          | 左上角坐标                       |
+| `w` / `h`      | 数字 / 百分比 / `"auto"` | `220` / `12` | 尺寸                             |
+| `radius`       | 数字                     | `nil`        | 圆角；缺省取高度的一半（胶囊形） |
+| `trackColor`   | hex / token              | `"@track"`   | 轨道底色                         |
+| `fillColor`    | hex / token              | `"@primary"` | 滑过高光的颜色                   |
+| `alpha`        | 数字 0–255               | `255`        | 透明度                           |
+| `speed`        | 数字                     | `1.1`        | 每秒循环次数                     |
+| `segmentRatio` | 数字                     | `0.35`       | 高光段占轨道宽度的比例           |
+| `minSegment`   | 数字                     | `24`         | 高光段最小像素宽度               |
+| `running`      | 布尔                     | `true`       | 是否继续滑动                     |
 
 ### 方法
 
-| 方法 | 说明 |
-| --- | --- |
-| `:isRunning()` | 是否正在滑动 |
-| `:setRunning(running)` | 开始 / 暂停，返回自身 |
-| `:measure()` | 返回声明尺寸；auto 时用默认宽高 |
+| 方法                   | 说明                            |
+| ---------------------- | ------------------------------- |
+| `:isRunning()`         | 是否正在滑动                    |
+| `:setRunning(running)` | 开始 / 暂停，返回自身           |
+| `:measure()`           | 返回声明尺寸；auto 时用默认宽高 |
 
 注意：
 
@@ -668,49 +668,49 @@ end
 
 ### 属性
 
-| 属性 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `x` / `y` | 数字 | `0` | 视口左上角 |
-| `w` / `h` | 数字 | `320` / `240` | 视口尺寸 |
-| `content` | 组件 | `nil` | 被滚动的内容，通常是 `At.Panel` |
-| `scrollX` / `scrollY` | 数字 | `0` | 当前滚动量，会被自动夹到 `0 .. maxScrollX/Y` |
-| `scrollbar` | 布尔 | `true` | 是否画滚动条 |
-| `scrollbarWidth` | 数字 | `4` | 滚动条宽度（横竖共用） |
-| `scrollbarMargin` | 数字 | `2` | 滚动条与视口边缘的间距 |
-| `edgeEffect` | 布尔 | `true` | 触顶/触底时的橡皮筋过冲与边缘光 |
-| `edgeGlowColor` / `edgeGlowSize` | hex / token / 数字 | `"@primary"` / `28` | 边缘光颜色 / 光带宽度 |
-| `edgeRadius` | 数字 / `nil` | `nil` | 光带圆角；缺省取内容容器（大卡片）的 `radius`，再退回 ScrollView 自身的 `radius` |
-| `overscrollMax` / `overscrollResistance` | 数字 | `70` / `0.55` | 光带达到最亮所需的过冲量 / 拉动阻力（越小越硬） |
-| `edgeSpringStiffness` / `edgeSpringDamping` | 数字 | `380` / `30` | 松手回弹的弹簧刚度 / 阻尼 |
-| `scrollbarColor` / `scrollbarThumbColor` | hex / token | `"@track"` / `"@primary"` | 轨道/滑块颜色 |
-| `scrollbarActiveWidth` | 数字 | `8` | 指针靠近或拖动滚动条时的宽度（离开后缩回 `scrollbarWidth`） |
-| `scrollbarSpringStiffness` / `scrollbarSpringDamping` | 数字 | `700` / `42` | 滚动条变宽的弹簧刚度 / 阻尼 |
-| `scrollbarGrowSpeed` | 数字 | `16` | 已弃用；宽度改用上面的弹簧控制 |
-| `scrollbarHitWidth` | 数字 | `16` | 滚动条的可拖拽宽度（比视觉宽度大，方便手指按住） |
-| `wheelStep` | 数字 | `44` | 滚轮一格滚动多少像素 |
-| `smooth` | 布尔 | `true` | 滚轮/代码滚动是否缓动；拖拽始终 1:1 跟手 |
-| `smoothSpeed` | 数字 | `14` | 缓动收敛速度，越大越跟手 |
-| `momentum` | 布尔 | `true` | 松手后是否保留惯性 |
-| `momentumFriction` | 数字 | `6` | 惯性衰减速度 |
-| `momentumMin` | 数字 | `1` | 小于这个速度（像素/帧）不产生惯性 |
-| `drag` | 布尔 | `true` | 允许按住空白处拖动滚动 |
-| `padding` | 数字 / 表 | `0` | 视口内边距 |
-| `background` / `radius` | hex / 数字 | `nil` / `0` | 视口背景与圆角 |
-| `onScroll` | 函数 | `nil` | 滚动量变化时回调 `(value, maxScroll, self, axis)`，`axis` 为 `"x"` / `"y"` |
+| 属性                                                  | 类型               | 默认值                    | 说明                                                                             |
+| ----------------------------------------------------- | ------------------ | ------------------------- | -------------------------------------------------------------------------------- |
+| `x` / `y`                                             | 数字               | `0`                       | 视口左上角                                                                       |
+| `w` / `h`                                             | 数字               | `320` / `240`             | 视口尺寸                                                                         |
+| `content`                                             | 组件               | `nil`                     | 被滚动的内容，通常是 `At.Panel`                                                  |
+| `scrollX` / `scrollY`                                 | 数字               | `0`                       | 当前滚动量，会被自动夹到 `0 .. maxScrollX/Y`                                     |
+| `scrollbar`                                           | 布尔               | `true`                    | 是否画滚动条                                                                     |
+| `scrollbarWidth`                                      | 数字               | `4`                       | 滚动条宽度（横竖共用）                                                           |
+| `scrollbarMargin`                                     | 数字               | `2`                       | 滚动条与视口边缘的间距                                                           |
+| `edgeEffect`                                          | 布尔               | `true`                    | 触顶/触底时的橡皮筋过冲与边缘光                                                  |
+| `edgeGlowColor` / `edgeGlowSize`                      | hex / token / 数字 | `"@primary"` / `28`       | 边缘光颜色 / 光带宽度                                                            |
+| `edgeRadius`                                          | 数字 / `nil`       | `nil`                     | 光带圆角；缺省取内容容器（大卡片）的 `radius`，再退回 ScrollView 自身的 `radius` |
+| `overscrollMax` / `overscrollResistance`              | 数字               | `70` / `0.55`             | 光带达到最亮所需的过冲量 / 拉动阻力（越小越硬）                                  |
+| `edgeSpringStiffness` / `edgeSpringDamping`           | 数字               | `380` / `30`              | 松手回弹的弹簧刚度 / 阻尼                                                        |
+| `scrollbarColor` / `scrollbarThumbColor`              | hex / token        | `"@track"` / `"@primary"` | 轨道/滑块颜色                                                                    |
+| `scrollbarActiveWidth`                                | 数字               | `8`                       | 指针靠近或拖动滚动条时的宽度（离开后缩回 `scrollbarWidth`）                      |
+| `scrollbarSpringStiffness` / `scrollbarSpringDamping` | 数字               | `700` / `42`              | 滚动条变宽的弹簧刚度 / 阻尼                                                      |
+| `scrollbarGrowSpeed`                                  | 数字               | `16`                      | 已弃用；宽度改用上面的弹簧控制                                                   |
+| `scrollbarHitWidth`                                   | 数字               | `16`                      | 滚动条的可拖拽宽度（比视觉宽度大，方便手指按住）                                 |
+| `wheelStep`                                           | 数字               | `44`                      | 滚轮一格滚动多少像素                                                             |
+| `smooth`                                              | 布尔               | `true`                    | 滚轮/代码滚动是否缓动；拖拽始终 1:1 跟手                                         |
+| `smoothSpeed`                                         | 数字               | `14`                      | 缓动收敛速度，越大越跟手                                                         |
+| `momentum`                                            | 布尔               | `true`                    | 松手后是否保留惯性                                                               |
+| `momentumFriction`                                    | 数字               | `6`                       | 惯性衰减速度                                                                     |
+| `momentumMin`                                         | 数字               | `1`                       | 小于这个速度（像素/帧）不产生惯性                                                |
+| `drag`                                                | 布尔               | `true`                    | 允许按住空白处拖动滚动                                                           |
+| `padding`                                             | 数字 / 表          | `0`                       | 视口内边距                                                                       |
+| `background` / `radius`                               | hex / 数字         | `nil` / `0`               | 视口背景与圆角                                                                   |
+| `onScroll`                                            | 函数               | `nil`                     | 滚动量变化时回调 `(value, maxScroll, self, axis)`，`axis` 为 `"x"` / `"y"`       |
 
 ### 方法
 
-| 方法 | 说明 |
-| --- | --- |
-| `:setScroll(value, silent?)` | **立即**设置滚动量并夹紧（拖拽、滚动条、`scrollToVisible` 用）；`silent` 为真时不触发 `onScroll` |
-| `:scrollTo(value, silent?)` | **平滑**滚动到绝对值；`smooth = false` 时等同 `setScroll` |
-| `:scrollBy(delta, silent?)` | **平滑**相对滚动；按当前目标累加，连续滚轮不会互相吞掉 |
-| `:maxScroll()` | 最大纵向滚动量（内容高度 - 视口高度） |
-| `:maxScrollX()` | 最大横向滚动量（内容宽度 - 视口宽度） |
-| `:setScrollX(value, silent?)` / `:scrollToX(value, silent?)` / `:scrollByX(delta, silent?)` | 横向的立即 / 平滑 / 相对滚动 |
-| `:scrollToVisible(component, margin?)` | 把某个子组件滚进可视区，配合输入框聚焦防软键盘遮挡 |
-| `:layout()` | 立即重排：把自身视口宽度作为可用宽度传给内容 |
-| `:destroy()` | 连同 `content` 一起销毁 |
+| 方法                                                                                        | 说明                                                                                             |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `:setScroll(value, silent?)`                                                                | **立即**设置滚动量并夹紧（拖拽、滚动条、`scrollToVisible` 用）；`silent` 为真时不触发 `onScroll` |
+| `:scrollTo(value, silent?)`                                                                 | **平滑**滚动到绝对值；`smooth = false` 时等同 `setScroll`                                        |
+| `:scrollBy(delta, silent?)`                                                                 | **平滑**相对滚动；按当前目标累加，连续滚轮不会互相吞掉                                           |
+| `:maxScroll()`                                                                              | 最大纵向滚动量（内容高度 - 视口高度）                                                            |
+| `:maxScrollX()`                                                                             | 最大横向滚动量（内容宽度 - 视口宽度）                                                            |
+| `:setScrollX(value, silent?)` / `:scrollToX(value, silent?)` / `:scrollByX(delta, silent?)` | 横向的立即 / 平滑 / 相对滚动                                                                     |
+| `:scrollToVisible(component, margin?)`                                                      | 把某个子组件滚进可视区，配合输入框聚焦防软键盘遮挡                                               |
+| `:layout()`                                                                                 | 立即重排：把自身视口宽度作为可用宽度传给内容                                                     |
+| `:destroy()`                                                                                | 连同 `content` 一起销毁                                                                          |
 
 ### 说明
 
@@ -761,38 +761,38 @@ local view = At.ScrollView{
 
 ### 属性
 
-| 属性 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `x` / `y` | 数字 | `0` | 初始位置；拖动时会被夹在窗口内 |
-| `w` / `h` | 数字 | `560` / `240` | 窗口尺寸 |
-| `headerH` | 数字 | `30` | 标题栏高度（也是拖动区域与关闭按钮尺寸） |
-| `padding` | 数字 | `8` | 日志区左右内边距 |
-| `radius` | 数字 | `8` | 窗口圆角 |
-| `visible` | 布尔 | `false` | 默认隐藏，用 `toggle()` / `show()` 打开 |
-| `draggable` | 布尔 | `true` | 是否允许拖动标题栏移动窗口 |
-| `showClose` | 布尔 | `true` | 是否显示右上角 `×` |
-| `showClear` | 布尔 | `true` | 是否显示标题栏的 `C`（清空日志）按钮 |
-| `title` | 字符串 | `"控制台"` | 标题栏文字 |
-| `fontSize` | 数字 | `13` | 日志字号 |
-| `lineHeight` | 数字 | `1.35` | 行高倍数 |
-| `scrollStep` | 数字 | `3` | 滚轮一格滚动几行 |
-| `animate` | 布尔 | `true` | 打开/关闭动画：弹簧 + 淡入淡出 + 轻微下移 |
-| `springStiffness` / `springDamping` | 数字 | `320` / `26` | 开关动画的弹簧刚度 / 阻尼 |
-| `openOffset` | 数字 | `12` | 关闭时窗口向下偏移多少像素（打开时滑回） |
-| `background` | hex / token | `"@background"` | 背景色 |
-| `alpha` | 数字 0–255 | `205` | 背景透明度（半透明） |
-| `borderColor` / `dividerColor` | hex / token | `"@border"` / `"@divider"` | 边框 / 标题分隔线 |
-| `titleColor` / `placeholderColor` | hex / token | `"@text"` / `"@textFaint"` | 标题 / 无日志提示色 |
-| `scrollbarColor` / `scrollbarThumbColor` | hex / token | `"@track"` / `"@primary"` | 滚动条轨道 / 滑块 |
-| `tab` | 布尔 | `true` | 隐藏时在右上角显示可点按的 `LOG` 标签（移动端入口） |
-| `tabW` / `tabH` | 数字 | `72` / `28` | 标签尺寸 |
-| `tabMargin` | 数字 | `12` | 标签距屏幕边缘 |
-| `tabRadius` | 数字 | `6` | 标签圆角 |
-| `tabLabel` | 字符串 | `"LOG"` | 标签文字 |
-| `tabColor` / `tabTextColor` | hex / token | `"@surfaceAlt"` / `"@primary"` | 标签底色 / 文字色 |
-| `tabAlpha` | 数字 | `225` | 标签底色透明度 |
-| `tabX` / `tabY` | 数字 | `nil` | 标签位置；缺省贴屏幕右上角 |
-| `levelColors` | 表 | 见下 | 每个等级的文字颜色 |
+| 属性                                     | 类型        | 默认值                         | 说明                                                |
+| ---------------------------------------- | ----------- | ------------------------------ | --------------------------------------------------- |
+| `x` / `y`                                | 数字        | `0`                            | 初始位置；拖动时会被夹在窗口内                      |
+| `w` / `h`                                | 数字        | `560` / `240`                  | 窗口尺寸                                            |
+| `headerH`                                | 数字        | `30`                           | 标题栏高度（也是拖动区域与关闭按钮尺寸）            |
+| `padding`                                | 数字        | `8`                            | 日志区左右内边距                                    |
+| `radius`                                 | 数字        | `8`                            | 窗口圆角                                            |
+| `visible`                                | 布尔        | `false`                        | 默认隐藏，用 `toggle()` / `show()` 打开             |
+| `draggable`                              | 布尔        | `true`                         | 是否允许拖动标题栏移动窗口                          |
+| `showClose`                              | 布尔        | `true`                         | 是否显示右上角 `×`                                  |
+| `showClear`                              | 布尔        | `true`                         | 是否显示标题栏的 `C`（清空日志）按钮                |
+| `title`                                  | 字符串      | `"控制台"`                     | 标题栏文字                                          |
+| `fontSize`                               | 数字        | `13`                           | 日志字号                                            |
+| `lineHeight`                             | 数字        | `1.35`                         | 行高倍数                                            |
+| `scrollStep`                             | 数字        | `3`                            | 滚轮一格滚动几行                                    |
+| `animate`                                | 布尔        | `true`                         | 打开/关闭动画：弹簧 + 淡入淡出 + 轻微下移           |
+| `springStiffness` / `springDamping`      | 数字        | `320` / `26`                   | 开关动画的弹簧刚度 / 阻尼                           |
+| `openOffset`                             | 数字        | `12`                           | 关闭时窗口向下偏移多少像素（打开时滑回）            |
+| `background`                             | hex / token | `"@background"`                | 背景色                                              |
+| `alpha`                                  | 数字 0–255  | `205`                          | 背景透明度（半透明）                                |
+| `borderColor` / `dividerColor`           | hex / token | `"@border"` / `"@divider"`     | 边框 / 标题分隔线                                   |
+| `titleColor` / `placeholderColor`        | hex / token | `"@text"` / `"@textFaint"`     | 标题 / 无日志提示色                                 |
+| `scrollbarColor` / `scrollbarThumbColor` | hex / token | `"@track"` / `"@primary"`      | 滚动条轨道 / 滑块                                   |
+| `tab`                                    | 布尔        | `true`                         | 隐藏时在右上角显示可点按的 `LOG` 标签（移动端入口） |
+| `tabW` / `tabH`                          | 数字        | `72` / `28`                    | 标签尺寸                                            |
+| `tabMargin`                              | 数字        | `12`                           | 标签距屏幕边缘                                      |
+| `tabRadius`                              | 数字        | `6`                            | 标签圆角                                            |
+| `tabLabel`                               | 字符串      | `"LOG"`                        | 标签文字                                            |
+| `tabColor` / `tabTextColor`              | hex / token | `"@surfaceAlt"` / `"@primary"` | 标签底色 / 文字色                                   |
+| `tabAlpha`                               | 数字        | `225`                          | 标签底色透明度                                      |
+| `tabX` / `tabY`                          | 数字        | `nil`                          | 标签位置；缺省贴屏幕右上角                          |
+| `levelColors`                            | 表          | 见下                           | 每个等级的文字颜色                                  |
 
 默认等级配色：
 
@@ -810,15 +810,15 @@ levelColors = {
 
 ### 方法
 
-| 方法 | 说明 |
-| --- | --- |
-| `:show()` / `:hide()` / `:toggle()` | 显示 / 隐藏 / 切换 |
-| `:isOpen()` | 是否可见 |
-| `:setTitle(text)` | 改标题 |
-| `:clear()` | 清空 `At.log` 的日志缓冲并把视图回到底部 |
-| `:scrollToBottom()` | 滚回最新一条（打开控制台时也会自动回到最新） |
-| `:openAmount()` | 当前动画进度：`0` 完全关闭、`1` 完全打开（可能略过冲） |
-| `:draw()` / `:update(dt)` | 由调用方每帧调用；`update` 推进开关动画并处理拖动 |
+| 方法                                | 说明                                                   |
+| ----------------------------------- | ------------------------------------------------------ |
+| `:show()` / `:hide()` / `:toggle()` | 显示 / 隐藏 / 切换                                     |
+| `:isOpen()`                         | 是否可见                                               |
+| `:setTitle(text)`                   | 改标题                                                 |
+| `:clear()`                          | 清空 `At.log` 的日志缓冲并把视图回到底部               |
+| `:scrollToBottom()`                 | 滚回最新一条（打开控制台时也会自动回到最新）           |
+| `:openAmount()`                     | 当前动画进度：`0` 完全关闭、`1` 完全打开（可能略过冲） |
+| `:draw()` / `:update(dt)`           | 由调用方每帧调用；`update` 推进开关动画并处理拖动      |
 
 ### 交互
 

@@ -6,16 +6,16 @@
 
 ## 与 CSS 的对照
 
-| 本库写法 | 对应的 CSS | 说明 |
-| --- | --- | --- |
-| `direction = "column"` / `"row"` | `flex-direction: column` / `row` | 主轴方向，默认 `column` |
-| `gap = 12` | `gap: 12px` | 子项间距，单位是像素，不带 `px` |
-| `padding = 16` 或 `padding = { left, top, right, bottom }` | `padding` | `Panel` 的内边距 |
-| 子项上的 `margin = 8` 或 `margin = { left, top, right, bottom }` | `margin` | 写子组件上，不是容器上 |
-| `w = 120` / `w = "50%"` / `w = "auto"` | `width: 120px` / `50%` / `auto` | `h` 同理 |
-| `grow = 1` | `flex-grow: 1` | 按权重瓜分主轴剩余空间 |
-| `align = "center"` | `align-items: center` | 交叉轴对齐：`start` / `center` / `end` / `stretch` |
-| `justify = "center"` | `justify-content: center` | 主轴分布：`start` / `center` / `end` / `space-between` |
+| 本库写法                                                         | 对应的 CSS                       | 说明                                                   |
+| ---------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------ |
+| `direction = "column"` / `"row"`                                 | `flex-direction: column` / `row` | 主轴方向，默认 `column`                                |
+| `gap = 12`                                                       | `gap: 12px`                      | 子项间距，单位是像素，不带 `px`                        |
+| `padding = 16` 或 `padding = { left, top, right, bottom }`       | `padding`                        | `Panel` 的内边距                                       |
+| 子项上的 `margin = 8` 或 `margin = { left, top, right, bottom }` | `margin`                         | 写子组件上，不是容器上                                 |
+| `w = 120` / `w = "50%"` / `w = "auto"`                           | `width: 120px` / `50%` / `auto`  | `h` 同理                                               |
+| `grow = 1`                                                       | `flex-grow: 1`                   | 按权重瓜分主轴剩余空间                                 |
+| `align = "center"`                                               | `align-items: center`            | 交叉轴对齐：`start` / `center` / `end` / `stretch`     |
+| `justify = "center"`                                             | `justify-content: center`        | 主轴分布：`start` / `center` / `end` / `space-between` |
 
 与 CSS 的差异：
 
@@ -29,10 +29,10 @@
 
 `At.layout.pixels(value, base)` 把声明值解析成像素：
 
-| 写法 | 结果 |
-| --- | --- |
-| `120`（数字） | `120` |
-| `"50%"` | `base * 0.5` |
+| 写法                   | 结果                               |
+| ---------------------- | ---------------------------------- |
+| `120`（数字）          | `120`                              |
+| `"50%"`                | `base * 0.5`                       |
 | `"auto"`（或空字符串） | `nil`，交给 `measure()` 求自然尺寸 |
 
 **百分比在父容器没有可用宽度时会退化成 auto**：此时 `pixels("50%", nil)` 返回 `nil`，组件按自身内容测量，而不是变成 `0`。
@@ -98,11 +98,11 @@ At.Panel{
 
 `justify` 控制**主轴**上剩余空间的分布，类似 CSS 的 `justify-content`：
 
-| 取值 | 效果 |
-| --- | --- |
-| `"start"` | 靠主轴起点（默认） |
-| `"center"` | 整体居中 |
-| `"end"` | 靠主轴终点 |
+| 取值              | 效果                                                |
+| ----------------- | --------------------------------------------------- |
+| `"start"`         | 靠主轴起点（默认）                                  |
+| `"center"`        | 整体居中                                            |
+| `"end"`           | 靠主轴终点                                          |
 | `"space-between"` | 首尾贴边，剩余空间平均塞进子项之间（至少 2 个子项） |
 
 - 只在有剩余空间时生效；被 `grow` 分完之后剩余为 0，`justify` 就看不出效果。
@@ -112,12 +112,12 @@ At.Panel{
 
 `align` 控制**交叉轴**对齐，类似 CSS 的 `align-items`：
 
-| 取值 | 效果 |
-| --- | --- |
-| `"start"` | 靠交叉轴起点（默认） |
-| `"center"` | 交叉轴居中 |
-| `"end"` | 靠交叉轴终点 |
-| `"stretch"` | 拉伸到内容区大小 |
+| 取值        | 效果                 |
+| ----------- | -------------------- |
+| `"start"`   | 靠交叉轴起点（默认） |
+| `"center"`  | 交叉轴居中           |
+| `"end"`     | 靠交叉轴终点         |
+| `"stretch"` | 拉伸到内容区大小     |
 
 `stretch` 只对**声明为 `auto` 的尺寸**生效：`column` 里拉伸 `auto` 的宽度，`row` 里拉伸 `auto` 的高度。显式写了数字或百分比的子项保持原尺寸。交叉轴内容尺寸未知时也无法拉伸。
 

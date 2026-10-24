@@ -109,30 +109,30 @@ end
 
 ## 组件一览
 
-| 组件 | 作用 |
-| --- | --- |
-| `At.Panel` | 布局容器 / 卡片，支持背景、描边、圆角、阴影 |
-| `At.Label` | 文字标签，支持换行与对齐 |
-| `At.Button` | 按钮：悬停/按下/禁用、涟漪、居中文字、回调 |
-| `At.TextInput` | 单行输入框：点击定位光标、方向键、中间编辑、密码、长度限制、回车提交 |
-| `At.Switch` | 开关：点击或左右拖动切换，带过渡动画 |
-| `At.Checkbox` | 多选框 |
-| `At.RadioGroup` | 单选组（`value` 为 1 基下标） |
-| `At.Slider` | 滑动条：点击跳转、拖动、方向键微调、步长吸附 |
-| `At.ScrollView` | 可滚动视口：横向/纵向自动滚动条、平滑滚动、惯性 |
-| `At.Console` | 浮动调试控制台：显示 `At.log` 日志、着色、可拖动 |
+| 组件            | 作用                                                                 |
+| --------------- | -------------------------------------------------------------------- |
+| `At.Panel`      | 布局容器 / 卡片，支持背景、描边、圆角、阴影                          |
+| `At.Label`      | 文字标签，支持换行与对齐                                             |
+| `At.Button`     | 按钮：悬停/按下/禁用、涟漪、居中文字、回调                           |
+| `At.TextInput`  | 单行输入框：点击定位光标、方向键、中间编辑、密码、长度限制、回车提交 |
+| `At.Switch`     | 开关：点击或左右拖动切换，带过渡动画                                 |
+| `At.Checkbox`   | 多选框                                                               |
+| `At.RadioGroup` | 单选组（`value` 为 1 基下标）                                        |
+| `At.Slider`     | 滑动条：点击跳转、拖动、方向键微调、步长吸附                         |
+| `At.ScrollView` | 可滚动视口：横向/纵向自动滚动条、平滑滚动、惯性                      |
+| `At.Console`    | 浮动调试控制台：显示 `At.log` 日志、着色、可拖动                     |
 
 ## 布局速查（CSS 子集）
 
-| 本库 | CSS | 说明 |
-| --- | --- | --- |
-| `direction` | `flex-direction` | `column` / `row` |
-| `gap` | `gap` | 子项间距 |
-| `padding` / `margin` | 同名 | 数字或 `{ left, top, right, bottom }` |
-| `w` / `h` | `width` / `height` | 数字、`"50%"`、`"auto"` |
-| `grow` | `flex-grow` | 瓜分主轴剩余空间 |
-| `align` | `align-items` | `start` / `center` / `end` / `stretch` |
-| `justify` | `justify-content` | `start` / `center` / `end` / `space-between` |
+| 本库                 | CSS                | 说明                                         |
+| -------------------- | ------------------ | -------------------------------------------- |
+| `direction`          | `flex-direction`   | `column` / `row`                             |
+| `gap`                | `gap`              | 子项间距                                     |
+| `padding` / `margin` | 同名               | 数字或 `{ left, top, right, bottom }`        |
+| `w` / `h`            | `width` / `height` | 数字、`"50%"`、`"auto"`                      |
+| `grow`               | `flex-grow`        | 瓜分主轴剩余空间                             |
+| `align`              | `align-items`      | `start` / `center` / `end` / `stretch`       |
+| `justify`            | `justify-content`  | `start` / `center` / `end` / `space-between` |
 
 不支持 `flex-wrap`、`grid`、绝对定位、`z-index`。父容器没有确定宽度时百分比会退化成 `auto`。
 

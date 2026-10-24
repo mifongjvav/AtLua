@@ -19,13 +19,13 @@ end
 
 组件只有在**背景半透明（alpha < 255）**且 `At.blur` 启用时才会调用模糊。当前自动支持：
 
-| 组件 | 触发条件 |
-| --- | --- |
-| `At.Panel` | `background` 存在且 `alpha < 255` |
-| `At.Console` | 默认 `alpha = 205`，一直触发 |
-| `At.ScrollView` | `background` 存在且 `alpha < 255` |
-| `At.TextInput` | `alpha < 255` |
-| `At.Button` | `fillAlpha() < 255`（含禁用态的 45% 透明度） |
+| 组件            | 触发条件                                     |
+| --------------- | -------------------------------------------- |
+| `At.Panel`      | `background` 存在且 `alpha < 255`            |
+| `At.Console`    | 默认 `alpha = 205`，一直触发                 |
+| `At.ScrollView` | `background` 存在且 `alpha < 255`            |
+| `At.TextInput`  | `alpha < 255`                                |
+| `At.Button`     | `fillAlpha() < 255`（含禁用态的 45% 透明度） |
 
 `At.Label`、`At.Slider` 等没有背景面板，不参与模糊。
 
@@ -70,17 +70,17 @@ At.blur.getAlgorithms()                  -- 已注册的算法名
 
 ## API
 
-| 函数 | 说明 |
-| --- | --- |
-| `setEnabled(bool)` / `isEnabled()` / `isActive()` | 开关；`At.blur.enabled` 字段读写等价 |
-| `setAlgorithm(nameOrFn)` / `getAlgorithm()` | 选择算法或自定义函数 |
-| `setStrength(n)` / `getStrength()` | 模糊强度（≥1） |
-| `beginFrame()` / `endFrame()` | 每帧包住绘制；返回是否生效 |
-| `drawBackdrop(x, y, w, h, radius)` | 在指定区域绘制模糊背景；组件内部调用，返回是否绘制 |
-| `registerAlgorithm(name, fn)` / `getAlgorithms()` | 注册/列出算法 |
-| `stats()` | `{ frames, backdrops, snapshots }`，排查性能与是否触发 |
-| `getMSAA()` / `getMaxMSAA()` | 当前实际生效的 MSAA 采样数 / 设备支持的最大采样数 |
-| `getError()` / `reset()` | 失败原因 / 清缓存重试 |
+| 函数                                              | 说明                                                   |
+| ------------------------------------------------- | ------------------------------------------------------ |
+| `setEnabled(bool)` / `isEnabled()` / `isActive()` | 开关；`At.blur.enabled` 字段读写等价                   |
+| `setAlgorithm(nameOrFn)` / `getAlgorithm()`       | 选择算法或自定义函数                                   |
+| `setStrength(n)` / `getStrength()`                | 模糊强度（≥1）                                         |
+| `beginFrame()` / `endFrame()`                     | 每帧包住绘制；返回是否生效                             |
+| `drawBackdrop(x, y, w, h, radius)`                | 在指定区域绘制模糊背景；组件内部调用，返回是否绘制     |
+| `registerAlgorithm(name, fn)` / `getAlgorithms()` | 注册/列出算法                                          |
+| `stats()`                                         | `{ frames, backdrops, snapshots }`，排查性能与是否触发 |
+| `getMSAA()` / `getMaxMSAA()`                      | 当前实际生效的 MSAA 采样数 / 设备支持的最大采样数      |
+| `getError()` / `reset()`                          | 失败原因 / 清缓存重试                                  |
 
 ## 性能与限制
 

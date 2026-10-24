@@ -74,13 +74,13 @@ At.log.setFilePattern("logs/%Y-%m-%d.log")      -- 按天一个文件（存档�
 
 ## 等级
 
-| 等级 | 数值 | 说明 |
-| --- | --- | --- |
-| `debug` | 1 | 细节，默认不显示 |
-| `info` | 2 | 常规信息（默认等级） |
-| `warn` | 3 | 可恢复的异常 |
-| `error` | 4 | 操作失败 |
-| `fatal` | 5 | 致命错误 |
+| 等级    | 数值 | 说明                 |
+| ------- | ---- | -------------------- |
+| `debug` | 1    | 细节，默认不显示     |
+| `info`  | 2    | 常规信息（默认等级） |
+| `warn`  | 3    | 可恢复的异常         |
+| `error` | 4    | 操作失败             |
+| `fatal` | 5    | 致命错误             |
 
 **过滤发生在写入时**：低于当前等级的日志不会进入缓冲区，之后调高显示等级也看不到（要看到就重新产生）。所以调试期用 `setLevel("debug")`，发布时 `setLevel("info")` 或 `"warn"`。
 
@@ -117,21 +117,21 @@ At.log.setFilePattern("logs/%Y-%m-%d.log")      -- 按天一个文件（存档�
 
 ## API
 
-| 函数 | 说明 |
-| --- | --- |
-| `At.log.debug/info/warn/error/fatal(...)` | 写一条日志；返回 entry，被等级过滤时返回 `nil` |
-| `At.log.setLevel(level)` | 设置等级，接受字符串或 1–5 的数字；非法值报错 |
-| `At.log.getLevel()` / `At.log.getLevelName()` | 当前等级数值 / 名称 |
-| `At.log.setFormat(fmt)` / `At.log.getFormat()` | 格式模板或函数 |
-| `At.log.setMaxEntries(n)` / `At.log.getMaxEntries()` | 缓冲区上限（默认 500，0 = 不限） |
-| `At.log.getEntries()` | 条目数组（按时间升序，只读使用） |
-| `At.log.count()` | 当前条数 |
-| `At.log.clear()` | 清空缓冲区 |
-| `At.log.formatEntry(entry)` | 把一条日志渲染成文本（显示端每帧调用） |
-| `At.log.setFile(enabled)` | 开启/关闭文件输出，开启时按 pattern 生成文件名 |
-| `At.log.setFilePattern(pattern)` / `At.log.getFilePattern()` | 文件名 pattern（`os.date` 语法） |
-| `At.log.getFileName()` / `At.log.getFilePath()` | 实际文件名（相对存档目录）/ 完整路径 |
-| `At.log.closeFile()` / `At.log.isFileEnabled()` | 收起文件句柄 / 是否在写文件 |
+| 函数                                                         | 说明                                           |
+| ------------------------------------------------------------ | ---------------------------------------------- |
+| `At.log.debug/info/warn/error/fatal(...)`                    | 写一条日志；返回 entry，被等级过滤时返回 `nil` |
+| `At.log.setLevel(level)`                                     | 设置等级，接受字符串或 1–5 的数字；非法值报错  |
+| `At.log.getLevel()` / `At.log.getLevelName()`                | 当前等级数值 / 名称                            |
+| `At.log.setFormat(fmt)` / `At.log.getFormat()`               | 格式模板或函数                                 |
+| `At.log.setMaxEntries(n)` / `At.log.getMaxEntries()`         | 缓冲区上限（默认 500，0 = 不限）               |
+| `At.log.getEntries()`                                        | 条目数组（按时间升序，只读使用）               |
+| `At.log.count()`                                             | 当前条数                                       |
+| `At.log.clear()`                                             | 清空缓冲区                                     |
+| `At.log.formatEntry(entry)`                                  | 把一条日志渲染成文本（显示端每帧调用）         |
+| `At.log.setFile(enabled)`                                    | 开启/关闭文件输出，开启时按 pattern 生成文件名 |
+| `At.log.setFilePattern(pattern)` / `At.log.getFilePattern()` | 文件名 pattern（`os.date` 语法）               |
+| `At.log.getFileName()` / `At.log.getFilePath()`              | 实际文件名（相对存档目录）/ 完整路径           |
+| `At.log.closeFile()` / `At.log.isFileEnabled()`              | 收起文件句柄 / 是否在写文件                    |
 
 条目结构：
 

@@ -29,14 +29,14 @@ At.shadow.getAlgorithm()   -- "legacy"
 
 组件的 `shadow = true`（不传 `shadowArgs`）时使用 `At.config.shadow`：
 
-| 字段 | 默认值 | 说明 |
-| --- | --- | --- |
-| `algorithm` | `"glsl"` | 算法 |
-| `color` | `"@primaryDark"` | 阴影颜色，可传主题 token 或 hex |
-| `alpha` | `0.3` | 字符串颜色 / 缺省颜色的最大不透明度（0–1） |
-| `spread` | `3` | GLSL 下是模糊半径，legacy 下是最大扩散 |
-| `layers` | `20` | 只对 legacy 有效 |
-| `offsetX` / `offsetY` | `1` / `2` | 阴影偏移 |
+| 字段                  | 默认值           | 说明                                       |
+| --------------------- | ---------------- | ------------------------------------------ |
+| `algorithm`           | `"glsl"`         | 算法                                       |
+| `color`               | `"@primaryDark"` | 阴影颜色，可传主题 token 或 hex            |
+| `alpha`               | `0.3`            | 字符串颜色 / 缺省颜色的最大不透明度（0–1） |
+| `spread`              | `3`              | GLSL 下是模糊半径，legacy 下是最大扩散     |
+| `layers`              | `20`             | 只对 legacy 有效                           |
+| `offsetX` / `offsetY` | `1` / `2`        | 阴影偏移                                   |
 
 ```lua
 At.config.shadow.spread = 2
@@ -56,26 +56,26 @@ At.config.apply()
 At.shadow.shadow(x, y, w, h, corner, color, spread, layers, offsetX, offsetY)
 ```
 
-| 参数 | 说明 |
-| --- | --- |
-| `x` / `y` / `w` / `h` | 组件矩形（左上角 + 宽高） |
-| `corner` | 组件圆角；阴影跟随这个形状 |
-| `color` | 0–1 的 RGBA 表，或 hex / 主题 token（字符串默认 alpha 0.3）；`color[4]` 是最大不透明度 |
-| `spread` | 模糊/扩散半径：GLSL 下是模糊半径，legacy 下是最大缩放扩散（组件 `shadowArgs` 里的第 2 项） |
-| `layers` | **只对 legacy 生效**；GLSL 忽略它 |
-| `offsetX` / `offsetY` | 阴影偏移 |
+| 参数                  | 说明                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------ |
+| `x` / `y` / `w` / `h` | 组件矩形（左上角 + 宽高）                                                                  |
+| `corner`              | 组件圆角；阴影跟随这个形状                                                                 |
+| `color`               | 0–1 的 RGBA 表，或 hex / 主题 token（字符串默认 alpha 0.3）；`color[4]` 是最大不透明度     |
+| `spread`              | 模糊/扩散半径：GLSL 下是模糊半径，legacy 下是最大缩放扩散（组件 `shadowArgs` 里的第 2 项） |
+| `layers`              | **只对 legacy 生效**；GLSL 忽略它                                                          |
+| `offsetX` / `offsetY` | 阴影偏移                                                                                   |
 
 不传 `shadowArgs` 时使用 `At.config.shadow` 的默认值（`@primaryDark`，spread 3，offset 1/2）。GLSL 下 `layers` 不参与计算，
 所以把算法从 legacy 切到 glsl 时，阴影观感会变化（通常更干净、更省绘制调用）。
 
 ## API
 
-| 成员 | 说明 |
-| --- | --- |
-| `At.shadow.shadow(x, y, w, h, corner, color, spread, layers, offsetX, offsetY)` | 绘制阴影；组件内部调用，也可自己用 |
-| `At.shadow.setAlgorithm(name)` | `"glsl"` / `"legacy"` / `"none"`；非法值报错 |
-| `At.shadow.getAlgorithm()` | 当前配置的算法 |
-| `At.shadow.reset()` | 丢弃缓存的 shader / 1×1 白纹理；窗口重建后可调用 |
+| 成员                                                                            | 说明                                             |
+| ------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `At.shadow.shadow(x, y, w, h, corner, color, spread, layers, offsetX, offsetY)` | 绘制阴影；组件内部调用，也可自己用               |
+| `At.shadow.setAlgorithm(name)`                                                  | `"glsl"` / `"legacy"` / `"none"`；非法值报错     |
+| `At.shadow.getAlgorithm()`                                                      | 当前配置的算法                                   |
+| `At.shadow.reset()`                                                             | 丢弃缓存的 shader / 1×1 白纹理；窗口重建后可调用 |
 
 ## GLSL 实现说明
 

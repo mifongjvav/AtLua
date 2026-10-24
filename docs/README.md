@@ -99,14 +99,14 @@ At.config.font.size = 16               -- At.font.init() 的默认字号
 At.config.apply()
 ```
 
-| 配置段 | 字段 |
-| --- | --- |
-| `theme` | `color` / `black` / `white` |
-| `render` | `msaa` |
+| 配置段   | 字段                                                                                                  |
+| -------- | ----------------------------------------------------------------------------------------------------- |
+| `theme`  | `color` / `black` / `white`                                                                           |
+| `render` | `msaa`                                                                                                |
 | `shadow` | `algorithm`（`glsl` / `legacy` / `none`）、`color`、`alpha`、`spread`、`layers`、`offsetX`、`offsetY` |
-| `blur` | `enabled` / `algorithm` / `strength` |
-| `log` | `level` / `print` / `maxEntries` / `file` / `filePattern` |
-| `font` | `size` / `main` / `emoji` |
+| `blur`   | `enabled` / `algorithm` / `strength`                                                                  |
+| `log`    | `level` / `print` / `maxEntries` / `file` / `filePattern`                                             |
+| `font`   | `size` / `main` / `emoji`                                                                             |
 
 `At.lua` 启动时会自动 `apply()` 一次；之后改 `At.config` 需要再调 `apply()`。
 
@@ -127,20 +127,20 @@ token 列表、默认派生色、`At.theme.get` / `At.theme.set` / `At.theme.res
 
 ## 组件一览
 
-| 组件 | 一句话作用 | 文档 |
-| --- | --- | --- |
-| `At.Panel` | CSS 子集式布局容器，可做卡片背景 | [components.md#at-panel](components.md#at-panel) |
-| `At.Label` | 文字标签，支持换行与对齐 | [components.md#at-label](components.md#at-label) |
-| `At.Button` | 带状态、涟漪、阴影与回调的按钮 | [components.md#at-button](components.md#at-button) |
-| `At.TextInput` | 单行输入框：点击/拖动定位光标、方向键、密码、回车提交、Esc 失焦 | [components.md#at-textinput](components.md#at-textinput) |
-| `At.Switch` | 带过渡动画的开关 | [components.md#at-switch](components.md#at-switch) |
-| `At.Checkbox` | 多选框，点击整行切换 | [components.md#at-checkbox](components.md#at-checkbox) |
-| `At.RadioGroup` | 单选组，`value` 是 1 基下标 | [components.md#at-radiogroup](components.md#at-radiogroup) |
-| `At.Slider` | 滑动条，支持步进、拖动与方向键 | [components.md#at-slider](components.md#at-slider) |
-| `At.ProgressBar` | 确定性进度条，填充宽度弹簧过渡 | [components.md#at-progressbar](components.md#at-progressbar) |
-| `At.LoadingBar` | 不确定性进度条，高光循环滑动 | [components.md#at-loadingbar](components.md#at-loadingbar) |
-| `At.ScrollView` | 可滚动视口：横纵自动滚动条、平滑滚动、惯性、触顶触底光效 | [components.md#at-scrollview](components.md#at-scrollview) |
-| `At.Console` | 浮动调试控制台：显示 `At.log` 日志、着色、可拖动 | [components.md#at-console](components.md#at-console) |
+| 组件             | 一句话作用                                                      | 文档                                                         |
+| ---------------- | --------------------------------------------------------------- | ------------------------------------------------------------ |
+| `At.Panel`       | CSS 子集式布局容器，可做卡片背景                                | [components.md#at-panel](components.md#at-panel)             |
+| `At.Label`       | 文字标签，支持换行与对齐                                        | [components.md#at-label](components.md#at-label)             |
+| `At.Button`      | 带状态、涟漪、阴影与回调的按钮                                  | [components.md#at-button](components.md#at-button)           |
+| `At.TextInput`   | 单行输入框：点击/拖动定位光标、方向键、密码、回车提交、Esc 失焦 | [components.md#at-textinput](components.md#at-textinput)     |
+| `At.Switch`      | 带过渡动画的开关                                                | [components.md#at-switch](components.md#at-switch)           |
+| `At.Checkbox`    | 多选框，点击整行切换                                            | [components.md#at-checkbox](components.md#at-checkbox)       |
+| `At.RadioGroup`  | 单选组，`value` 是 1 基下标                                     | [components.md#at-radiogroup](components.md#at-radiogroup)   |
+| `At.Slider`      | 滑动条，支持步进、拖动与方向键                                  | [components.md#at-slider](components.md#at-slider)           |
+| `At.ProgressBar` | 确定性进度条，填充宽度弹簧过渡                                  | [components.md#at-progressbar](components.md#at-progressbar) |
+| `At.LoadingBar`  | 不确定性进度条，高光循环滑动                                    | [components.md#at-loadingbar](components.md#at-loadingbar)   |
+| `At.ScrollView`  | 可滚动视口：横纵自动滚动条、平滑滚动、惯性、触顶触底光效        | [components.md#at-scrollview](components.md#at-scrollview)   |
+| `At.Console`     | 浮动调试控制台：显示 `At.log` 日志、着色、可拖动                | [components.md#at-console](components.md#at-console)         |
 
 ### 动画
 
@@ -193,8 +193,8 @@ At.clearFocus()                 -- 主动清空焦点
 - **模块命名沿用现状**：大写开头的是 `At`、`SDF`、`Ripple`、`Button`、`Panel`、`Label`、`TextInput`、`Switch`、`Checkbox`、`RadioGroup`、`Slider`、`ScrollView`、`Component`；小写的是 `color`、`shadow`、`input`、`font`、`layout`、`registry`。
 - **`require` 路径从源码根开始、不带 `.lua`**：`local At = require("At.At")`。
 - **`At.button`（立即模式）与 `At.Button`（组件式）不是一回事**：
-    - `At.button(x, y, w, h, res, hex, alpha, shadow, shadowArgs)` 只画一个矩形，无状态、无涟漪、无回调，还会把当前颜色留成按钮色，仅用于兼容旧代码。
-    - `At.Button{...}` 是组件：自带悬停/按下/禁用、涟漪、文字、回调和注册表生命周期，新代码请用它。
+  - `At.button(x, y, w, h, res, hex, alpha, shadow, shadowArgs)` 只画一个矩形，无状态、无涟漪、无回调，还会把当前颜色留成按钮色，仅用于兼容旧代码。
+  - `At.Button{...}` 是组件：自带悬停/按下/禁用、涟漪、文字、回调和注册表生命周期，新代码请用它。
 
 ## 常见问题
 

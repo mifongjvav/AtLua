@@ -13,11 +13,11 @@ At.Label{ color = "@textMuted" }     -- 组件颜色也可以直接写 token
 
 ## 默认值
 
-| 基色 | 字段 | 默认值 | 作用 |
-| --- | --- | --- | --- |
+| 基色   | 字段                            | 默认值    | 作用                                       |
+| ------ | ------------------------------- | --------- | ------------------------------------------ |
 | 主题色 | `theme.color` / `theme.primary` | `#A7DCFF` | 主色、强调色（按钮、开关、进度、聚焦边框） |
-| 黑 | `theme.black` | `#3D3D3D` | 深色槽位，默认背景 |
-| 白 | `theme.white` | `#FFFFFF` | 浅色槽位，默认文字、旋钮 |
+| 黑     | `theme.black`                   | `#3D3D3D` | 深色槽位，默认背景                         |
+| 白     | `theme.white`                   | `#FFFFFF` | 浅色槽位，默认文字、旋钮                   |
 
 配置写在 [`At/config.lua`](../At/config.lua) 的 `theme` 段，运行时改完 `At.config` 需要
 `At.config.apply()`；直接调 `At.theme.set{...}` 则不需要。注意 `apply()` 会以 `At.config.theme`
@@ -34,29 +34,29 @@ token 是**以 `@` 开头的字符串**，例如 `"@primary"`。所有接受颜�
 `textColor`、`fillColor`、`background`、`borderColor` …）都接受 token，也接受普通
 `"#RRGGBB"` / `"RRGGBB"`。`At.color.hexToRGBA`、`setColor`、`shade`、`mix` 同样会解析 token。
 
-| token | 含义 | 默认值 / 派生规则 |
-| --- | --- | --- |
-| `@primary` | 主题色 | `#A7DCFF` |
-| `@primaryDark` | 深色主题色（阴影默认） | `shade(primary, -0.82)` → `#1E282E` |
-| `@theme` / `@accent` | 主题色别名 | 同 `@primary` |
-| `@black` | 黑色基色 | `#3D3D3D` |
-| `@white` | 白色基色 | `#FFFFFF` |
-| `@background` | 页面背景 | 黑色基色 `#3D3D3D` |
-| `@surface` | 卡片 / 面板背景 | `mix(black, white, 0.06)` → `#494949` |
-| `@surfaceAlt` | 输入框 / 控件底 | `mix(black, white, 0.12)` → `#545454` |
-| `@surfaceStrong` | 次级按钮 / 更亮的表面 | `mix(black, white, 0.20)` → `#646464` |
-| `@text` | 主文字 | 白色基色 `#FFFFFF` |
-| `@textMuted` | 次级文字 | `mix(white, black, 0.38)` → `#B5B5B5` |
-| `@textFaint` | 提示 / 占位文字 | `mix(white, black, 0.56)` → `#929292` |
-| `@onPrimary` | 主题色上的文字 / 涟漪 | `black` / `white` 中与主题色对比度更高的一个（默认 `#3D3D3D`） |
-| `@border` | 普通描边 | `mix(black, white, 0.22)` → `#686868` |
-| `@borderStrong` | 控件描边 | `mix(black, white, 0.34)` → `#7F7F7F` |
-| `@divider` | 分隔线 | `mix(black, white, 0.14)` → `#585858` |
-| `@track` | 轨道 / 滚动条底 | `mix(black, white, 0.17)` → `#5E5E5E` |
-| `@knob` | 开关 / 滑块 | 白色基色 `#FFFFFF` |
-| `@danger` | 错误 / 危险 | `#E87979` |
-| `@warning` | 警告 | `#E8C07F` |
-| `@success` | 成功 | `#7FA88F` |
+| token                | 含义                   | 默认值 / 派生规则                                              |
+| -------------------- | ---------------------- | -------------------------------------------------------------- |
+| `@primary`           | 主题色                 | `#A7DCFF`                                                      |
+| `@primaryDark`       | 深色主题色（阴影默认） | `shade(primary, -0.82)` → `#1E282E`                            |
+| `@theme` / `@accent` | 主题色别名             | 同 `@primary`                                                  |
+| `@black`             | 黑色基色               | `#3D3D3D`                                                      |
+| `@white`             | 白色基色               | `#FFFFFF`                                                      |
+| `@background`        | 页面背景               | 黑色基色 `#3D3D3D`                                             |
+| `@surface`           | 卡片 / 面板背景        | `mix(black, white, 0.06)` → `#494949`                          |
+| `@surfaceAlt`        | 输入框 / 控件底        | `mix(black, white, 0.12)` → `#545454`                          |
+| `@surfaceStrong`     | 次级按钮 / 更亮的表面  | `mix(black, white, 0.20)` → `#646464`                          |
+| `@text`              | 主文字                 | 白色基色 `#FFFFFF`                                             |
+| `@textMuted`         | 次级文字               | `mix(white, black, 0.38)` → `#B5B5B5`                          |
+| `@textFaint`         | 提示 / 占位文字        | `mix(white, black, 0.56)` → `#929292`                          |
+| `@onPrimary`         | 主题色上的文字 / 涟漪  | `black` / `white` 中与主题色对比度更高的一个（默认 `#3D3D3D`） |
+| `@border`            | 普通描边               | `mix(black, white, 0.22)` → `#686868`                          |
+| `@borderStrong`      | 控件描边               | `mix(black, white, 0.34)` → `#7F7F7F`                          |
+| `@divider`           | 分隔线                 | `mix(black, white, 0.14)` → `#585858`                          |
+| `@track`             | 轨道 / 滚动条底        | `mix(black, white, 0.17)` → `#5E5E5E`                          |
+| `@knob`              | 开关 / 滑块            | 白色基色 `#FFFFFF`                                             |
+| `@danger`            | 错误 / 危险            | `#E87979`                                                      |
+| `@warning`           | 警告                   | `#E8C07F`                                                      |
+| `@success`           | 成功                   | `#7FA88F`                                                      |
 
 `@danger` / `@warning` / `@success` 是固定的语义色，不随三基色派生；控制台的
 `debug / info / warn / error / fatal` 默认分别引用 `@textFaint / @primary / @warning /
@@ -64,17 +64,17 @@ token 是**以 `@` 开头的字符串**，例如 `"@primary"`。所有接受颜�
 
 ## API
 
-| 成员 | 说明 |
-| --- | --- |
+| 成员                                                | 说明                                                                        |
+| --------------------------------------------------- | --------------------------------------------------------------------------- |
 | `At.theme.color` / `.primary` / `.black` / `.white` | 当前三个基色（`primary` 是 `color` 的别名；可读，改它不会重算，请用 `set`） |
-| `At.theme.tokens` | 当前全部 token 的具体 hex 表（每次 `set` 后重建） |
-| `At.theme.set{ color=?, black=?, white=? }` | 改基色并立即重算派生色，返回 `At.theme`；`color` 也可写成 `primary` |
-| `At.theme.get(name)` | 取 token 的具体 hex，`name` 可带或不带 `@`；未知 token 会报错 |
-| `At.theme.resolve(value)` | token → hex；普通 hex 原样返回 |
-| `At.theme.isToken(value)` | 是否是以 `@` 开头的 token |
-| `At.theme.reset()` | 恢复出厂三基色 |
-| `At.theme.foreground(background)` | 按底色亮度返回 `black` / `white` 中对比度更高的 hex，供自定义组件选文字色 |
-| `At.theme.defaults()` | 返回出厂基色的副本 |
+| `At.theme.tokens`                                   | 当前全部 token 的具体 hex 表（每次 `set` 后重建）                           |
+| `At.theme.set{ color=?, black=?, white=? }`         | 改基色并立即重算派生色，返回 `At.theme`；`color` 也可写成 `primary`         |
+| `At.theme.get(name)`                                | 取 token 的具体 hex，`name` 可带或不带 `@`；未知 token 会报错               |
+| `At.theme.resolve(value)`                           | token → hex；普通 hex 原样返回                                              |
+| `At.theme.isToken(value)`                           | 是否是以 `@` 开头的 token                                                   |
+| `At.theme.reset()`                                  | 恢复出厂三基色                                                              |
+| `At.theme.foreground(background)`                   | 按底色亮度返回 `black` / `white` 中对比度更高的 hex，供自定义组件选文字色   |
+| `At.theme.defaults()`                               | 返回出厂基色的副本                                                          |
 
 颜色值接受带不带 `#` 的 6 位十六进制；`set` 会统一成大写 `#RRGGBB`。非法颜色直接报错，
 不会悄悄退化成默认值。
