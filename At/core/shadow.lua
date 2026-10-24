@@ -7,9 +7,10 @@
 -- 参数沿用旧签名，组件不需要改：
 --   shadow.shadow(x, y, w, h, corner, color, spread, layers, offsetX, offsetY)
 --   color 可以是 0..1 的 RGBA 表，也可以是 hex / 主题 token（如 "@primaryDark"，
---   字符串形式默认 alpha 0.3）。spread 在 GLSL 下是模糊半径，layers 只对 legacy 生效。
+--   字符串形式默认 alpha 0.4）。spread 在 GLSL 下是尺寸基准（实际模糊半径 = spread*2），layers 只对 legacy 生效。
 --
 -- GLSL 失败（shader 编译失败、没有可用的 1x1 纹理）时自动退回 legacy。
+-- GLSL 以组件边缘为中心向内外对称模糊，并用 1/255 抖动打散 8 位 alpha 的色带。
 
 shadow = {}
 
@@ -19,7 +20,7 @@ local algorithm = "glsl"
 
 local defaults = {
 	color = "@primaryDark",
-	alpha = 0.3,
+	alpha = 0.4,
 	spread = 3,
 	layers = 20,
 	offsetX = 1,
@@ -31,7 +32,6 @@ extern vec2 shadowSize;
 extern vec2 rectSize;
 extern vec2 rectCenter;
 extern float rectRadius;
-extern float spread;
 extern float blur;
 extern vec4 shadowColor;
 
@@ -42,8 +42,13 @@ float sdRoundRect(vec2 p, vec2 halfSize, float r) {
 
 vec4 effect(vec4 color, Image tex, vec2 uv, vec2 sc) {
     vec2 p = uv * shadowSize;
-    float d = sdRoundRect(p - rectCenter, rectSize * 0.5, rectRadius) - spread;
-    float a = 1.0 - smoothstep(0.0, blur, d);
+    float d = sdRoundRect(p - rectCenter, rectSize * 0.5, rectRadius);
+    // 以边缘为中心向内外各模糊 blur，使用 smootherstep 让过渡更柔和
+    float t = clamp((d + blur) / (2.0 * blur), 0.0, 1.0);
+    float a = 1.0 - t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+    // 1/255 的屏幕空间抖动，打散 8 位 alpha 在浅色背景上的色带
+    float noise = fract(52.9829189 * fract(dot(floor(sc), vec2(0.06711056, 0.00583715))));
+    a = clamp(a + (noise - 0.5) / 255.0, 0.0, 1.0);
     return vec4(shadowColor.rgb, shadowColor.a * a);
 }
 ]]
@@ -176,11 +181,10 @@ end
 -- ---------- GLSL 实现 ----------
 
 local function drawGLSL(x, y, w, h, corner, color, spread, offsetX, offsetY, shaderObject, texture)
-	local blur = math.max(1, tonumber(spread) or 5)
-	local expand = blur * 0.25
+	local blur = math.max(2, (tonumber(spread) or 3) * 2)
 	local ox = tonumber(offsetX) or 0
 	local oy = tonumber(offsetY) or 0
-	local pad = math.ceil(blur + expand + math.abs(ox) + math.abs(oy))
+	local pad = math.ceil(blur + math.abs(ox) + math.abs(oy) + 1)
 	local quadW = w + pad * 2
 	local quadH = h + pad * 2
 	local radius = math.min(tonumber(corner) or 0, math.min(w, h) / 2)
@@ -189,7 +193,6 @@ local function drawGLSL(x, y, w, h, corner, color, spread, offsetX, offsetY, sha
 	shaderObject:send("rectSize", { w, h })
 	shaderObject:send("rectCenter", { quadW / 2 + ox, quadH / 2 + oy })
 	shaderObject:send("rectRadius", radius)
-	shaderObject:send("spread", expand)
 	shaderObject:send("blur", blur)
 	shaderObject:send("shadowColor", { color[1], color[2], color[3], color[4] })
 

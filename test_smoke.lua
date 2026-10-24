@@ -1164,6 +1164,7 @@ local shadowBtn = At.Button({ text = "S" })
 local shadowDefaults = At.shadow.defaults()
 check(shadowBtn.shadowArgs == nil, "默认阴影参数来自 config.shadow")
 check(shadowDefaults.color == "@primaryDark", "默认阴影用深色主题色")
+check(shadowDefaults.alpha == 0.4, "默认阴影 alpha 为 0.4")
 check(shadowDefaults.spread == 3 and shadowDefaults.offsetX == 1 and shadowDefaults.offsetY == 2, "默认阴影更小")
 shadowBtn:destroy()
 At.config.shadow.spread = 2
